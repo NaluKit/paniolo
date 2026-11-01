@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  XML report of a Paniolo validation, written by ValidationResult.toXml().
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns="urn:io:github:nalukit:paniolo:validation-report:1"
+           targetNamespace="urn:io:github:nalukit:paniolo:validation-report:1"
+           elementFormDefault="qualified">
+
+  <xs:element name="report">
+    <xs:complexType>
+      <xs:sequence>
+        <!-- Validation profile, or the stages and profiles of a combined result. -->
+        <xs:element name="profile" type="xs:string"/>
+        <xs:element name="summary" type="Summary"/>
+        <!-- Execution statistics; only if requested (ValidationResult.statistics()). -->
+        <xs:element name="statistics" type="Statistics" minOccurs="0"/>
+        <!-- Stages with findings, in the order they reported them. -->
+        <xs:element name="stage" type="Stage" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+      <!-- Paniolo and its version, e.g. "Paniolo 1.0.0". -->
+      <xs:attribute name="generator" type="xs:string" use="required"/>
+      <!-- Time the report was written. -->
+      <xs:attribute name="created" type="xs:dateTime" use="required"/>
+      <!-- Time the validation took; missing if not measured. -->
+      <xs:attribute name="duration" type="xs:duration"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:complexType name="Summary">
+    <!-- False if there is a finding of severity ERROR or FATAL. -->
+    <xs:attribute name="valid" type="xs:boolean" use="required"/>
+    <xs:attribute name="fatals" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="errors" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="warnings" type="xs:nonNegativeInteger" use="required"/>
+    <xs:attribute name="infos" type="xs:nonNegativeInteger" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="Statistics">
+    <xs:sequence>
+      <!-- One per Schematron stylesheet run, in the order they ran. -->
+      <xs:element name="schematron" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:attribute name="stylesheet" type="xs:string" use="required"/>
+          <xs:attribute name="activePatterns" type="xs:nonNegativeInteger" use="required"/>
+          <!-- Rule contexts that matched a node; a rule counts once per matched node. -->
+          <xs:attribute name="firedRules" type="xs:nonNegativeInteger" use="required"/>
+          <xs:attribute name="failedAsserts" type="xs:nonNegativeInteger" use="required"/>
+          <xs:attribute name="successfulReports" type="xs:nonNegativeInteger" use="required"/>
+        </xs:complexType>
+      </xs:element>
+      <!-- One per PDF/A check. -->
+      <xs:element name="pdfa" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="failedRule" minOccurs="0" maxOccurs="unbounded">
+              <xs:complexType>
+                <xs:attribute name="rule" type="xs:string" use="required"/>
+                <xs:attribute name="count" type="xs:positiveInteger" use="required"/>
+              </xs:complexType>
+            </xs:element>
+          </xs:sequence>
+          <!-- PDF/A flavour checked, e.g. 3b. -->
+          <xs:attribute name="flavour" type="xs:string" use="required"/>
+          <xs:attribute name="profile" type="xs:string"/>
+          <xs:attribute name="compliant" type="xs:boolean" use="required"/>
+          <xs:attribute name="checks" type="xs:nonNegativeInteger" use="required"/>
+          <xs:attribute name="failedChecks" type="xs:nonNegativeInteger" use="required"/>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="Stage">
+    <xs:sequence>
+      <xs:element name="message" type="Message" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="name" type="StageName" use="required"/>
+    <!-- False if the stage has a finding of severity ERROR or FATAL. -->
+    <xs:attribute name="valid" type="xs:boolean" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="Message">
+    <xs:simpleContent>
+      <xs:extension base="xs:string">
+        <xs:attribute name="severity" type="SeverityName" use="required"/>
+        <!-- Original rule identifier, e.g. BR-DE-15. -->
+        <xs:attribute name="rule" type="xs:string"/>
+        <!-- XPath, or line and column of a parse or schema error. -->
+        <xs:attribute name="location" type="xs:string"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:simpleType name="StageName">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="XML"/>
+      <xs:enumeration value="XSD"/>
+      <xs:enumeration value="SCHEMATRON"/>
+      <xs:enumeration value="PDF_A"/>
+      <xs:enumeration value="HYBRID"/>
+      <xs:enumeration value="CALCULATION"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="SeverityName">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="INFO"/>
+      <xs:enumeration value="WARNING"/>
+      <xs:enumeration value="ERROR"/>
+      <xs:enumeration value="FATAL"/>
+    </xs:restriction>
+  </xs:simpleType>
+</xs:schema>

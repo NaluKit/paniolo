@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>io.github.nalukit</groupId>
+    <artifactId>paniolo-parent</artifactId>
+    <version>${revision}</version>
+  </parent>
+
+  <artifactId>paniolo</artifactId>
+
+  <name>paniolo</name>
+  <description>Single entry point for writing, reading and validating XRechnung invoices</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.github.nalukit</groupId>
+      <artifactId>paniolo-xml-ubl</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.github.nalukit</groupId>
+      <artifactId>paniolo-xml-cii</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.github.nalukit</groupId>
+      <artifactId>paniolo-validation</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.github.nalukit</groupId>
+      <artifactId>paniolo-xrechnung-rules</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.github.nalukit</groupId>
+      <artifactId>paniolo-facturx-rules</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+</project>

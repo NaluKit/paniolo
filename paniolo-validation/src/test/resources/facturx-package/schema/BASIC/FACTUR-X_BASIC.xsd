@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic stand-in for the Factur-X BASIC schema: accepts any CrossIndustryInvoice. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100"
+           elementFormDefault="qualified">
+  <xs:element name="CrossIndustryInvoice">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:any processContents="skip" minOccurs="0" maxOccurs="unbounded" namespace="##any"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

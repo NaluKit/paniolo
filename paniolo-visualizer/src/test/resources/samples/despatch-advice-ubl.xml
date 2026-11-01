@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DespatchAdvice xmlns="urn:oasis:names:specification:ubl:schema:xsd:DespatchAdvice-2"
+                xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
+                xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
+  <cbc:CustomizationID>urn:fdc:peppol.eu:poacc:trns:despatch_advice:3</cbc:CustomizationID>
+  <cbc:ProfileID>urn:fdc:peppol.eu:poacc:bis:despatch_advice:3</cbc:ProfileID>
+  <cbc:ID>LS-2026-42</cbc:ID>
+  <cbc:IssueDate>2026-11-09</cbc:IssueDate>
+  <cbc:Note>Anlieferung über Rampe 3</cbc:Note>
+  <cac:OrderReference>
+    <cbc:ID>B-2026-17</cbc:ID>
+  </cac:OrderReference>
+  <cac:DespatchSupplierParty>
+    <cac:Party>
+      <cbc:EndpointID schemeID="0088">4000001000005</cbc:EndpointID>
+      <cac:PostalAddress>
+        <cbc:StreetName>Musterstraße 1</cbc:StreetName>
+        <cbc:CityName>Berlin</cbc:CityName>
+        <cbc:PostalZone>10115</cbc:PostalZone>
+        <cac:Country><cbc:IdentificationCode>DE</cbc:IdentificationCode></cac:Country>
+      </cac:PostalAddress>
+      <cac:PartyLegalEntity><cbc:RegistrationName>Muster GmbH</cbc:RegistrationName></cac:PartyLegalEntity>
+    </cac:Party>
+  </cac:DespatchSupplierParty>
+  <cac:DeliveryCustomerParty>
+    <cac:Party>
+      <cbc:EndpointID schemeID="0088">4000002000002</cbc:EndpointID>
+      <cac:PostalAddress>
+        <cbc:StreetName>Kundenweg 2</cbc:StreetName>
+        <cbc:CityName>Hamburg</cbc:CityName>
+        <cbc:PostalZone>20095</cbc:PostalZone>
+        <cac:Country><cbc:IdentificationCode>DE</cbc:IdentificationCode></cac:Country>
+      </cac:PostalAddress>
+      <cac:PartyLegalEntity><cbc:RegistrationName>Kunde GmbH</cbc:RegistrationName></cac:PartyLegalEntity>
+      <cac:Contact><cbc:Name>Max Einkauf</cbc:Name><cbc:ElectronicMail>einkauf@example.org</cbc:ElectronicMail></cac:Contact>
+    </cac:Party>
+  </cac:DeliveryCustomerParty>
+  <cac:BuyerCustomerParty>
+    <cac:Party>
+      <cac:PartyName><cbc:Name>Kunde GmbH</cbc:Name></cac:PartyName>
+      <cac:PostalAddress>
+        <cbc:StreetName>Kundenweg 2</cbc:StreetName>
+        <cbc:CityName>Hamburg</cbc:CityName>
+        <cbc:PostalZone>20095</cbc:PostalZone>
+        <cac:Country><cbc:IdentificationCode>DE</cbc:IdentificationCode></cac:Country>
+      </cac:PostalAddress>
+    </cac:Party>
+  </cac:BuyerCustomerParty>
+  <cac:Shipment>
+    <cbc:ID>SH-77</cbc:ID>
+    <cac:Delivery>
+      <cac:DeliveryAddress>
+        <cbc:StreetName>Hafenstraße 5</cbc:StreetName>
+        <cbc:CityName>Hamburg</cbc:CityName>
+        <cbc:PostalZone>20457</cbc:PostalZone>
+        <cac:Country><cbc:IdentificationCode>DE</cbc:IdentificationCode></cac:Country>
+      </cac:DeliveryAddress>
+      <cac:EstimatedDeliveryPeriod>
+        <cbc:StartDate>2026-11-12</cbc:StartDate>
+        <cbc:EndDate>2026-11-13</cbc:EndDate>
+      </cac:EstimatedDeliveryPeriod>
+      <cac:Despatch><cbc:ActualDespatchDate>2026-11-09</cbc:ActualDespatchDate></cac:Despatch>
+    </cac:Delivery>
+  </cac:Shipment>
+  <cac:DespatchLine>
+    <cbc:ID>1</cbc:ID>
+    <cbc:DeliveredQuantity unitCode="H87">8</cbc:DeliveredQuantity>
+    <cbc:OutstandingQuantity unitCode="H87">2</cbc:OutstandingQuantity>
+    <cbc:OutstandingReason>Restmenge folgt in KW 47</cbc:OutstandingReason>
+    <cac:OrderLineReference><cbc:LineID>1</cbc:LineID></cac:OrderLineReference>
+    <cac:Item>
+      <cbc:Name>Gerät</cbc:Name>
+      <cac:SellersItemIdentification><cbc:ID>G-100</cbc:ID></cac:SellersItemIdentification>
+      <cac:StandardItemIdentification><cbc:ID schemeID="0160">4012345678901</cbc:ID></cac:StandardItemIdentification>
+      <cac:ItemInstance>
+        <cbc:SerialID>SN-1</cbc:SerialID>
+        <cac:LotIdentification><cbc:LotNumberID>L-2026-11</cbc:LotNumberID></cac:LotIdentification>
+      </cac:ItemInstance>
+    </cac:Item>
+  </cac:DespatchLine>
+  <cac:DespatchLine>
+    <cbc:ID>2</cbc:ID>
+    <cbc:DeliveredQuantity unitCode="MTR">25</cbc:DeliveredQuantity>
+    <cac:OrderLineReference><cbc:LineID>2</cbc:LineID></cac:OrderLineReference>
+    <cac:Item><cbc:Name>Kabel</cbc:Name></cac:Item>
+  </cac:DespatchLine>
+</DespatchAdvice>

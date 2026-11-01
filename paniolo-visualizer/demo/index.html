@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta content="width=device-width, initial-scale=1"
+              name="viewport">
+        <title>Paniolo Visualizer</title>
+        <link href="../../docs/branding/paniolo-favicon.svg"
+              rel="icon"
+              type="image/svg+xml">
+        <style>
+            :root {
+                color-scheme: light dark;
+                --navy: #01244f;
+                --teal: #019abc;
+            }
+
+            body {
+                margin: 0;
+                font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+                background: Canvas;
+                color: CanvasText;
+            }
+
+            header {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 12px 24px;
+                align-items: center;
+                padding: 14px 24px;
+                border-bottom: 1px solid #8884;
+            }
+
+            header h1 {
+                font-size: 1.05rem;
+                margin: 0;
+            }
+
+            header h1 span {
+                color: var(--teal);
+            }
+
+            .controls {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                align-items: center;
+                font-size: 0.9rem;
+            }
+
+            select, button, input {
+                font: inherit;
+            }
+
+            main {
+                max-width: 1180px;
+                margin: 0 auto;
+                padding: 24px 16px 48px;
+            }
+
+            .samples {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+                margin-bottom: 16px;
+            }
+
+            .samples button {
+                border: 1px solid #8886;
+                background: transparent;
+                color: inherit;
+                border-radius: 999px;
+                padding: 4px 12px;
+                cursor: pointer;
+            }
+
+            .samples button:hover {
+                border-color: var(--teal);
+                color: var(--teal);
+            }
+
+            .events {
+                font: 12px ui-monospace, monospace;
+                opacity: 0.7;
+                margin-top: 12px;
+            }
+        </style>
+    </head>
+    <body>
+        <header>
+            <h1>paniolo <span>visualizer</span> · demo</h1>
+            <div class="controls">
+                <label>Language
+                    <select id="lang">
+                        <option value="en">English</option>
+                        <option value="de">German</option>
+                        <option value="fr">French</option>
+                    </select>
+                </label>
+                <label>Theme
+                    <select id="theme">
+                        <option value="auto">auto</option>
+                        <option value="light">light</option>
+                        <option value="dark">dark</option>
+                    </select>
+                </label>
+                <label><input accept=".xml,.pdf"
+                              id="file"
+                              multiple
+                              type="file"></label>
+            </div>
+        </header>
+        <main>
+            <div class="samples"
+                 id="samples"></div>
+
+            <!-- the web component; dropzone lets users drop or choose files -->
+            <paniolo-viewer dropzone
+                            id="viewer"
+                            lang="en"></paniolo-viewer>
+
+            <div class="events"
+                 id="events"></div>
+        </main>
+
+        <script type="module">
+            import '../src/main/resources/META-INF/resources/paniolo-visualizer/paniolo-visualizer.js';
+
+            const base = '../src/test/resources/samples/';
+            const samples = [
+                ['XRechnung UBL', 'invoice-ubl.xml'],
+                ['XRechnung CII', 'invoice-cii.xml'],
+                ['Factur-X PDF', 'invoice-facturx.pdf'],
+                ['CII + validation report', 'invoice-invalid-cii.xml', 'validation-report.xml'],
+                ['EXTENDED with sub-lines', 'invoice-extended-sub-lines.xml'],
+                ['EXTENDED with further details', 'invoice-extended-display.xml'],
+                ['ZUGFeRD 1.0', 'zugferd1-comfort.xml'],
+                ['Order-X', 'order-x.xml'],
+                ['Despatch advice UBL', 'despatch-advice-ubl.xml'],
+                ['Despatch advice CIDA', 'despatch-advice-cida.xml']
+            ];
+            const viewer = document.getElementById('viewer');
+            const bytes = async name => new Uint8Array(await (await fetch(base + name)).arrayBuffer());
+
+            for (const [label, file, report] of samples) {
+                const button = document.createElement('button');
+                button.textContent = label;
+                // the host application passes the document as bytes
+                button.onclick = async () => viewer.load(await bytes(file), {report: report ? await bytes(report) : null});
+                document.getElementById('samples').append(button);
+            }
+
+            document.getElementById('lang').onchange = e => viewer.setAttribute('lang', e.target.value);
+            document.getElementById('theme').onchange = e => viewer.setAttribute('theme', e.target.value);
+            document.getElementById('file').onchange = e => {
+                const [first] = e.target.files;
+                if (first) {
+                    viewer.load(first);   // a Blob works as well
+                }
+            };
+
+            const log = text => {
+                document.getElementById('events').textContent = text;
+            };
+            viewer.addEventListener('paniolo-load', e => log('paniolo-load: ' + e.detail.title + ' (' + e.detail.model.syntax + ')'));
+            viewer.addEventListener('paniolo-error', e => log('paniolo-error: ' + e.detail.code + ' – ' + e.detail.message));
+            viewer.addEventListener('paniolo-tab', e => log('paniolo-tab: ' + e.detail.tab));
+
+            const initial = samples.find(s => s[1] === new URLSearchParams(location.search).get('sample'));
+            if (initial) {
+                viewer.load(await bytes(initial[1]), {report: initial[2] ? await bytes(initial[2]) : null});
+            }
+        </script>
+    </body>
+</html>

@@ -1,0 +1,88 @@
+Paniolo CLI: third-party licensing and source availability
+========================================================
+
+Paniolo code is licensed under Apache License 2.0. Bundled dependencies
+and validation resources retain their respective licenses. See the merged
+META-INF/NOTICE, META-INF/LICENSE* and META-INF/licenses/ for their terms.
+The rules archives also retain notices and license texts within them.
+
+MPL-covered components
+----------------------
+
+Saxon-HE ${saxon.version}, copyright Saxonica and its contributors, is
+distributed under Mozilla Public License 2.0 (MPL-2.0).
+Project: https://github.com/Saxonica/Saxon-HE
+Source for the bundled version (download the matching source ZIP):
+  https://github.com/Saxonica/Saxon-HE/tree/main/12/source
+  Current file: saxon12-10source.zip (Saxon-HE 12.10)
+
+veraPDF ${verapdf.version}, copyright the veraPDF Consortium and its
+contributors, offers GPLv3+ / MPLv2+ licensing. Paniolo uses the MPL-2.0
+option for the MPL-covered components listed below.
+Projects:
+  https://github.com/veraPDF/veraPDF-library
+  https://github.com/veraPDF/veraPDF-validation
+  https://github.com/veraPDF/veraPDF-parser
+  https://github.com/veraPDF/veraPDF-model
+Source JARs for the bundled versions (direct downloads):
+  https://repo.maven.apache.org/maven2/org/verapdf/validation-model/${verapdf.version}/validation-model-${verapdf.version}-sources.jar
+  https://repo.maven.apache.org/maven2/org/verapdf/parser/${verapdf.version}/parser-${verapdf.version}-sources.jar
+  https://repo.maven.apache.org/maven2/org/verapdf/pdf-model/${verapdf.version}/pdf-model-${verapdf.version}-sources.jar
+  https://repo.maven.apache.org/maven2/org/verapdf/core/${verapdf.version}/core-${verapdf.version}-sources.jar
+  https://repo.maven.apache.org/maven2/org/verapdf/feature-reporting/${verapdf.version}/feature-reporting-${verapdf.version}-sources.jar
+  https://repo.maven.apache.org/maven2/org/verapdf/metadata-fixer/${verapdf.version}/metadata-fixer-${verapdf.version}-sources.jar
+The separate verapdf-xmp-core component ${verapdf.version} is BSD-3-Clause,
+as declared by its upstream POM; it is not relicensed under MPL here.
+
+Rhino 1.7.15.1, copyright Mozilla and its contributors, is primarily
+distributed under MPL-2.0. Additional third-party portions retain the
+terms in Rhino's original LICENSE.txt and NOTICE.txt, preserved in
+META-INF/LICENSE.txt and the merged META-INF/NOTICE of this JAR.
+Project: https://github.com/mozilla/rhino
+Source for the bundled version (direct download):
+  https://repo.maven.apache.org/maven2/org/mozilla/rhino/1.7.15.1/rhino-1.7.15.1-sources.jar
+
+These components are bundled without changes to their source code.
+Their covered source remains available under MPL-2.0 from the locations
+above. The full license, including the source availability provisions,
+is included in META-INF/licenses/MPL-2.0.txt and is also available at
+https://www.mozilla.org/MPL/2.0/.
+
+CDDL-covered components
+-----------------------
+
+veraPDF brings the following JAXB and JavaBeans Activation components,
+copyright Oracle and/or its affiliates. They are offered under the Common
+Development and Distribution License 1.1 (CDDL-1.1) or GPL 2.0 with the
+Classpath Exception; Paniolo distributes them under the CDDL-1.1 option.
+
+  javax.xml.bind:jaxb-api 2.4.0-b180830.0359
+  javax.activation:javax.activation-api 1.2.0
+  com.sun.xml.bind:jaxb-core 2.3.0.1
+  org.glassfish.jaxb:jaxb-core 2.3.0.1
+  org.glassfish.jaxb:txw2 2.3.0.1
+  com.sun.istack:istack-commons-runtime 3.0.5
+
+They are bundled without changes to their source code. Source for the
+bundled versions (direct downloads):
+  https://repo.maven.apache.org/maven2/javax/xml/bind/jaxb-api/2.4.0-b180830.0359/jaxb-api-2.4.0-b180830.0359-sources.jar
+  https://repo.maven.apache.org/maven2/javax/activation/javax.activation-api/1.2.0/javax.activation-api-1.2.0-sources.jar
+  https://repo.maven.apache.org/maven2/com/sun/xml/bind/jaxb-core/2.3.0.1/jaxb-core-2.3.0.1-sources.jar
+  https://repo.maven.apache.org/maven2/org/glassfish/jaxb/jaxb-core/2.3.0.1/jaxb-core-2.3.0.1-sources.jar
+  https://repo.maven.apache.org/maven2/org/glassfish/jaxb/txw2/2.3.0.1/txw2-2.3.0.1-sources.jar
+  https://repo.maven.apache.org/maven2/com/sun/istack/istack-commons-runtime/3.0.5/istack-commons-runtime-3.0.5-sources.jar
+The full license is included in META-INF/licenses/CDDL-1.1.txt and in the
+merged META-INF/LICENSE.txt of this JAR.
+
+EDL-covered components
+----------------------
+
+com.sun.xml.bind:jaxb-impl 2.3.2 and org.glassfish.jaxb:jaxb-runtime 2.3.2,
+copyright Oracle and/or its affiliates, are distributed under the Eclipse
+Distribution License 1.0 (EDL-1.0, BSD-3-Clause); the license text is
+retained in META-INF/LICENSE.md of this JAR.
+
+Build maintenance: verify this list against the runtime dependency tree
+when changing dependencies. Saxon and veraPDF versions are filled in by
+Maven; the Saxon source filename, the transitive Rhino version and the
+JAXB / Activation versions must also be reviewed when upgrading.

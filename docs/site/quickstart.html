@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta content="width=device-width, initial-scale=1"
+              name="viewport">
+        <meta content="Get started with Paniolo using a reproducible Java 21 invoice example."
+              name="description">
+        <meta content="#01244f"
+              name="theme-color">
+        <title>Quickstart · Paniolo</title>
+        <link href="assets/paniolo-favicon.svg"
+              rel="icon"
+              type="image/svg+xml">
+        <link href="assets/favicon.ico"
+              rel="alternate icon">
+        <link href="assets/paniolo-favicon-180.png"
+              rel="apple-touch-icon">
+        <link href="assets/style.css"
+              rel="stylesheet">
+    </head>
+    <body><a class="pn-skip"
+             href="#main">Skip to content</a>
+        <header><a aria-label="Paniolo home"
+                   class="pn-brand"
+                   href="index.html"><img alt="Paniolo"
+                                                  height="57"
+                                                  src="assets/paniolo-banner.svg"
+                                                  width="130"></a>
+            <nav aria-label="Main navigation"><a href="index.html">Overview</a><a aria-current="page"
+                                                                                  href="quickstart.html">Documentation</a><a href="api.html">API</a><a href="https://github.com/NaluKit/paniolo">GitHub
+                                                                                                                                                                                              ↗</a>
+            </nav>
+        </header>
+        <main class="pn-page"
+              id="main">
+            <div class="pn-docshell">
+                <aside aria-label="Documentation navigation"><span>Documentation</span><a aria-current="page"
+                                                                                          href="quickstart.html">Quickstart</a><a href="formats.html">Formats
+                                                                                                                                                   &
+                                                                                                                                                   modules</a><a href="api.html">API
+                                                                                                                                                                                 reference</a><span>Source baseline</span>
+                    <p class="pn-meta">HEAD-SNAPSHOT<br><code>6c2d2dc169af</code></p></aside>
+                <article class="pn-docbody">
+                    <div class="pn-crumb">Documentation / Getting started</div>
+                    <h1>Your first e-invoice.</h1>
+                    <p class="pn-lead">Build a complete invoice, write it as UBL and CII, validate it, and read it back.</p>
+                    <div class="pn-note">This documentation describes HEAD-SNAPSHOT at commit <code>6c2d2dc169af</code>.
+                                         Paniolo has no published release yet; the reproducible example uses local build
+                                         coordinates, not a Maven Central release.
+                    </div>
+                    <h2>1. Prepare Java and Maven</h2>
+                    <p>Paniolo needs Java 21 or newer at build and run time; there is no build for older Java versions.
+                       The quickstart was verified with Temurin 21.0.12.1 and Maven 3.9.9. The initial build needs network
+                       access to download dependencies and the checksum-verified rule bundles. Document processing runs
+                       locally afterward and never downloads rules.</p>
+                    <p>Applications fixed to Java 11 or 17 can run Paniolo in a separate Java 21 process, for example
+                       behind the command line or a small HTTP service, and exchange XML, PDF, or JSON with it.</p>
+                    <h2>2. Add Paniolo</h2>
+                    <p>For development against your checkout, run <code>mvn install</code> at the repository root, then add:</p>
+                    <pre><code>&lt;dependency&gt;
+  &lt;groupId&gt;io.github.nalukit&lt;/groupId&gt;
+  &lt;artifactId&gt;paniolo&lt;/artifactId&gt;
+  &lt;version&gt;HEAD-SNAPSHOT&lt;/version&gt;
+&lt;/dependency&gt;</code></pre>
+                    <p><code>paniolo</code> brings the model, UBL and CII, validation, and the official XRechnung, Factur-X,
+                       and Order-X rules. PDF support, PDF/A checks, rendering, JSON, and the browser viewer are optional
+                       modules. For a fixed and reproducible build, follow the exact source-export and version steps in
+                       the reference instead.</p>
+                    <h2>3. Create, export, and validate</h2>
+                    <p>The complete example includes imports, seller and buyer details, invoice lines, and checks of the result.
+                       Use it as the starting point for your application.</p>
+                    <div class="pn-actions"><a class="pn-button pn-main"
+                                               href="api.html#reproducible-quickstart">Open the complete quickstart
+                                                                                       →</a><a class="pn-button"
+                                                                                               href="formats.html">Choose
+                                                                                                                   optional
+                                                                                                                   modules</a>
+                    </div>
+                    <h2>4. Share one instance</h2>
+                    <p>Create one <code>Paniolo</code> at application start and reuse it. It is immutable and thread-safe and
+                       compiles each set of rules once, on first use; <code>warmUp()</code> compiles the XRechnung rules at
+                       start-up instead.</p>
+                    <pre><code>private static final Paniolo PANIOLO = Paniolo.create()
+                                              .warmUp();   // optional</code></pre>
+                    <h2>What happens next?</h2>
+                    <ul>
+                        <li><strong>Receive invoices.</strong> <code>validate(bytes)</code> and <code>read(bytes)</code>
+                            detect UBL, CII, ZUGFeRD 1.0, and hybrid PDFs. <code>ReadMode.LENIENT</code> accepts documented
+                            amount deviations as warnings, and <code>importInvoice</code> keeps the original XML and stated
+                            amounts for booking and archiving.</li>
+                        <li><strong>Create hybrid PDFs.</strong> Embed the XML into your own PDF/A with
+                            <code>toFacturX(invoice, pdfA, profile)</code>, or let <code>paniolo-pdf-layout</code> render the
+                            page with <code>toFacturX(invoice, profile)</code>.</li>
+                        <li><strong>Inspect findings.</strong> Each finding has rule ID, severity, XPath, and stage;
+                            <code>result.toXml()</code> produces an archivable report, <code>toReportPdf</code> a PDF/A
+                            report.</li>
+                        <li><strong>Orders and delivery notes.</strong> The same facade writes, reads, and validates Order-X,
+                            UBL DespatchAdvice, and CIDA.</li>
+                        <li><strong>Migrate.</strong> ZUGFeRD 1.0 documents migrate to ZUGFeRD 2 with
+                            <code>migrateZugferd1</code>; Mustang integrations move over with <code>paniolo-mustang</code>
+                            and the migration guide.</li>
+                    </ul>
+                    <p><a href="https://github.com/NaluKit/paniolo#using-paniolo">Read the full usage guide in the README ↗</a></p></article>
+            </div>
+        </main>
+        <footer>
+            <span>Paniolo · Java 21 · Open source</span><span><a href="LICENSE.txt">Apache 2.0</a> &nbsp; / &nbsp; <a href="https://github.com/NaluKit/paniolo/issues">Report an issue ↗</a></span>
+        </footer>
+    </body>
+</html>

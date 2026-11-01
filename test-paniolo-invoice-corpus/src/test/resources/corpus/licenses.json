@@ -1,0 +1,22 @@
+[
+  {
+    "file": "licenses/kosit.txt",
+    "source": "https://raw.githubusercontent.com/itplr-kosit/xrechnung-testsuite/1ce1dafffd035e5ce59a7ab0d3bf44ac14af16c9/LICENSE",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  {
+    "file": "licenses/en16931.txt",
+    "source": "https://raw.githubusercontent.com/ConnectingEurope/eInvoicing-EN16931/b17b2695e5e3e021945c38658326b78a76f80f84/LICENSE.txt",
+    "sha256": "281eed0c9d46e36be532978deb16e6351025c6ff32d97fe24e8cb190e4e0d923"
+  },
+  {
+    "file": "licenses/mustang-LICENSE.txt",
+    "source": "https://raw.githubusercontent.com/ZUGFeRD/mustangproject/32e59732f2846b7f2a22c08b515605c40938e95e/LICENSE",
+    "sha256": "ba98dd76bda1e82034791438bb931145f85e5db3975852a015344ad5990fa21b"
+  },
+  {
+    "file": "licenses/mustang-NOTICE.txt",
+    "source": "https://raw.githubusercontent.com/ZUGFeRD/mustangproject/32e59732f2846b7f2a22c08b515605c40938e95e/NOTICE",
+    "sha256": "9225d07c21aa4a404ac53372f04c9945b8e1e0d47f466036d27a09527373c6cf"
+  }
+]

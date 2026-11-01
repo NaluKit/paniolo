@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta content="width=device-width, initial-scale=1"
+              name="viewport">
+        <meta content="Paniolo is an open-source Java 21 library for creating, reading, converting, validating, and rendering electronic invoices, orders, and despatch advices."
+              name="description">
+        <meta content="#01244f"
+              name="theme-color">
+        <title>E-invoicing. One model. · Paniolo</title>
+        <link href="assets/paniolo-favicon.svg"
+              rel="icon"
+              type="image/svg+xml">
+        <link href="assets/favicon.ico"
+              rel="alternate icon">
+        <link href="assets/paniolo-favicon-180.png"
+              rel="apple-touch-icon">
+        <link href="assets/style.css"
+              rel="stylesheet">
+    </head>
+    <body><a class="pn-skip"
+             href="#main">Skip to content</a>
+        <header><a aria-label="Paniolo home"
+                   class="pn-brand"
+                   href="index.html"><img alt="Paniolo"
+                                                  height="57"
+                                                  src="assets/paniolo-banner.svg"
+                                                  width="130"></a>
+            <nav aria-label="Main navigation"><a aria-current="page"
+                                                 href="index.html">Overview</a><a href="quickstart.html">Documentation</a><a href="api.html">API</a><a href="https://github.com/NaluKit/paniolo">GitHub
+                                                                                                                                                                                                   ↗</a>
+            </nav>
+        </header>
+        <main class="pn-page"
+              id="main">
+            <div class="pn-hero">
+                <div>
+                    <div class="pn-eyebrow">Open Source · Java 21</div>
+                    <h1>E-invoicing.<br>One model.<br><em>All under control.</em></h1>
+                    <p>Create, read, convert, validate, and render. Paniolo brings XRechnung, EN 16931, Factur-X / ZUGFeRD,
+                       Order-X orders, and despatch advices together in one immutable Java model and one thread-safe
+                       API.</p>
+                    <div class="pn-actions"><a class="pn-button pn-main"
+                                               href="quickstart.html">Get started →</a><a class="pn-button"
+                                                                                             href="api.html">Explore the
+                                                                                                               API</a></div>
+                    <div class="pn-meta">Apache 2.0 &nbsp; / &nbsp; Thread-safe &nbsp; / &nbsp; Official rules packaged &nbsp; / &nbsp; Runs locally</div>
+                </div>
+                <div class="pn-rider"><img alt="Paniolo rider with a turquoise lasso"
+                                           height="235"
+                                           src="assets/paniolo-icon.svg"
+                                           width="270">
+                    <div class="pn-formats"><span>XRechnung</span><span>EN 16931</span><span>Factur-X / ZUGFeRD</span><span>UBL · CII</span><span>Order-X</span><span>Despatch advice</span></div>
+                </div>
+            </div>
+            <div class="pn-example">
+                <div>
+                    <div class="pn-eyebrow">One facade. Clear steps.</div>
+                    <h2>Less format handling.<br>More Java.</h2>
+                    <p>An immutable model and a single, thread-safe entry point for everything you send and receive.
+                       Business rule violations are findings, never exceptions.</p></div>
+                <div class="pn-code">
+                    <div class="pn-codebar"><span>Send, receive & render</span><span>Java</span></div>
+                    <pre><span class="pn-token">Paniolo</span> paniolo = Paniolo.create();
+
+<span class="pn-comment">// model -> XRechnung UBL, official KoSIT rules packaged</span>
+String xml = paniolo.toXml(invoice, InvoiceSyntax.UBL);
+ValidationResult result = paniolo.validate(xml);
+
+<span class="pn-comment">// UBL, CII, ZUGFeRD 1.0 or a Factur-X PDF</span>
+Invoice received = paniolo.read(Files.readAllBytes(path));
+
+<span class="pn-comment">// rendered page + embedded XML (paniolo-pdf-layout)</span>
+byte[] pdf = paniolo.toFacturX(invoice, FacturXProfile.EN16931);</pre>
+                </div>
+            </div>
+            <div class="pn-tiles">
+                <div><h3>Exact calculation</h3>
+                    <p>Line amounts, allowances and charges, VAT breakdown, and totals are calculated with
+                       <code>BigDecimal</code>, so every written document is consistent.</p></div>
+                <div><h3>Automatic detection</h3>
+                    <p>One call validates or reads whatever arrives: UBL or CII, XML or PDF, with the profile taken from
+                       BT-24 and the PDF metadata.</p></div>
+                <div><h3>Findings you can trace</h3>
+                    <p>Every finding carries its original rule ID, severity, XPath, and stage, and goes into an XML
+                       report with an XSD for archiving.</p></div>
+                <div><h3>Checks beyond the rules</h3>
+                    <p>Optional calculation check, rule statistics for audits, and an acceptance policy that names the
+                       warnings your process must not accept.</p></div>
+                <div><h3>PDFs without a PDF</h3>
+                    <p>Render DIN 5008 invoices, orders, and delivery notes in German, English, or French, with logo and
+                       own fonts, as PDF/A-3b.</p></div>
+                <div><h3>Shown in the browser</h3>
+                    <p>The dependency-free web component <code>&lt;paniolo-viewer&gt;</code> displays XML and PDF
+                       documents in any web application.</p></div>
+            </div>
+            <div class="pn-tiles">
+                <div><h3>Start with a working example</h3>
+                    <p>Installation, a complete invoice, and the expected output, verified against the documented
+                       source baseline.</p><a href="quickstart.html">Read the quickstart →</a></div>
+                <div><h3>Find your format</h3>
+                    <p>Supported documents and profiles, optional modules, the command line, and explicit
+                       boundaries.</p><a href="formats.html">Browse formats &amp; modules →</a>
+                </div>
+                <div><h3>Discover the API</h3>
+                    <p>Facade, models, configuration, and validation for a pinned source revision.</p><a href="api.html">Open
+                                                                                                                         the
+                                                                                                                         reference
+                                                                                                                         →</a>
+                </div>
+            </div>
+        </main>
+        <footer>
+            <span>Paniolo · Java 21 · Open source</span><span><a href="LICENSE.txt">Apache 2.0</a> &nbsp; / &nbsp; <a href="https://github.com/NaluKit/paniolo/issues">Report an issue ↗</a></span>
+        </footer>
+    </body>
+</html>

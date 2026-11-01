@@ -1,0 +1,25 @@
+# file;official findings (rule:severity, without INFO);calculation findings (rule@location:severity)
+valid.xrechnung-cii.xml;;
+valid.xrechnung-ubl.xml;;
+valid.facturx-en16931.xml;;
+line-net-amount.xrechnung-cii.xml;PEPPOL-EN16931-R120:WARNING;PANIOLO-CALC-LINE-NET-AMOUNT@BT-131[line=1]:INFO
+line-net-amount.xrechnung-ubl.xml;PEPPOL-EN16931-R120:WARNING;PANIOLO-CALC-LINE-NET-AMOUNT@BT-131[line=1]:INFO
+line-net-amount.facturx-en16931.xml;;PANIOLO-CALC-LINE-NET-AMOUNT@BT-131[line=1]:WARNING
+net-price.xrechnung-cii.xml;PEPPOL-EN16931-R046:FATAL;PANIOLO-CALC-NET-PRICE@BT-146[line=1]:INFO
+net-price.xrechnung-ubl.xml;PEPPOL-EN16931-R046:FATAL;PANIOLO-CALC-NET-PRICE@BT-146[line=1]:INFO
+net-price.facturx-en16931.xml;;PANIOLO-CALC-NET-PRICE@BT-146[line=1]:WARNING
+allowance-percentage.xrechnung-cii.xml;PEPPOL-EN16931-R040:FATAL;PANIOLO-CALC-ALLOWANCE-CHARGE@BG-20:INFO
+allowance-percentage.xrechnung-ubl.xml;PEPPOL-EN16931-R040:FATAL;PANIOLO-CALC-ALLOWANCE-CHARGE@BG-20:INFO
+allowance-percentage.facturx-en16931.xml;;PANIOLO-CALC-ALLOWANCE-CHARGE@BG-20:WARNING
+line-total.xrechnung-cii.xml;BR-CO-10:FATAL BR-CO-13:FATAL;PANIOLO-CALC-TOTAL@BT-106:INFO
+line-total.xrechnung-ubl.xml;BR-CO-10:FATAL BR-CO-13:FATAL;PANIOLO-CALC-TOTAL@BT-106:INFO
+line-total.facturx-en16931.xml;BR-CO-10:ERROR BR-CO-13:ERROR;PANIOLO-CALC-TOTAL@BT-106:INFO
+tax-total.xrechnung-cii.xml;BR-CO-14:FATAL BR-CO-15:FATAL;PANIOLO-CALC-TOTAL@BT-110:INFO
+tax-total.xrechnung-ubl.xml;BR-CO-14:FATAL BR-CO-15:FATAL;PANIOLO-CALC-TOTAL@BT-110:INFO
+tax-total.facturx-en16931.xml;BR-CO-14:ERROR BR-CO-15:ERROR;PANIOLO-CALC-TOTAL@BT-110:INFO
+payable-amount.xrechnung-cii.xml;BR-CO-16:FATAL;PANIOLO-CALC-TOTAL@BT-115:INFO
+payable-amount.xrechnung-ubl.xml;BR-CO-16:FATAL;PANIOLO-CALC-TOTAL@BT-115:INFO
+payable-amount.facturx-en16931.xml;BR-CO-16:ERROR;PANIOLO-CALC-TOTAL@BT-115:INFO
+vat-category-amount.xrechnung-cii.xml;;PANIOLO-CALC-TOTAL@BT-110:INFO PANIOLO-CALC-TOTAL@BT-112:INFO PANIOLO-CALC-TOTAL@BT-115:INFO
+vat-category-amount.xrechnung-ubl.xml;;PANIOLO-CALC-TOTAL@BT-110:INFO PANIOLO-CALC-TOTAL@BT-112:INFO PANIOLO-CALC-TOTAL@BT-115:INFO
+vat-category-amount.facturx-en16931.xml;;PANIOLO-CALC-TOTAL@BT-110:INFO PANIOLO-CALC-TOTAL@BT-112:INFO PANIOLO-CALC-TOTAL@BT-115:INFO

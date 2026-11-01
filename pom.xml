@@ -1,0 +1,341 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>io.github.nalukit</groupId>
+  <artifactId>paniolo-parent</artifactId>
+  <version>${revision}</version>
+  <packaging>pom</packaging>
+
+  <name>paniolo-parent</name>
+  <description>Java library for electronic invoice generation and validation</description>
+  <url>https://github.com/nalukit/paniolo</url>
+
+  <scm>
+    <connection>scm:git@github.com:nalukit/paniolo.git</connection>
+    <developerConnection>scm:git:git@github.com:nalukit/paniolo.git</developerConnection>
+    <url>scm:git:https://github.com/nalukit/paniolo</url>
+  </scm>
+
+  <issueManagement>
+    <system>GitHub</system>
+    <url>https://github.com/nalukit/paniolo/issues</url>
+  </issueManagement>
+
+  <modules>
+    <module>paniolo-shared-model</module>
+    <module>paniolo-json</module>
+    <module>paniolo-xml</module>
+    <module>paniolo-xml-ubl</module>
+    <module>paniolo-xml-cii</module>
+    <module>paniolo-xrechnung-rules</module>
+    <module>paniolo-facturx-rules</module>
+    <module>paniolo-validation</module>
+    <module>paniolo</module>
+    <module>paniolo-facturx</module>
+    <module>paniolo-pdfa</module>
+    <module>paniolo-pdf-layout</module>
+    <module>paniolo-visualizer</module>
+    <module>paniolo-cli</module>
+    <module>paniolo-mustang</module>
+  </modules>
+
+  <inceptionYear>2026</inceptionYear>
+
+  <licenses>
+    <license>
+      <name>The Apache Software License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <name>Frank Hossfeld</name>
+      <id>frankhossfeld</id>
+      <email>contact@nalu-solutions.de</email>
+      <organization>Nalu Solutions GmbH</organization>
+      <roles>
+        <role>Java Developer</role>
+      </roles>
+    </developer>
+  </developers>
+
+  <properties>
+    <revision>HEAD-SNAPSHOT</revision>
+
+    <junit.version>5.14.4</junit.version>
+    <saxon.version>12.10</saxon.version>
+    <pdfbox.version>3.0.8</pdfbox.version>
+    <verapdf.version>1.30.3</verapdf.version>
+    <jackson.version>2.22.4</jackson.version>
+
+    <plugin.central-publishing.version>0.8.0</plugin.central-publishing.version>
+    <plugin.compiler.version>3.14.1</plugin.compiler.version>
+    <plugin.download.version>1.13.0</plugin.download.version>
+    <plugin.enforcer.version>3.5.0</plugin.enforcer.version>
+    <plugin.flatten.version>1.8.0</plugin.flatten.version>
+    <plugin.gpg.version>3.2.7</plugin.gpg.version>
+    <plugin.javadoc.version>3.11.2</plugin.javadoc.version>
+    <plugin.license.version>4.6</plugin.license.version>
+    <plugin.resources.version>3.3.1</plugin.resources.version>
+    <plugin.source.version>3.3.1</plugin.source.version>
+    <plugin.surefire.version>3.5.4</plugin.surefire.version>
+
+    <maven.compiler.source>21</maven.compiler.source>
+    <maven.compiler.target>21</maven.compiler.target>
+    <maven.compiler.release>21</maven.compiler.release>
+
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.junit</groupId>
+        <artifactId>junit-bom</artifactId>
+        <version>${junit.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>net.sf.saxon</groupId>
+        <artifactId>Saxon-HE</artifactId>
+        <version>${saxon.version}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>${plugin.compiler.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <version>${plugin.surefire.version}</version>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+    <plugins>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>flatten-maven-plugin</artifactId>
+        <version>${plugin.flatten.version}</version>
+        <configuration>
+          <flattenMode>resolveCiFriendliesOnly</flattenMode>
+          <updatePomFile>true</updatePomFile>
+        </configuration>
+        <executions>
+          <execution>
+            <id>flatten</id>
+            <phase>process-resources</phase>
+            <goals>
+              <goal>flatten</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>flatten-clean</id>
+            <phase>clean</phase>
+            <goals>
+              <goal>clean</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- Every module JAR carries the project license as META-INF/LICENSE. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>${plugin.resources.version}</version>
+        <executions>
+          <execution>
+            <id>copy-license</id>
+            <phase>process-resources</phase>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.build.outputDirectory}/META-INF</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>${maven.multiModuleProjectDirectory}</directory>
+                  <includes>
+                    <include>LICENSE</include>
+                  </includes>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- Source headers: mvn license:check (also part of every build), mvn license:format adds missing ones.
+           Third-party files (ISO Schematron skeleton, rule archives, test fixtures) are not included. -->
+      <plugin>
+        <groupId>com.mycila</groupId>
+        <artifactId>license-maven-plugin</artifactId>
+        <version>${plugin.license.version}</version>
+        <configuration>
+          <licenseSets>
+            <licenseSet>
+              <header>${maven.multiModuleProjectDirectory}/license-header.txt</header>
+              <properties>
+                <license.year>2026</license.year>
+                <license.owner>Frank Hossfeld</license.owner>
+              </properties>
+              <includes>
+                <include>src/main/java/**/*.java</include>
+                <include>src/test/java/**/*.java</include>
+                <include>src/main/resources/**/*.js</include>
+                <include>scripts/**/*.java</include>
+                <include>scripts/**/*.py</include>
+                <include>scripts/**/*.sh</include>
+              </includes>
+              <excludes>
+                <exclude>scripts/iso-schematron/**</exclude>
+                <exclude>**/target/**</exclude>
+              </excludes>
+            </licenseSet>
+          </licenseSets>
+          <mapping>
+            <java>SLASHSTAR_STYLE</java>
+            <js>SLASHSTAR_STYLE</js>
+            <py>SCRIPT_STYLE</py>
+            <sh>SCRIPT_STYLE</sh>
+          </mapping>
+          <strictCheck>true</strictCheck>
+          <encoding>UTF-8</encoding>
+        </configuration>
+        <executions>
+          <execution>
+            <id>check-license-headers</id>
+            <phase>validate</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
+  <profiles>
+    <!-- Public invoice fixtures and regression reports; never published. -->
+    <profile>
+      <id>invoice-corpus</id>
+      <modules>
+        <module>test-paniolo-invoice-corpus</module>
+      </modules>
+    </profile>
+    <!-- JMH benchmarks: mvn -Pbenchmark package -pl paniolo-benchmark -am -DskipTests -->
+    <profile>
+      <id>benchmark</id>
+      <modules>
+        <module>paniolo-benchmark</module>
+      </modules>
+    </profile>
+    <!-- Publishing to Maven Central, used by CI: mvn deploy -Drevision=x.y.z -P release -->
+    <profile>
+      <id>release</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-enforcer-plugin</artifactId>
+            <version>${plugin.enforcer.version}</version>
+            <executions>
+              <execution>
+                <id>enforce-release-dependencies</id>
+                <goals>
+                  <goal>enforce</goal>
+                </goals>
+                <configuration>
+                  <rules>
+                    <!-- a release must not resolve any SNAPSHOT dependency or plugin -->
+                    <requireReleaseDeps>
+                      <onlyWhenRelease>true</onlyWhenRelease>
+                      <message>A release must not depend on SNAPSHOT artifacts.</message>
+                    </requireReleaseDeps>
+                  </rules>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <version>${plugin.source.version}</version>
+            <executions>
+              <execution>
+                <id>attach-sources</id>
+                <goals>
+                  <goal>jar-no-fork</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <version>${plugin.javadoc.version}</version>
+            <configuration>
+              <doclint>none</doclint>
+              <quiet>true</quiet>
+            </configuration>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>${plugin.gpg.version}</version>
+            <configuration>
+              <gpgArguments>
+                <arg>--pinentry-mode</arg>
+                <arg>loopback</arg>
+              </gpgArguments>
+            </configuration>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.sonatype.central</groupId>
+            <artifactId>central-publishing-maven-plugin</artifactId>
+            <version>${plugin.central-publishing.version}</version>
+            <extensions>true</extensions>
+            <configuration>
+              <publishingServerId>central</publishingServerId>
+              <!-- paniolo-cli is published to GitHub Packages, not to Maven Central -->
+              <excludeArtifacts>
+                <excludeArtifact>paniolo-cli</excludeArtifact>
+              </excludeArtifacts>
+              <autoPublish>true</autoPublish>
+              <waitUntil>published</waitUntil>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+</project>

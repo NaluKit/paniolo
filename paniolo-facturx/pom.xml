@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>io.github.nalukit</groupId>
+    <artifactId>paniolo-parent</artifactId>
+    <version>${revision}</version>
+  </parent>
+
+  <artifactId>paniolo-facturx</artifactId>
+
+  <name>paniolo-facturx</name>
+  <description>Factur-X / ZUGFeRD support for Paniolo: embeds and extracts CII invoices in PDF/A-3</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.github.nalukit</groupId>
+      <artifactId>paniolo</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.pdfbox</groupId>
+      <artifactId>pdfbox</artifactId>
+      <version>${pdfbox.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- JSON round trips of the test invoices, orders, and despatch advices. -->
+    <dependency>
+      <groupId>io.github.nalukit</groupId>
+      <artifactId>paniolo-json</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- PDF/A conformance checks in tests only; veraPDF is GPLv3+/MPL-2.0 dual licensed. -->
+    <dependency>
+      <groupId>org.verapdf</groupId>
+      <artifactId>validation-model</artifactId>
+      <version>${verapdf.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+</project>

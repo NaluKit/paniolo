@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
+    <cbc:CustomizationID>urn:cen.eu:en16931:2017</cbc:CustomizationID>
+    <cbc:ID>000008.24.06</cbc:ID>
+    <cbc:IssueDate>2024-08-28</cbc:IssueDate>
+    <cbc:DueDate>2024-09-27</cbc:DueDate>
+    <cbc:InvoiceTypeCode>380</cbc:InvoiceTypeCode>
+    <cbc:DocumentCurrencyCode>EUR</cbc:DocumentCurrencyCode>
+    <cac:InvoicePeriod>
+        <cbc:StartDate>2024-06-01</cbc:StartDate>
+        <cbc:EndDate>2024-06-30</cbc:EndDate>
+    </cac:InvoicePeriod>
+    <cac:AccountingSupplierParty>
+        <cac:Party>
+            <cac:PostalAddress>
+                <cbc:StreetName>Test Strasse 2</cbc:StreetName>
+                <cbc:CityName>Test Ort</cbc:CityName>
+                <cbc:PostalZone>98765</cbc:PostalZone>
+                <cac:Country>
+                    <cbc:IdentificationCode>DE</cbc:IdentificationCode>
+                </cac:Country>
+            </cac:PostalAddress>
+            <cac:PartyTaxScheme>
+                <cbc:CompanyID>DE987654321</cbc:CompanyID>
+                <cac:TaxScheme>
+                    <cbc:ID>VAT</cbc:ID>
+                </cac:TaxScheme>
+            </cac:PartyTaxScheme>
+            <cac:PartyLegalEntity>
+                <cbc:RegistrationName>Test Mandant 03 - 01</cbc:RegistrationName>
+            </cac:PartyLegalEntity>
+            <cac:Contact>
+                <cbc:ElectronicMail>info@tornado-coding.ed</cbc:ElectronicMail>
+            </cac:Contact>
+        </cac:Party>
+    </cac:AccountingSupplierParty>
+    <cac:AccountingCustomerParty>
+        <cac:Party>
+            <cac:PostalAddress>
+                <cbc:StreetName>Poncho Weg 25</cbc:StreetName>
+                <cbc:CityName>Solingen</cbc:CityName>
+                <cbc:PostalZone>42697</cbc:PostalZone>
+                <cac:Country>
+                    <cbc:IdentificationCode>DE</cbc:IdentificationCode>
+                </cac:Country>
+            </cac:PostalAddress>
+            <cac:PartyLegalEntity>
+                <cbc:RegistrationName>Coder's Heaven Wear GmbH</cbc:RegistrationName>
+            </cac:PartyLegalEntity>
+        </cac:Party>
+    </cac:AccountingCustomerParty>
+    <cac:Delivery>
+        <cbc:ActualDeliveryDate>2024-08-28</cbc:ActualDeliveryDate>
+    </cac:Delivery>
+    <cac:PaymentMeans>
+        <cbc:PaymentMeansCode name="SEPA credit transfer">58</cbc:PaymentMeansCode>
+        <cbc:PaymentID>000008.24.06</cbc:PaymentID>
+        <cac:PayeeFinancialAccount>
+            <cbc:ID>DE02120300000000202051</cbc:ID>
+            <cac:FinancialInstitutionBranch>
+                <cbc:ID>BYLADEM1001</cbc:ID>
+            </cac:FinancialInstitutionBranch>
+        </cac:PayeeFinancialAccount>
+    </cac:PaymentMeans>
+    <cac:PaymentTerms>
+        <cbc:Note>Zahlbar ohne Abzug innerhalb von 30 Tagen bis zum 27.09.2024</cbc:Note>
+    </cac:PaymentTerms>
+    <cac:TaxTotal>
+        <cbc:TaxAmount currencyID="EUR">632.58</cbc:TaxAmount>
+        <cac:TaxSubtotal>
+            <cbc:TaxableAmount currencyID="EUR">3329.36</cbc:TaxableAmount>
+            <cbc:TaxAmount currencyID="EUR">632.58</cbc:TaxAmount>
+            <cac:TaxCategory>
+                <cbc:ID>S</cbc:ID>
+                <cbc:Percent>19</cbc:Percent>
+                <cac:TaxScheme>
+                    <cbc:ID>VAT</cbc:ID>
+                </cac:TaxScheme>
+            </cac:TaxCategory>
+        </cac:TaxSubtotal>
+    </cac:TaxTotal>
+    <cac:LegalMonetaryTotal>
+        <cbc:LineExtensionAmount currencyID="EUR">3329.36</cbc:LineExtensionAmount>
+        <cbc:TaxExclusiveAmount currencyID="EUR">3329.36</cbc:TaxExclusiveAmount>
+        <cbc:TaxInclusiveAmount currencyID="EUR">3961.94</cbc:TaxInclusiveAmount>
+        <cbc:AllowanceTotalAmount currencyID="EUR">0.00</cbc:AllowanceTotalAmount>
+        <cbc:ChargeTotalAmount currencyID="EUR">0.00</cbc:ChargeTotalAmount>
+        <cbc:PrepaidAmount currencyID="EUR">0.00</cbc:PrepaidAmount>
+        <cbc:PayableAmount currencyID="EUR">3961.94</cbc:PayableAmount>
+    </cac:LegalMonetaryTotal>
+    <cac:InvoiceLine>
+        <cbc:ID>1</cbc:ID>
+        <cbc:InvoicedQuantity unitCode="HUR">8.0000</cbc:InvoicedQuantity>
+        <cbc:LineExtensionAmount currencyID="EUR">368.00</cbc:LineExtensionAmount>
+        <cac:Item>
+            <cbc:Description>Hilfe bei Umräumarbeiten mit dem Mieter.Circa 85% Abdeckung des offenen TH mit Folie, zum Schutz vor
+          übermäßiger Staubentwicklung aus dem Keller. Abdeckung der sich im Keller befindlichen Möbel und Gegenstände
+          (Waschmaschine, Trockner, Schränke, Kisten, Koffer etc.). Abdeckung des Fliesenbereichs im Flur mit Tetra-Pack.</cbc:Description>
+            <cbc:Name>Baustelleneinrichtung / Vorarbeiten</cbc:Name>
+            <cac:ClassifiedTaxCategory>
+                <cbc:ID>S</cbc:ID>
+                <cbc:Percent>19</cbc:Percent>
+                <cac:TaxScheme>
+                    <cbc:ID>VAT</cbc:ID>
+                </cac:TaxScheme>
+            </cac:ClassifiedTaxCategory>
+        </cac:Item>
+        <cac:Price>
+            <cbc:PriceAmount currencyID="EUR">46.0000</cbc:PriceAmount>
+            <cbc:BaseQuantity unitCode="HUR">1.0000</cbc:BaseQuantity>
+        </cac:Price>
+    </cac:InvoiceLine>
+    <cac:InvoiceLine>
+        <cbc:ID>2</cbc:ID>
+        <cbc:InvoicedQuantity unitCode="H87">1.0000</cbc:InvoicedQuantity>
+        <cbc:LineExtensionAmount currencyID="EUR">125.00</cbc:LineExtensionAmount>
+        <cac:Item>
+            <cbc:Description>Tetra-Pack (Milchtütenpapier), Verschiedene Klebebänder, Folien</cbc:Description>
+            <cbc:Name>Materialien zur Pos. 1</cbc:Name>
+            <cac:ClassifiedTaxCategory>
+                <cbc:ID>S</cbc:ID>
+                <cbc:Percent>19</cbc:Percent>
+                <cac:TaxScheme>
+                    <cbc:ID>VAT</cbc:ID>
+                </cac:TaxScheme>
+            </cac:ClassifiedTaxCategory>
+        </cac:Item>
+        <cac:Price>
+            <cbc:PriceAmount currencyID="EUR">125.0000</cbc:PriceAmount>
+            <cbc:BaseQuantity unitCode="H87">1.0000</cbc:BaseQuantity>
+        </cac:Price>
+    </cac:InvoiceLine>
+    <cac:InvoiceLine>
+        <cbc:ID>3</cbc:ID>
+        <cbc:InvoicedQuantity unitCode="HUR">28.0000</cbc:InvoicedQuantity>
+        <cbc:LineExtensionAmount currencyID="EUR">1288.00</cbc:LineExtensionAmount>
+        <cac:Item>
+            <cbc:Description>Tapezierte Wände bis ca. 60,00cm über markierter Wasserstandslinie entfernen.
+
+          Putz im UG des TH bis ca. 40,00 cm über markierter Wasserstandslinie abschlagen.
+
+          Restliche Kellerbereichsflächen:
+          Farbschichten an ungeputzten Wandflächen bis zur Horizontalsperre mittels Winkelschleifer mit Topfbürste entfernen.
+          Farbschichten an Bodenflächen im Wandbereich (circa. 10-15cm) umlaufend mittels Winkelschleifer mit
+          Topfbürstenaufsatz entfernen. Umräumarbeiten, Entsorgung, Grobreinigung.</cbc:Description>
+            <cbc:Name>Arbeiten im Stundenlohn / Vorarbeiten</cbc:Name>
+            <cac:ClassifiedTaxCategory>
+                <cbc:ID>S</cbc:ID>
+                <cbc:Percent>19</cbc:Percent>
+                <cac:TaxScheme>
+                    <cbc:ID>VAT</cbc:ID>
+                </cac:TaxScheme>
+            </cac:ClassifiedTaxCategory>
+        </cac:Item>
+        <cac:Price>
+            <cbc:PriceAmount currencyID="EUR">46.0000</cbc:PriceAmount>
+            <cbc:BaseQuantity unitCode="HUR">1.0000</cbc:BaseQuantity>
+        </cac:Price>
+    </cac:InvoiceLine>
+    <cac:InvoiceLine>
+        <cbc:ID>4</cbc:ID>
+        <cbc:InvoicedQuantity unitCode="H87">1.0000</cbc:InvoicedQuantity>
+        <cbc:LineExtensionAmount currencyID="EUR">120.00</cbc:LineExtensionAmount>
+        <cac:Item>
+            <cbc:Description>Topfbürstenaufsätze für Winkelschleifer, Kleisterablösezusätze. Mülltüten PSA (Persönliche
+          Schutzausrüstung, Handschuhe, Staubmasken, Schutzbrille)</cbc:Description>
+            <cbc:Name>Materialien zur Pos. 3</cbc:Name>
+            <cac:ClassifiedTaxCategory>
+                <cbc:ID>S</cbc:ID>
+                <cbc:Percent>19</cbc:Percent>
+                <cac:TaxScheme>
+                    <cbc:ID>VAT</cbc:ID>
+                </cac:TaxScheme>
+            </cac:ClassifiedTaxCategory>
+        </cac:Item>
+        <cac:Price>
+            <cbc:PriceAmount currencyID="EUR">120.0000</cbc:PriceAmount>
+            <cbc:BaseQuantity unitCode="H87">1.0000</cbc:BaseQuantity>
+        </cac:Price>
+    </cac:InvoiceLine>
+    <cac:InvoiceLine>
+        <cbc:ID>5</cbc:ID>
+        <cbc:InvoicedQuantity unitCode="HUR">7.0000</cbc:InvoicedQuantity>
+        <cbc:LineExtensionAmount currencyID="EUR">322.00</cbc:LineExtensionAmount>
+        <cac:Item>
+            <cbc:Description>Instandsetzung der Bodenfläcjen nach Trocknung.
+          Im Bereich TH. Bauseits bereitgestellte Fliesen einsetzen. Alternativ ähnliche Fliesen liefern und einsetzen. Im
+          Bereich der Estrichflächen. Dämmung in Löcher einsetzen und mit geeignetem Estrich verschließen. Gegebenenfalls
+          nach Trocknung Übergänge planeben schleifen und grundieren. Fliesen im Flur verfugen.</cbc:Description>
+            <cbc:Name>Instandsetzung</cbc:Name>
+            <cac:ClassifiedTaxCategory>
+                <cbc:ID>S</cbc:ID>
+                <cbc:Percent>19</cbc:Percent>
+                <cac:TaxScheme>
+                    <cbc:ID>VAT</cbc:ID>
+                </cac:TaxScheme>
+            </cac:ClassifiedTaxCategory>
+        </cac:Item>
+        <cac:Price>
+            <cbc:PriceAmount currencyID="EUR">46.0000</cbc:PriceAmount>
+            <cbc:BaseQuantity unitCode="HUR">1.0000</cbc:BaseQuantity>
+        </cac:Price>
+    </cac:InvoiceLine>
+    <cac:InvoiceLine>
+        <cbc:ID>6</cbc:ID>
+        <cbc:InvoicedQuantity unitCode="H87">1.0000</cbc:InvoicedQuantity>
+        <cbc:LineExtensionAmount currencyID="EUR">99.00</cbc:LineExtensionAmount>
+        <cac:Item>
+            <cbc:Description>Dämmmaterial, Grundierung, Schnellestrich, Fugenmörtel</cbc:Description>
+            <cbc:Name>Materialien zur Pos. 5</cbc:Name>
+            <cac:ClassifiedTaxCategory>
+                <cbc:ID>S</cbc:ID>
+                <cbc:Percent>19</cbc:Percent>
+                <cac:TaxScheme>
+                    <cbc:ID>VAT</cbc:ID>
+                </cac:TaxScheme>
+            </cac:ClassifiedTaxCategory>
+        </cac:Item>
+        <cac:Price>
+            <cbc:PriceAmount currencyID="EUR">99.0000</cbc:PriceAmount>
+            <cbc:BaseQuantity unitCode="H87">1.0000</cbc:BaseQuantity>
+        </cac:Price>
+    </cac:InvoiceLine>
+    <cac:InvoiceLine>
+        <cbc:ID>7</cbc:ID>
+        <cbc:InvoicedQuantity unitCode="H87">1.0000</cbc:InvoicedQuantity>
+        <cbc:LineExtensionAmount currencyID="EUR">100.00</cbc:LineExtensionAmount>
+        <cac:Item>
+            <cbc:Description>Im Bereich der vorher angebrachten Folie (mittels stark anhaftenden Klebeband) im TH wird nach Abriss
+          ein Auffrischungsanstrich dieser Bereiche nötig sein.
+
+          Säuberungsarbeiten (Saugen , Putzen) im TH nach Entnahme der Abdeckung.</cbc:Description>
+            <cbc:Name>Nacharbeiten</cbc:Name>
+            <cac:ClassifiedTaxCategory>
+                <cbc:ID>S</cbc:ID>
+                <cbc:Percent>19</cbc:Percent>
+                <cac:TaxScheme>
+                    <cbc:ID>VAT</cbc:ID>
+                </cac:TaxScheme>
+            </cac:ClassifiedTaxCategory>
+        </cac:Item>
+        <cac:Price>
+            <cbc:PriceAmount currencyID="EUR">100.0000</cbc:PriceAmount>
+            <cbc:BaseQuantity unitCode="H87">1.0000</cbc:BaseQuantity>
+        </cac:Price>
+    </cac:InvoiceLine>
+    <cac:InvoiceLine>
+        <cbc:ID>8</cbc:ID>
+        <cbc:InvoicedQuantity unitCode="LTR">320.0000</cbc:InvoicedQuantity>
+        <cbc:LineExtensionAmount currencyID="EUR">907.36</cbc:LineExtensionAmount>
+        <cac:Item>
+            <cbc:Name>Schlagenöl</cbc:Name>
+            <cac:ClassifiedTaxCategory>
+                <cbc:ID>S</cbc:ID>
+                <cbc:Percent>19</cbc:Percent>
+                <cac:TaxScheme>
+                    <cbc:ID>VAT</cbc:ID>
+                </cac:TaxScheme>
+            </cac:ClassifiedTaxCategory>
+        </cac:Item>
+        <cac:Price>
+            <cbc:PriceAmount currencyID="EUR">2.8355</cbc:PriceAmount>
+            <cbc:BaseQuantity unitCode="LTR">1.0000</cbc:BaseQuantity>
+        </cac:Price>
+    </cac:InvoiceLine>
+</Invoice>

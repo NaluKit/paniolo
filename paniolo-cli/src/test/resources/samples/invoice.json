@@ -1,0 +1,83 @@
+{
+  "number": "R-1",
+  "issueDate": "2026-10-27",
+  "typeCode": "380",
+  "currencyCode": "EUR",
+  "processControl": {
+    "specificationId": "urn:cen.eu:en16931:2017"
+  },
+  "buyerReference": "04011000-12345-03",
+  "precedingInvoiceReferences": [],
+  "dueDate": "2026-11-10",
+  "delivery": {
+    "actualDeliveryDate": "2026-10-26"
+  },
+  "seller": {
+    "name": "Muster GmbH",
+    "address": {
+      "street": "Musterstraße 1",
+      "city": "Berlin",
+      "postalCode": "10115",
+      "country": "DE"
+    },
+    "vatId": "DE123456788",
+    "electronicAddress": {
+      "value": "rechnung@example.org",
+      "schemeId": "EM"
+    },
+    "contact": {
+      "name": "Erika Muster",
+      "telephone": "+49 30 123456",
+      "email": "rechnung@example.org"
+    },
+    "additionalIdentifiers": []
+  },
+  "buyer": {
+    "name": "Kunde GmbH",
+    "address": {
+      "street": "Kundenweg 2",
+      "city": "Hamburg",
+      "postalCode": "20095",
+      "country": "DE"
+    },
+    "electronicAddress": {
+      "value": "einkauf@example.org",
+      "schemeId": "EM"
+    },
+    "additionalIdentifiers": []
+  },
+  "paymentInstruction": {
+    "meansCode": "58",
+    "remittanceInformation": "R-1",
+    "creditTransfers": [
+      {
+        "iban": "DE89370400440532013000",
+        "accountName": "Muster GmbH"
+      }
+    ]
+  },
+  "notes": [],
+  "lines": [
+    {
+      "id": "1",
+      "name": "Beratung",
+      "quantity": 2,
+      "unitCode": "HUR",
+      "netUnitPrice": 100.00,
+      "priceBaseQuantity": 1,
+      "tax": {
+        "code": "S",
+        "rate": 19
+      },
+      "adjustments": [],
+      "classifications": [],
+      "attributes": [],
+      "subLines": []
+    }
+  ],
+  "adjustments": [],
+  "supportingDocuments": [],
+  "paidAmount": 0.00,
+  "cashDiscounts": [],
+  "thirdPartyPayments": []
+}

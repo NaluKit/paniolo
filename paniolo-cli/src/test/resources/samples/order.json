@@ -1,0 +1,85 @@
+{
+  "number": "B-2026-17",
+  "issueDate": "2026-10-28",
+  "typeCode": "220",
+  "profile": "BASIC",
+  "purposeCode": "9",
+  "currencyCode": "EUR",
+  "buyerReference": "K-4711",
+  "seller": {
+    "name": "Muster GmbH",
+    "address": {
+      "street": "Musterstraße 1",
+      "city": "Berlin",
+      "postalCode": "10115",
+      "country": "DE"
+    }
+  },
+  "buyer": {
+    "name": "Kunde GmbH",
+    "address": {
+      "street": "Kundenweg 2",
+      "city": "Hamburg",
+      "postalCode": "20095",
+      "country": "DE"
+    },
+    "vatId": "DE987654321",
+    "contact": {
+      "name": "Max Einkauf",
+      "email": "einkauf@example.org"
+    }
+  },
+  "shipTo": {
+    "name": "Lager Nord",
+    "address": {
+      "street": "Hafenstraße 5",
+      "city": "Hamburg",
+      "postalCode": "20457",
+      "country": "DE"
+    }
+  },
+  "deliveryTermsCode": "FCA",
+  "quotationReference": {
+    "id": "ANG-7"
+  },
+  "requestedDeliveryDate": "2026-11-15",
+  "notes": [
+    {
+      "text": "Bitte Lieferscheinnummer angeben"
+    }
+  ],
+  "adjustments": [],
+  "lines": [
+    {
+      "id": "1",
+      "name": "Gerät",
+      "quantity": 10,
+      "unitCode": "H87",
+      "netUnitPrice": 100.00,
+      "priceBaseQuantity": 1,
+      "adjustments": [],
+      "partialDeliveryAllowed": true,
+      "sellerItemId": "G-100",
+      "standardItemId": "4012345678901",
+      "standardItemSchemeId": "0160",
+      "attributes": [],
+      "characteristics": [],
+      "classifications": [],
+      "instances": []
+    },
+    {
+      "id": "2",
+      "name": "Kabel",
+      "quantity": 25,
+      "unitCode": "MTR",
+      "netUnitPrice": 2.50,
+      "priceBaseQuantity": 1,
+      "adjustments": [],
+      "attributes": [],
+      "characteristics": [],
+      "classifications": [],
+      "instances": []
+    }
+  ],
+  "additionalDocuments": []
+}

@@ -1,0 +1,511 @@
+# Paniolo API reference — HEAD-SNAPSHOT at 6c2d2dc169af
+
+This reference and its quickstart describe a fixed source revision. The examples use the same
+English API names as the JavaDoc and require no application framework.
+
+| Item                                       | Pinned value                                |
+|--------------------------------------------|---------------------------------------------|
+| Source commit                              | `6c2d2dc169afa7bf266fa7feb36a7a5f296e67ad`  |
+| Project version at that commit             | `HEAD-SNAPSHOT`                             |
+| Local artifact version used below          | `0.0.0-6c2d2dc169af`                        |
+| Documentation revision                     | 1, 2026-10-30                               |
+| Java / Maven used to verify the quickstart | Temurin 21.0.12.1 / Apache Maven 3.9.9      |
+| XRechnung rules                            | XRechnung 3.0.2, KoSIT release `2026-08-31` |
+| Factur-X / ZUGFeRD rules                   | Factur-X 1.09.2 / ZUGFeRD 2.5.2             |
+| French rules                               | FNFE-MPE France_RFE 1.4.0.04                |
+
+`0.0.0-6c2d2dc169af` is a **local build coordinate**, not a published Paniolo release. Building
+with `-Drevision=...` gives this source snapshot its own Maven coordinates, so a later
+`HEAD-SNAPSHOT` installation cannot replace the dependencies of this example.
+
+Keep this file as the reference for this source baseline. For another baseline, add a new file
+under `docs/api/` and update the README link. Released references should identify the release
+version and its commit. Source links below are repository-relative; inspect them in the pinned
+source tree when comparing against a newer checkout.
+
+- [Reproducible quickstart](#reproducible-quickstart)
+- [Artifacts and entry points](#artifacts-and-entry-points)
+- [Facade reference](#facade-reference)
+- [Model reference](#model-reference)
+- [Validation and error handling](#validation-and-error-handling)
+- [Configuration and optional modules](#configuration-and-optional-modules)
+- [Complete generated JavaDoc](#complete-generated-javadoc)
+- [Troubleshooting](#troubleshooting)
+
+## Reproducible quickstart
+
+The quickstart creates one invoice, writes and validates it as both UBL and CII, reads it back,
+and checks its amount due. Dates, amounts, artifact versions and Maven plugin versions are fixed.
+The output XML is for demonstration; replace the example parties and identifiers before use.
+This reproduces API behavior and semantic results, not byte-identical Maven archives or report
+timestamps across machines.
+
+### 1. Prepare the pinned source
+
+Requirements: JDK 21, Maven 3.9.9, Git, and a POSIX shell with `tar` and `mktemp` (Linux or macOS).
+The first Maven build needs network access for dependencies and checksum-verified rule bundles.
+Invoice processing after the build needs no network connection.
+
+Run the following **from the root of an existing Paniolo clone containing the commit above**.
+All shell steps in this quickstart use the same terminal session. `git archive` exports the
+committed source into a new temporary directory without changing your current branch or files.
+If the commit is not available locally, fetch the repository revision containing it first.
+
+```sh
+set -eu
+java -version
+mvn -version
+
+git cat-file -e 6c2d2dc169afa7bf266fa7feb36a7a5f296e67ad^{commit}
+PANIOLO_QUICKSTART_DIR=$(mktemp -d "${TMPDIR:-/tmp}/paniolo-quickstart.XXXXXX")
+mkdir -p "$PANIOLO_QUICKSTART_DIR/source"
+git archive 6c2d2dc169afa7bf266fa7feb36a7a5f296e67ad \
+  | tar -x -C "$PANIOLO_QUICKSTART_DIR/source"
+
+mvn -B -ntp -f "$PANIOLO_QUICKSTART_DIR/source/pom.xml" \
+  -Drevision=0.0.0-6c2d2dc169af install
+
+mkdir -p "$PANIOLO_QUICKSTART_DIR/app/src/main/java/example"
+cd "$PANIOLO_QUICKSTART_DIR/app"
+```
+
+The install runs the library's tests and installs its modules into your local Maven repository.
+It does not deploy anything. Keep the printed temporary directory path if you want to return to
+the example later; `echo "$PANIOLO_QUICKSTART_DIR"` shows it.
+
+### 2. Create the application POM
+
+Save the following as `pom.xml` in the `app` directory created above. The application has no
+parent POM and uses the exact local artifact version installed in step 1.
+
+```xml
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>example</groupId>
+  <artifactId>paniolo-quickstart</artifactId>
+  <version>1.0.0</version>
+  <properties>
+    <maven.compiler.release>21</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+  <dependencies>
+    <dependency>
+      <groupId>io.github.nalukit</groupId>
+      <artifactId>paniolo</artifactId>
+      <version>0.0.0-6c2d2dc169af</version>
+    </dependency>
+  </dependencies>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>3.3.1</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.14.1</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <version>3.7.0</version>
+      </plugin>
+    </plugins>
+  </build>
+</project>
+```
+
+### 3. Create the invoice application
+
+Save this complete class as `src/main/java/example/Quickstart.java` in the same `app` directory.
+No imports or helper objects are omitted.
+
+```java
+package example;
+
+import io.github.nalukit.paniolo.Paniolo;
+import io.github.nalukit.paniolo.config.InvoiceSyntax;
+import io.github.nalukit.paniolo.model.Invoice;
+import io.github.nalukit.paniolo.model.common.Address;
+import io.github.nalukit.paniolo.model.common.Contact;
+import io.github.nalukit.paniolo.model.common.CreditTransfer;
+import io.github.nalukit.paniolo.model.common.DeliveryInformation;
+import io.github.nalukit.paniolo.model.common.ElectronicAddress;
+import io.github.nalukit.paniolo.model.common.InvoiceLine;
+import io.github.nalukit.paniolo.model.common.Party;
+import io.github.nalukit.paniolo.model.common.PaymentInstruction;
+import io.github.nalukit.paniolo.model.common.TaxCategory;
+import io.github.nalukit.paniolo.model.common.value.Country;
+import io.github.nalukit.paniolo.model.common.value.PaymentMeansCode;
+
+import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.LocalDate;
+
+public final class Quickstart {
+  public static void main(String[] args) throws Exception {
+    var seller = Party.create()
+                      .name("Muster GmbH")
+                      .address(new Address("Musterstraße 1", "Berlin", "10115", Country.DE))
+                      .vatId("DE123456788")
+                      .electronicAddress(new ElectronicAddress("rechnung@example.org", "EM"))
+                      .contact(new Contact("Erika Muster", "+49 30 123456", "rechnung@example.org"))
+                      .build();
+    var buyer = Party.create()
+                     .name("Kunde GmbH")
+                     .address(new Address("Kundenweg 2", "Hamburg", "20095", Country.DE))
+                     .electronicAddress(new ElectronicAddress("einkauf@example.org", "EM"))
+                     .build();
+    var payment = PaymentInstruction.create()
+                                    .meansCode(PaymentMeansCode.CODE_58)
+                                    .addCreditTransfer(CreditTransfer.create()
+                                                                     .iban("DE89370400440532013000")
+                                                                     .accountName("Muster GmbH")
+                                                                     .bic("COBADEFFXXX")
+                                                                     .build())
+                                    .remittanceInformation("R-2026-001")
+                                    .build();
+    Invoice invoice = Invoice.create()
+                             .number("R-2026-001")
+                             .issueDate(LocalDate.of(2026, 10, 27))
+                             .dueDate(LocalDate.of(2026, 11, 10))
+                             .delivery(DeliveryInformation.create()
+                                                          .actualDeliveryDate(LocalDate.of(2026, 10, 26))
+                                                          .build())
+                             .buyerReference("04011000-12345-03")
+                             .seller(seller)
+                             .buyer(buyer)
+                             .paymentInstruction(payment)
+                             .addLine(InvoiceLine.create()
+                                                 .id("1")
+                                                 .name("Beratung")
+                                                 .quantity(new BigDecimal("2"))
+                                                 .unitCode("HUR")
+                                                 .netUnitPrice(new BigDecimal("100.00"))
+                                                 .tax(TaxCategory.standard(new BigDecimal("19")))
+                                                 .build())
+                             .build();
+
+    Paniolo paniolo = Paniolo.create();
+    Path output = Path.of("target", "invoices");
+    Files.createDirectories(output);
+    for (InvoiceSyntax syntax : InvoiceSyntax.values()) {
+      byte[] xml = paniolo.toBytes(invoice, syntax);
+      var result = paniolo.validate(xml);
+      if (!result.isValid() || result.hasWarnings()) {
+        throw new IllegalStateException(result.toXml());
+      }
+      Invoice received = paniolo.read(xml);
+      if (!invoice.number().equals(received.number())
+          || received.totals().payableAmount().compareTo(new BigDecimal("238.00")) != 0) {
+        throw new IllegalStateException("Unexpected round-trip result for " + syntax);
+      }
+      Files.write(output.resolve("invoice-" + syntax.name() + ".xml"), xml);
+      System.out.println(syntax + ": valid, warnings=false, number=" + received.number()
+          + ", payable=" + received.totals().payableAmount().toPlainString() + " EUR");
+    }
+  }
+}
+```
+
+The builder defaults to EUR, document type 380, and the XRechnung process identifiers. Two hours
+at EUR 100.00 plus 19% VAT result in EUR 238.00. The checks use `BigDecimal.compareTo` so decimal
+scale differences do not change the result.
+
+### 4. Compile and run
+
+Still in the `app` directory:
+
+```sh
+mvn -B -ntp compile \
+  org.apache.maven.plugins:maven-dependency-plugin:3.7.0:copy-dependencies \
+  -DincludeScope=runtime
+java -cp 'target/classes:target/dependency/*' example.Quickstart
+```
+
+Expected standard output (JVM diagnostics may additionally appear on standard error):
+
+```text
+UBL: valid, warnings=false, number=R-2026-001, payable=238.00 EUR
+CII: valid, warnings=false, number=R-2026-001, payable=238.00 EUR
+```
+
+The example writes `target/invoices/invoice-UBL.xml` and `target/invoices/invoice-CII.xml`.
+Any validation error, warning or failed round-trip check terminates the process with an error.
+Once the application is compiled and the dependencies have been copied, the `java` command also
+works without network access. XML output does not require any PDF or JSON modules.
+
+## Artifacts and entry points
+
+All Paniolo artifacts use group ID `io.github.nalukit`. When adding optional modules to this
+quickstart, use the same version `0.0.0-6c2d2dc169af` for each module.
+
+| Artifact                  | Entry points and role                                                                                                                                                        |
+|---------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `paniolo`                 | `Paniolo`, its `Builder`, `InvoiceSyntax`, `FacturXProfile`, `FacturXResult`, `PdfAttachment`, `PdfLayout`, `PdfProducer`, `AfRelationship`, `UnknownDocumentHandling`, `CalculationCheck`; brings the model, XML adapters, validation and packaged rules |
+| `paniolo-shared-model`    | `Invoice`, common values, invoice totals, EXTENDED data, `Order`, `DespatchAdvice`; no runtime dependencies                                                                  |
+| `paniolo-xml`             | `InvoiceXmlReader`, `InvoiceXmlWriter`, `ReadMode`, `ReadResult`, `ReadWarning`, `ImportResult`, `ExportVariant`, `StatedAmounts`, `AmountDeviation`                         |
+| `paniolo-xml-ubl`         | `UblInvoiceReader`, `UblInvoiceWriter`, `DespatchAdviceReader`, `DespatchAdviceWriter`                                                                                       |
+| `paniolo-xml-cii`         | `CiiInvoiceReader`, `CiiInvoiceWriter`, `ZugferdV1InvoiceReader`, `OrderXReader`, `OrderXWriter`, `CiiDespatchAdviceReader`, `CiiDespatchAdviceWriter`                       |
+| `paniolo-validation`      | `InvoiceValidator`, `ValidationProfile`, `ValidationMessage`, `ValidationResult`, `ValidationStatistics`, `AcceptancePolicy`, `Severity`, `ValidationException`              |
+| `paniolo-xrechnung-rules` | `XrechnungRules`: current and legacy KoSIT bundles                                                                                                                           |
+| `paniolo-facturx-rules`   | `FacturXRules`: Factur-X, ZUGFeRD 1.0, French EXTENDED-CTC-FR / BR-FR and Order-X rules                                                                                      |
+| `paniolo-facturx`         | `PdfBoxFacturXSupport`: optional PDF support, normally accessed through the facade                                                                                           |
+| `paniolo-pdfa`            | `VeraPdfaSupport`: optional PDF/A conformance checks                                                                                                                         |
+| `paniolo-pdf-layout`      | `PdfBoxLayoutSupport`: optional rendering of the visual PDF/A-3b pages, normally accessed through the facade                                                                 |
+| `paniolo-json`            | `PanioloJson`, `PanioloJsonModule`: optional model storage with Jackson                                                                                                      |
+| `paniolo-visualizer`      | `PanioloVisualizer` and the web component `<paniolo-viewer>`: optional display of documents in the browser and as standalone HTML                                           |
+| `paniolo-cli`             | `PanioloCli`: command line interface, executable jar with the classifier `all`; published to GitHub Packages, not to Maven Central                                                                               |
+| `paniolo-mustang`         | `MustangInvoiceAdapter`, `MustangMapping`, `MappingLoss`, `FieldMapping`: optional migration from Mustang `IExportableTransaction`                                           |
+
+Modules can also be used individually. See their README files via the [module index](../../README.md#installation).
+The generated JavaDoc includes all public types; utility types in `internal`, `base`, `util` and
+`common.validation` packages are implementation infrastructure rather than the recommended
+application entry points. `FacturXSupport`, `PdfaSupport` and `PdfLayoutSupport` are
+service-provider interfaces for alternative implementations, discovered with `ServiceLoader`;
+providers must be thread-safe.
+
+## Facade reference
+
+The entry point is [`io.github.nalukit.paniolo.Paniolo`](../../paniolo/src/main/java/io/github/nalukit/paniolo/Paniolo.java).
+Create one instance and reuse it. Writers and readers do not compile validation rules. Validators
+are initialized lazily and cached per facade; `warmUp()` prepares the XRechnung invoice validators.
+
+### Construction and detection
+
+| Signature                                     | Result / behavior                                              |
+|-----------------------------------------------|----------------------------------------------------------------|
+| `static Paniolo create()`                     | Facade with packaged default rules                             |
+| `static Paniolo.Builder builder()`            | Builder for alternative or additional rule bundles             |
+| `Paniolo warmUp()`                            | Initializes XRechnung validators and returns this facade       |
+| `static boolean isPdf(byte[] content)`        | Tests the PDF header; does not validate the PDF                |
+| `ValidationProfile.Syntax detect(String xml)` | Detects `UBL_INVOICE`, `UBL_CREDIT_NOTE` or `CII`              |
+| `ValidationProfile.Syntax detect(byte[] xml)` | Same detection for XML bytes; not a general order/PDF detector |
+
+### Invoice XML and validation
+
+| Signature                                                              | Result / behavior                                                                                        |
+|------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
+| `String toXml(Invoice invoice, InvoiceSyntax syntax)`                  | Writes UBL or CII XML; does not run schema or business-rule validation                                   |
+| `byte[] toBytes(Invoice invoice, InvoiceSyntax syntax)`                | Writes UTF-8 XML bytes                                                                                   |
+| `Invoice read(String xml)`                                             | Reads invoice XML strictly, detecting the syntax                                                         |
+| `Invoice read(byte[] xmlOrPdf)`                                        | Reads invoice XML or a hybrid invoice PDF strictly                                                       |
+| `Invoice read(InputStream xmlOrPdf)`                                   | Reads without closing the caller's stream                                                                |
+| `ReadResult read(String xml, ReadMode mode)`                           | Reads XML with explicit amount handling                                                                  |
+| `ReadResult read(byte[] xmlOrPdf, ReadMode mode)`                      | Same for XML or PDF bytes                                                                                |
+| `ReadResult read(InputStream xmlOrPdf, ReadMode mode)`                 | Same for a caller-owned stream                                                                           |
+| `ImportResult importInvoice(byte[] xmlOrPdf, ReadMode mode)`           | Reads and keeps the original XML, the stated amounts and every `AmountDeviation` from the model          |
+| `byte[] export(ImportResult imported, ExportVariant variant, InvoiceSyntax syntax)` | `ORIGINAL` returns the received XML unchanged; `NORMALIZED` writes the model in the given syntax |
+| `ValidationResult validate(String xml)`                                | Detects the invoice syntax/profile and validates XML                                                     |
+| `ValidationResult validate(byte[] xmlOrPdf)`                           | Validates invoice XML or a hybrid invoice PDF                                                            |
+| `ValidationResult validate(InputStream xmlOrPdf)`                      | Same for a caller-owned stream                                                                           |
+| `ValidationResult validate(Invoice invoice, InvoiceSyntax syntax)`     | Writes and validates the invoice in the selected syntax                                                  |
+| `ValidationResult validate(byte[] xml, ValidationProfile.Syntax type)` | Uses the explicit XRechnung document type; malformed XML becomes a finding rather than failing detection |
+| `ValidationResult validate(byte[] xml, FacturXProfile profile)`        | Validates XML against the explicitly selected Factur-X profile                                           |
+
+`read` accepts UBL Invoice/CreditNote, CII, ZUGFeRD 1.0 XML and supported invoice PDFs. It does not
+replace validation. `ReadMode.STRICT` rejects inconsistent amounts; `LENIENT` can adapt supported
+amount deviations and returns them in `ReadResult.warnings()`. Preserve original input bytes when
+you need an unchanged source document, or use `importInvoice`, which keeps them in the
+`ImportResult`. `ReadResult.isExact()` means no accepted amount deviations were reported; it does
+not promise byte-identical XML or complete support for arbitrary extensions.
+
+Automatic validation selects rules from the specification identifier (BT-24) and PDF metadata.
+The overload with `ValidationProfile.Syntax` deliberately bypasses profile detection and always
+uses the EN 16931/XRechnung rules for that syntax. Use the automatic overload for Factur-X
+profiles and the XRechnung extension. By default, the detecting overloads throw an
+`IllegalArgumentException` for a document whose type they cannot detect;
+`Builder.unknownDocuments(UnknownDocumentHandling.REPORT_INVALID)` returns an invalid result with
+the `FATAL` finding `XML-PARSE` or `PANIOLO-UNKNOWN-DOCUMENT` instead.
+
+### PDF invoices
+
+PDF operations require `paniolo-facturx`. The overloads without a PDF of your own, `toPdf` and
+`toReportPdf` additionally require `paniolo-pdf-layout`, which renders the visual PDF/A-3b pages.
+ZUGFeRD 1.0 XML migration works with the base artifact; the same migration methods need the PDF
+module only when their input is a PDF.
+
+| Signature                                                                                                 | Result / behavior                                                                 |
+|-----------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------|
+| `byte[] toFacturX(Invoice invoice, byte[] pdfA, FacturXProfile profile)`                                  | Embeds CII in a supplied visual PDF/A document                                    |
+| `byte[] toFacturX(Invoice invoice, byte[] pdfA, FacturXProfile profile, List<PdfAttachment> attachments)` | Same with additional attachments                                                  |
+| `byte[] toFacturX(Invoice invoice, FacturXProfile profile)`                                               | Renders the invoice page and embeds the CII (`paniolo-pdf-layout`)                |
+| `byte[] toFacturX(Invoice invoice, FacturXProfile profile, PdfLayout layout, List<PdfAttachment> attachments)` | Same with language, logo, fonts, accent color, footer and attachments        |
+| `FacturXResult embedXml(byte[] pdfA, byte[] xml, FacturXProfile profile)` and overload with attachments   | Embeds existing CII byte for byte and returns the PDF with its validation result  |
+| `byte[] toPdf(Invoice invoice)` and overload with `PdfLayout`                                             | Renders only the visual PDF/A-3b document, without XML (`paniolo-pdf-layout`)     |
+| `byte[] toReportPdf(ValidationResult result, String fileName, byte[] document)` and overload with `PdfLayout` | Renders a validation report as PDF/A-3b (`paniolo-pdf-layout`)                |
+| `byte[] extractXml(byte[] pdf)`                                                                           | Returns the embedded invoice XML                                                  |
+| `List<PdfAttachment> attachments(byte[] pdf)`                                                             | Returns attachments other than the invoice XML                                    |
+| `PdfProducer producer(byte[] pdf)`                                                                        | Returns producer/creator metadata and recognized invoice software                 |
+| `byte[] migrateZugferd1(byte[] document)`                                                                 | Migrates ZUGFeRD 1.0 XML or PDF to version 2                                      |
+| `byte[] migrateZugferd1(byte[] document, FacturXProfile target)`                                          | Migrates with an explicit target profile                                          |
+
+A supplied PDF must already be PDF/A and contain the visual document; Paniolo does not convert
+arbitrary PDFs into compliant PDF/A. Without a PDF of your own, the rendering overloads create the
+pages with `paniolo-pdf-layout` (DIN 5008, German, English and French, logo, own fonts); `PdfLayout.of(locale)`
+and its `with...` methods configure them. Factur-X profiles are `MINIMUM`, `BASIC_WL`, `BASIC`,
+`EN16931`, `EXTENDED` and `XRECHNUNG`. `EXTENDED_CTC_FR` is supported as CII XML, not as a newly
+generated Factur-X PDF. MINIMUM and BASIC WL use invoices without lines and with `DocumentTotals`
+supplied through `Invoice.Builder.statedTotals(...)`. `embedXml` rejects input it cannot embed
+(no PDF/A, encrypted, already an invoice, not CII, BT-24 of another profile) with an
+`IllegalArgumentException`; rule violations of the XML are reported in `FacturXResult.validation()`.
+
+### Orders and despatch advices
+
+| Signatures                                                                                                    | Result / behavior                                              |
+|---------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------|
+| `String toOrderX(Order order)`, `byte[] toOrderXBytes(Order order)`                                           | Order-X XML                                                    |
+| `byte[] toOrderXPdf(Order order, byte[] pdfA)` and overload with `List<PdfAttachment>`                        | Order-X PDF; requires PDF module                               |
+| `byte[] toOrderXPdf(Order order)` and overload with `PdfLayout`, `List<PdfAttachment>`                        | Order-X PDF with rendered pages (`paniolo-pdf-layout`)         |
+| `byte[] toPdf(Order order)` and overload with `PdfLayout`                                                     | Visual PDF/A-3b order only, without XML (`paniolo-pdf-layout`) |
+| `Order readOrder(String xml)`                                                                                 | Strict Order-X XML import                                      |
+| `Order readOrder(byte[] xmlOrPdf)` and overload with `boolean ignoreUnsupported`                              | Import XML/PDF; true explicitly drops unsupported content      |
+| `ValidationResult validateOrder(byte[] xmlOrPdf)`                                                             | Order-X checks with the packaged official Order-X 1.0 rules    |
+| `String toDespatchAdvice(DespatchAdvice advice)`, `byte[] toDespatchAdviceBytes(DespatchAdvice advice)`       | UBL DespatchAdvice XML                                         |
+| `String toCiiDespatchAdvice(DespatchAdvice advice)`, `byte[] toCiiDespatchAdviceBytes(DespatchAdvice advice)` | CIDA XML                                                       |
+| `byte[] toDespatchAdvicePdf(DespatchAdvice advice, byte[] pdfA)` and overload with `List<PdfAttachment>`      | CIDA PDF; requires PDF module                                  |
+| `byte[] toDespatchAdvicePdf(DespatchAdvice advice)` and overload with `PdfLayout`, `List<PdfAttachment>`      | CIDA PDF with a rendered delivery note (`paniolo-pdf-layout`)  |
+| `byte[] toPdf(DespatchAdvice advice)` and overload with `PdfLayout`                                           | Visual PDF/A-3b delivery note only (`paniolo-pdf-layout`)      |
+| `DespatchAdvice readDespatchAdvice(byte[] xmlOrPdf)` and overload with `boolean ignoreUnsupported`            | UBL/CIDA XML or CIDA PDF import                                |
+| `ValidationResult validateDespatchAdvice(byte[] xmlOrPdf)`                                                    | UBL schema and configured Peppol rules, or limited CIDA checks |
+
+Order-X BASIC and COMFORT are supported; EXTENDED has the supported COMFORT content. Some COMFORT
+and despatch-advice fields are outside the model. CIDA has no packaged official schema or business
+rules. See the [scope and limitations](../../README.md#scope) before selecting these formats.
+
+## Model reference
+
+Model packages start with `io.github.nalukit.paniolo.model`. Records are immutable; mutable builders
+are for one operation/thread. Prefer `Type.create()...build()` for named construction. Constructors
+and builders enforce structural checks; validation against the official XML rules is separate.
+JavaDoc documents record components with BT/BG references where applicable.
+
+| Area                                | Main types and use                                                                                                                                                                                                                |
+|-------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Invoice                             | `Invoice`, `InvoiceLine`, `InvoiceTotals`, `DocumentTotals`, `VatBreakdown`; `invoice.totals()` derives monetary values                                                                                                           |
+| Parties and addresses               | `Party`, `Address`, `Contact`, `ElectronicAddress`, `Payee`, `SellerTaxRepresentativeParty`                                                                                                                                       |
+| Process and references              | `ProcessControl`, `References`, `PrecedingInvoiceReference`, `InvoiceNote`, `InvoicePeriod`, `DeliveryInformation`                                                                                                                |
+| Payment                             | `PaymentInstruction`, `CreditTransfer`, `DirectDebit`, `PaymentCardInformation`, `CashDiscount`                                                                                                                                   |
+| Allowances, charges and attachments | `DocumentAdjustment`, `LineAdjustment`, `AdditionalSupportingDocument`, `Attachment`, `ThirdPartyPayment`                                                                                                                         |
+| Items and VAT                       | `ItemAttribute`, `ItemClassification`, `TaxCategory`; amounts and percentages use `BigDecimal`                                                                                                                                    |
+| Code lists (`common.value`)         | `Country`, `CurrencyCode`, `UnitCode`, `InvoiceTypeCode`, `PaymentMeansCode`, `DutyTaxFeeCategory`, `DateTimeQualifier`, `TextSubjectQualifier`, `AllowanceChargeIdentification`                                                  |
+| Localization                        | `LocalizationFactory`; explicit `Locale`, English fallback; no global language switch                                                                                                                                             |
+| EXTENDED (`extended`)               | `ExtendedInformation`, `LineExtension`, `PartyExtension`, `ExtendedContact`, `AdjustmentExtension`, `AdvancePayment`, `FinancialAdjustment`, `LogisticsServiceCharge`, `PaymentTerm`, `PaymentTermsAdjustment`, `TaxExchangeRate` |
+| EXTENDED item/reference details     | `DocumentReference`, `TypedDocumentReference`, `IncludedProduct`, `ProductCharacteristic`, `ProductInstance`, `LineSubtype`                                                                                                       |
+| Orders (`order`)                    | `Order`, `OrderLine`, `OrderTotals`, `OrderTypeCode`, `OrderXProfile`, `SubstitutedProduct`                                                                                                                                       |
+| Delivery notes (`despatch`)         | `DespatchAdvice`, `DespatchLine`, `DespatchItemInstance`                                                                                                                                                                          |
+
+Use decimal strings such as `new BigDecimal("19")` instead of binary floating-point constructors.
+Use `LocalDate` for document dates. Code-list factories such as `UnitCode.of("HUR")` return null
+for unknown values; check the result before passing it to a required model field.
+
+## Validation and error handling
+
+| API / outcome                      | Meaning                                                                                                       |
+|------------------------------------|---------------------------------------------------------------------------------------------------------------|
+| `ValidationResult.isValid()`       | No findings of severity ERROR or FATAL                                                                        |
+| `ValidationResult.hasWarnings()`   | At least one WARNING; inspect INFO findings for skipped checks too                                            |
+| `ValidationResult.messages()`      | All findings; each has rule ID, severity, message, location and stage                                         |
+| `ValidationResult.messages(stage)` | Findings of a single stage                                                                                    |
+| `ValidationResult.count(severity)` | Number of findings with that severity                                                                         |
+| `ValidationResult.toXml()`         | Machine-readable report; schema at `ValidationResult.REPORT_SCHEMA`                                           |
+| `ValidationResult.statistics()`    | Fired rules per Schematron stylesheet and PDF/A checks with `ruleStatistics(true)`; otherwise null            |
+| `ValidationMessage.Stage`          | `XML`, `XSD`, `SCHEMATRON`, `PDF_A`, `HYBRID`, `CALCULATION`                                                  |
+| `AcceptancePolicy.evaluate(result)` | `AcceptanceDecision` with `valid()`, `accepted()` and the blocking findings of explicitly named rules        |
+| `NullPointerException`             | A required API argument is null                                                                               |
+| `IllegalArgumentException`         | Unprocessable input, unsupported content or failed model constraints; auto-detection may reject malformed XML |
+| `IllegalStateException`            | A PDF operation needs an optional module that is not on the classpath                                         |
+| `ValidationException`              | Broken validation configuration or execution failure; distinct from an invalid invoice                        |
+| `UncheckedIOException`             | An underlying input/output operation failed                                                                   |
+
+A valid result is not proof that every possible stage ran. Without `paniolo-pdfa`, PDF validation
+includes `PDFA-NOT-CHECKED`; without configured Peppol rules it includes `PEPPOL-RULES-NOT-CHECKED`.
+CIDA reports `CIDA-NOT-CHECKED`. Decide which stages and
+findings your application requires. XSD failure skips Schematron execution. Rule bundles are
+trusted application resources; local imports and declared lookup documents are restricted to
+configured resources, and rules are not downloaded during validation.
+
+With `calculationCheck(true)`, invoice validations also recalculate the amounts and report
+differences in the stage `CALCULATION` with rule IDs starting with `PANIOLO-CALC-`. These findings
+are warnings or information and never change `isValid()`. Which warnings a receiving process must
+not accept is decided separately with `AcceptancePolicy.officialRules().rejectOn(ruleIds...)` or
+`rejectOnWarnings()`; the official result stays unchanged.
+
+For direct validation without the facade, create an `InvoiceValidator` from a `ValidationProfile`
+and reuse it. `ValidationProfile` describes local XSDs, compiled Schematron XSLTs, severity
+overrides and permitted lookup documents. Raw `.sch` sources are not compiled by this API.
+See the [validation module](../../paniolo-validation/README.md) for factories and report structure.
+
+## Configuration and optional modules
+
+`Paniolo.builder()` exposes the following configuration methods; each returns the same builder:
+
+| Builder method                                 | Purpose                                                                |
+|------------------------------------------------|------------------------------------------------------------------------|
+| `rules(Path bundle)`                           | Alternative extracted KoSIT XRechnung bundle                           |
+| `facturXRules(Path packageDirectory)`          | Alternative extracted Factur-X / ZUGFeRD rule package                  |
+| `extendedCtcFrRules(Path directory)`           | Alternative French EXTENDED-CTC-FR / BR-FR rules                       |
+| `orderXRules(Path packageDirectory)`           | Official Order-X package supplied by the application                   |
+| `despatchAdviceRules(Path compiledSchematron)` | Compiled Peppol Despatch Advice stylesheet supplied by the application |
+| `calculationCheck(boolean enabled)`            | Additional recalculation of invoice amounts (stage `CALCULATION`)      |
+| `ruleStatistics(boolean enabled)`              | Rule statistics in `ValidationResult.statistics()`; slower, for audits |
+| `unknownDocuments(UnknownDocumentHandling handling)` | `THROW` (default) or `REPORT_INVALID` for undetectable documents |
+| `build()`                                      | Creates an immutable facade with the configured paths                  |
+
+The XRechnung, Factur-X, French and Order-X defaults are packaged dependencies. The Peppol
+Despatch Advice rules have no published license and must be obtained separately and configured.
+Rule paths must remain available while the facade is in use. Builders themselves are not thread-safe.
+
+To add PDF, rendering or JSON support to the example POM, add the corresponding artifact with group
+ID `io.github.nalukit` and version `0.0.0-6c2d2dc169af`. No explicit registration is needed for the
+PDF providers. Add both `paniolo-facturx` and `paniolo-pdfa` to include PDF/A checking, and
+`paniolo-pdf-layout` (which brings `paniolo-facturx`) to create PDFs without a PDF of your own.
+
+`PanioloVisualizer.create().toHtml(document)` writes a standalone HTML page that shows an invoice,
+order or despatch advice with the web component `<paniolo-viewer>`; web applications load the
+component from `/paniolo-visualizer/paniolo-visualizer.js` in the artifact. See the
+[visualizer module](../../paniolo-visualizer/README.md). `MustangInvoiceAdapter.create().map(transaction)`
+maps a Mustang invoice to the model and lists every value it cannot carry over; see the
+[Mustang module](../../paniolo-mustang/README.md).
+
+`PanioloJson.create()` is the JSON entry point. `toJson`, `toPrettyJson` and `toBytes` serialize the
+model; `read(input, Invoice.class)` also accepts `Order.class` and `DespatchAdvice.class`. The
+JSON is Paniolo's storage format and follows this model version, not a standardized invoice
+exchange format. Loading performs model checks. See the [JSON module](../../paniolo-json/README.md).
+
+## Complete generated JavaDoc
+
+Generate the full API reference from the same exported source and local version as the quickstart:
+
+```sh
+mvn -B -ntp -f "$PANIOLO_QUICKSTART_DIR/source/pom.xml" \
+  -Drevision=0.0.0-6c2d2dc169af \
+  org.apache.maven.plugins:maven-javadoc-plugin:3.12.0:aggregate \
+  -Dshow=public -Ddoclint=all,-missing -DfailOnError=true
+```
+
+Open `$PANIOLO_QUICKSTART_DIR/source/target/reports/apidocs/index.html`. This generated reference
+contains the public types, constructors, exact overloads, record parameters and method JavaDoc
+of the pinned source. It includes the application APIs, provider interfaces and public helpers.
+The optional benchmark module is not part of the default build; add `-Pbenchmark` to include it.
+
+The command checks JavaDoc syntax, links and markup; `-missing` suppresses completeness warnings
+for individual members and enum constants. It does not claim every public member is documented.
+The Markdown reference remains available without generating HTML.
+
+## Troubleshooting
+
+| Symptom                                                       | Resolution                                                                                                                                                          |
+|---------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `git cat-file` cannot find the commit                         | Use a clone containing the pinned source commit. A branch name or newer snapshot is not an equivalent baseline.                                                     |
+| Maven cannot resolve `0.0.0-6c2d2dc169af`                     | Finish step 1, and use the same local Maven repository/settings for the library and example builds. This version is installed locally, not downloaded from Central. |
+| Java reports an unsupported class version or compiler release | Run both Maven and `java` with JDK 21; check `mvn -version` as well as `java -version`.                                                                             |
+| First build cannot download rules/dependencies                | Enable network access for the build. Runtime processing uses the packaged rule bundles. Do not skip checksum failures.                                              |
+| `IllegalStateException` names a PDF module                    | Add `paniolo-facturx` at the same version; add `paniolo-pdfa` for conformance checks and `paniolo-pdf-layout` for rendered pages.                                                                               |
+| Invalid result or warnings in the quickstart                  | Inspect the XML report in the exception. Confirm the exact source/version and unchanged sample values; the sample checks both syntaxes.                             |
+| App cannot find `example.Quickstart`                          | Run the compile/copy step and the `java` command from the `app` directory. The classpath shown is for Linux/macOS.                                                  |

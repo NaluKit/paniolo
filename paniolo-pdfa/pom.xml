@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>io.github.nalukit</groupId>
+    <artifactId>paniolo-parent</artifactId>
+    <version>${revision}</version>
+  </parent>
+
+  <artifactId>paniolo-pdfa</artifactId>
+
+  <name>paniolo-pdfa</name>
+  <description>Optional PDF/A conformance checks for Factur-X / ZUGFeRD invoices, based on veraPDF</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.github.nalukit</groupId>
+      <artifactId>paniolo</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <!-- veraPDF is dual licensed (GPLv3+ / MPL-2.0); Paniolo uses it under MPL-2.0. -->
+    <dependency>
+      <groupId>org.verapdf</groupId>
+      <artifactId>validation-model</artifactId>
+      <version>${verapdf.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.github.nalukit</groupId>
+      <artifactId>paniolo-facturx</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+</project>

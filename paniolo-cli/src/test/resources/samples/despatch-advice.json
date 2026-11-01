@@ -1,0 +1,54 @@
+{
+  "number": "LS-2026-42",
+  "issueDate": "2026-11-09",
+  "orderReferences": [
+    "B-2026-17"
+  ],
+  "additionalDocuments": [],
+  "despatchSupplier": {
+    "name": "Muster GmbH",
+    "address": {
+      "street": "Musterstraße 1",
+      "city": "Berlin",
+      "postalCode": "10115",
+      "country": "DE"
+    }
+  },
+  "deliveryCustomer": {
+    "name": "Kunde GmbH",
+    "address": {
+      "street": "Hafenstraße 5",
+      "city": "Hamburg",
+      "postalCode": "20457",
+      "country": "DE"
+    }
+  },
+  "buyer": {
+    "name": "Kunde GmbH",
+    "address": {
+      "street": "Kundenweg 2",
+      "city": "Hamburg",
+      "postalCode": "20095",
+      "country": "DE"
+    }
+  },
+  "actualDespatchDate": "2026-11-09",
+  "lines": [
+    {
+      "id": "1",
+      "deliveredQuantity": 8,
+      "unitCode": "H87",
+      "orderLineId": "1",
+      "itemName": "Gerät",
+      "classifications": [],
+      "attributes": [],
+      "instances": [
+        {
+          "serialId": "SN-1"
+        }
+      ]
+    }
+  ],
+  "customizationId": "urn:fdc:peppol.eu:poacc:trns:despatch_advice:3",
+  "profileId": "urn:fdc:peppol.eu:poacc:bis:despatch_advice:3"
+}
