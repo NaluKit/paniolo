@@ -9,7 +9,7 @@ Databind (Apache License 2.0), which is why it is optional. It requires Java 21.
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo-json</artifactId>
-  <version>HEAD-SNAPSHOT</version>
+  <version>1.0.0-rc01</version>
 </dependency>
 ```
 

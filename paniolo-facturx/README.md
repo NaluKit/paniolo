@@ -27,7 +27,7 @@ this module to embed the XML (`toFacturX(invoice, profile)`, `toOrderXPdf(order)
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo-facturx</artifactId>
-  <version>HEAD-SNAPSHOT</version>
+  <version>1.0.0-rc01</version>
 </dependency>
 ```
 

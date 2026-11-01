@@ -21,19 +21,19 @@ The build creates an executable jar with all dependencies:
 
 ```sh
 mvn install -pl paniolo-cli -am -DskipTests
-java -jar paniolo-cli/target/paniolo-cli-HEAD-SNAPSHOT-all.jar --help
+java -jar paniolo-cli/target/paniolo-cli-1.0.0-rc01-all.jar --help
 ```
 
 For daily use, put a small wrapper on the `PATH`, e.g. `~/bin/paniolo`:
 
 ```sh
 #!/bin/sh
-exec java -jar /opt/paniolo/paniolo-cli-HEAD-SNAPSHOT-all.jar "$@"
+exec java -jar /opt/paniolo/paniolo-cli-1.0.0-rc01-all.jar "$@"
 ```
 
 The build attaches this jar with the classifier `all`; the plain artifact `paniolo-cli` contains
-only the CLI classes. The current `HEAD-SNAPSHOT` is built locally; see the
-[installation status](../README.md#installation).
+only the CLI classes. The release `1.0.0-rc01` is available as a download from GitHub Packages (see
+below); see also the [installation status](../README.md#installation).
 
 Unlike the library modules, `paniolo-cli` is **not published to Maven Central**. The CI workflow
 publishes both jars to the GitHub Packages Maven registry of the repository

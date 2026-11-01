@@ -40,28 +40,28 @@
                     <span>Documentation</span><a href="quickstart.html">Quickstart</a><a href="formats.html">Formats &
                                                                                                              modules</a><a aria-current="page"
                                                                                                                            href="api.html">API
-                                                                                                                                               reference</a><span>Source baseline</span>
-                    <p class="pn-meta">HEAD-SNAPSHOT<br><code>6c2d2dc169af</code></p></aside>
+                                                                                                                                               reference</a><span>Release</span>
+                    <p class="pn-meta">1.0.0-rc01<br><code>421eeba757f1</code></p></aside>
                 <article class="pn-docbody">
-<h1 id="paniolo-api-reference--head-snapshot-at-6c2d2dc169af">Paniolo API reference — HEAD-SNAPSHOT at 6c2d2dc169af</h1>
-<p>This reference and its quickstart describe a fixed source revision. The examples use the same English API names as the JavaDoc and require no application framework.</p>
+<h1 id="paniolo-api-reference--100-rc01">Paniolo API reference — 1.0.0-rc01</h1>
+<p>This reference and its quickstart describe the release 1.0.0-rc01. The examples use the same English API names as the JavaDoc and require no application framework.</p>
 <table>
 <thead>
 <tr><th>Item</th><th>Pinned value</th></tr>
 </thead>
 <tbody>
-<tr><td>Source commit</td><td><code>6c2d2dc169afa7bf266fa7feb36a7a5f296e67ad</code></td></tr>
-<tr><td>Project version at that commit</td><td><code>HEAD-SNAPSHOT</code></td></tr>
-<tr><td>Local artifact version used below</td><td><code>0.0.0-6c2d2dc169af</code></td></tr>
-<tr><td>Documentation revision</td><td>1, 2026-10-30</td></tr>
+<tr><td>Release version</td><td><code>1.0.0-rc01</code></td></tr>
+<tr><td>Source commit</td><td><code>421eeba757f13af1e31a3d756aec0a4c6b0e7712</code></td></tr>
+<tr><td>Maven artifact version used below</td><td><code>1.0.0-rc01</code> (Maven Central)</td></tr>
+<tr><td>Documentation revision</td><td>1, 2026-11-01</td></tr>
 <tr><td>Java / Maven used to verify the quickstart</td><td>Temurin 21.0.12.1 / Apache Maven 3.9.9</td></tr>
 <tr><td>XRechnung rules</td><td>XRechnung 3.0.2, KoSIT release <code>2026-08-31</code></td></tr>
 <tr><td>Factur-X / ZUGFeRD rules</td><td>Factur-X 1.09.2 / ZUGFeRD 2.5.2</td></tr>
 <tr><td>French rules</td><td>FNFE-MPE France_RFE 1.4.0.04</td></tr>
 </tbody>
 </table>
-<p><code>0.0.0-6c2d2dc169af</code> is a <strong>local build coordinate</strong>, not a published Paniolo release. Building with <code>-Drevision=...</code> gives this source snapshot its own Maven coordinates, so a later <code>HEAD-SNAPSHOT</code> installation cannot replace the dependencies of this example.</p>
-<p>Keep this file as the reference for this source baseline. For another baseline, add a new file under <code>docs/api/</code> and update the README link. Released references should identify the release version and its commit. Source links below are repository-relative; inspect them in the pinned source tree when comparing against a newer checkout.</p>
+<p><code>1.0.0-rc01</code> is a <strong>release candidate</strong> published to Maven Central. The quickstart resolves all Paniolo artifacts from there; it needs no Paniolo source checkout and no local build of the library.</p>
+<p>Keep this file as the reference for release 1.0.0-rc01. Each release gets its own file <code>docs/api/&lt;version&gt;.md</code>; update the README link with it. Source links below are repository-relative; inspect them in the tag <code>1.0.0-rc01</code> when comparing against a newer checkout.</p>
 <ul>
 <li><a href="#reproducible-quickstart">Reproducible quickstart</a></li>
 <li><a href="#artifacts-and-entry-points">Artifacts and entry points</a></li>
@@ -74,28 +74,20 @@
 </ul>
 <h2 id="reproducible-quickstart">Reproducible quickstart</h2>
 <p>The quickstart creates one invoice, writes and validates it as both UBL and CII, reads it back, and checks its amount due. Dates, amounts, artifact versions and Maven plugin versions are fixed. The output XML is for demonstration; replace the example parties and identifiers before use. This reproduces API behavior and semantic results, not byte-identical Maven archives or report timestamps across machines.</p>
-<h3 id="1-prepare-the-pinned-source">1. Prepare the pinned source</h3>
-<p>Requirements: JDK 21, Maven 3.9.9, Git, and a POSIX shell with <code>tar</code> and <code>mktemp</code> (Linux or macOS). The first Maven build needs network access for dependencies and checksum-verified rule bundles. Invoice processing after the build needs no network connection.</p>
-<p>Run the following <strong>from the root of an existing Paniolo clone containing the commit above</strong>. All shell steps in this quickstart use the same terminal session. <code>git archive</code> exports the committed source into a new temporary directory without changing your current branch or files. If the commit is not available locally, fetch the repository revision containing it first.</p>
+<h3 id="1-prepare-the-project-directory">1. Prepare the project directory</h3>
+<p>Requirements: JDK 21, Maven 3.9.9, and a POSIX shell with <code>mktemp</code> (Linux or macOS). The first Maven build needs network access to download the Paniolo artifacts and their dependencies from Maven Central. Invoice processing after the build needs no network connection.</p>
+<p>All shell steps in this quickstart use the same terminal session.</p>
 <pre><code class="language-sh">set -eu
 java -version
 mvn -version
 
-git cat-file -e 6c2d2dc169afa7bf266fa7feb36a7a5f296e67ad^{commit}
 PANIOLO_QUICKSTART_DIR=$(mktemp -d &quot;${TMPDIR:-/tmp}/paniolo-quickstart.XXXXXX&quot;)
-mkdir -p &quot;$PANIOLO_QUICKSTART_DIR/source&quot;
-git archive 6c2d2dc169afa7bf266fa7feb36a7a5f296e67ad \
-  | tar -x -C &quot;$PANIOLO_QUICKSTART_DIR/source&quot;
-
-mvn -B -ntp -f &quot;$PANIOLO_QUICKSTART_DIR/source/pom.xml&quot; \
-  -Drevision=0.0.0-6c2d2dc169af install
-
 mkdir -p &quot;$PANIOLO_QUICKSTART_DIR/app/src/main/java/example&quot;
 cd &quot;$PANIOLO_QUICKSTART_DIR/app&quot;
 </code></pre>
-<p>The install runs the library's tests and installs its modules into your local Maven repository. It does not deploy anything. Keep the printed temporary directory path if you want to return to the example later; <code>echo "$PANIOLO_QUICKSTART_DIR"</code> shows it.</p>
+<p>Keep the printed temporary directory path if you want to return to the example later; <code>echo "$PANIOLO_QUICKSTART_DIR"</code> shows it.</p>
 <h3 id="2-create-the-application-pom">2. Create the application POM</h3>
-<p>Save the following as <code>pom.xml</code> in the <code>app</code> directory created above. The application has no parent POM and uses the exact local artifact version installed in step 1.</p>
+<p>Save the following as <code>pom.xml</code> in the <code>app</code> directory created above. The application has no parent POM and uses the exact release version <code>1.0.0-rc01</code> from Maven Central.</p>
 <pre><code class="language-xml">&lt;project xmlns=&quot;http://maven.apache.org/POM/4.0.0&quot;
          xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot;
          xsi:schemaLocation=&quot;http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd&quot;&gt;
@@ -111,7 +103,7 @@ cd &quot;$PANIOLO_QUICKSTART_DIR/app&quot;
     &lt;dependency&gt;
       &lt;groupId&gt;io.github.nalukit&lt;/groupId&gt;
       &lt;artifactId&gt;paniolo&lt;/artifactId&gt;
-      &lt;version&gt;0.0.0-6c2d2dc169af&lt;/version&gt;
+      &lt;version&gt;1.0.0-rc01&lt;/version&gt;
     &lt;/dependency&gt;
   &lt;/dependencies&gt;
   &lt;build&gt;
@@ -238,7 +230,7 @@ CII: valid, warnings=false, number=R-2026-001, payable=238.00 EUR
 </code></pre>
 <p>The example writes <code>target/invoices/invoice-UBL.xml</code> and <code>target/invoices/invoice-CII.xml</code>. Any validation error, warning or failed round-trip check terminates the process with an error. Once the application is compiled and the dependencies have been copied, the <code>java</code> command also works without network access. XML output does not require any PDF or JSON modules.</p>
 <h2 id="artifacts-and-entry-points">Artifacts and entry points</h2>
-<p>All Paniolo artifacts use group ID <code>io.github.nalukit</code>. When adding optional modules to this quickstart, use the same version <code>0.0.0-6c2d2dc169af</code> for each module.</p>
+<p>All Paniolo artifacts use group ID <code>io.github.nalukit</code>. When adding optional modules to this quickstart, use the same version <code>1.0.0-rc01</code> for each module.</p>
 <table>
 <thead>
 <tr><th>Artifact</th><th>Entry points and role</th></tr>
@@ -261,9 +253,9 @@ CII: valid, warnings=false, number=R-2026-001, payable=238.00 EUR
 <tr><td><code>paniolo-mustang</code></td><td><code>MustangInvoiceAdapter</code>, <code>MustangMapping</code>, <code>MappingLoss</code>, <code>FieldMapping</code>: optional migration from Mustang <code>IExportableTransaction</code></td></tr>
 </tbody>
 </table>
-<p>Modules can also be used individually. See their README files via the <a href="https://github.com/NaluKit/paniolo/blob/6c2d2dc169afa7bf266fa7feb36a7a5f296e67ad/README.md#installation">module index</a>. The generated JavaDoc includes all public types; utility types in <code>internal</code>, <code>base</code>, <code>util</code> and <code>common.validation</code> packages are implementation infrastructure rather than the recommended application entry points. <code>FacturXSupport</code>, <code>PdfaSupport</code> and <code>PdfLayoutSupport</code> are service-provider interfaces for alternative implementations, discovered with <code>ServiceLoader</code>; providers must be thread-safe.</p>
+<p>Modules can also be used individually. See their README files via the <a href="https://github.com/NaluKit/paniolo/blob/421eeba757f13af1e31a3d756aec0a4c6b0e7712/README.md#installation">module index</a>. The generated JavaDoc includes all public types; utility types in <code>internal</code>, <code>base</code>, <code>util</code> and <code>common.validation</code> packages are implementation infrastructure rather than the recommended application entry points. <code>FacturXSupport</code>, <code>PdfaSupport</code> and <code>PdfLayoutSupport</code> are service-provider interfaces for alternative implementations, discovered with <code>ServiceLoader</code>; providers must be thread-safe.</p>
 <h2 id="facade-reference">Facade reference</h2>
-<p>The entry point is <a href="https://github.com/NaluKit/paniolo/blob/6c2d2dc169afa7bf266fa7feb36a7a5f296e67ad/paniolo/src/main/java/io/github/nalukit/paniolo/Paniolo.java"><code>io.github.nalukit.paniolo.Paniolo</code></a>. Create one instance and reuse it. Writers and readers do not compile validation rules. Validators are initialized lazily and cached per facade; <code>warmUp()</code> prepares the XRechnung invoice validators.</p>
+<p>The entry point is <a href="https://github.com/NaluKit/paniolo/blob/421eeba757f13af1e31a3d756aec0a4c6b0e7712/paniolo/src/main/java/io/github/nalukit/paniolo/Paniolo.java"><code>io.github.nalukit.paniolo.Paniolo</code></a>. Create one instance and reuse it. Writers and readers do not compile validation rules. Validators are initialized lazily and cached per facade; <code>warmUp()</code> prepares the XRechnung invoice validators.</p>
 <h3 id="construction-and-detection">Construction and detection</h3>
 <table>
 <thead>
@@ -348,7 +340,7 @@ CII: valid, warnings=false, number=R-2026-001, payable=238.00 EUR
 <tr><td><code>ValidationResult validateDespatchAdvice(byte[] xmlOrPdf)</code></td><td>UBL schema and configured Peppol rules, or limited CIDA checks</td></tr>
 </tbody>
 </table>
-<p>Order-X BASIC and COMFORT are supported; EXTENDED has the supported COMFORT content. Some COMFORT and despatch-advice fields are outside the model. CIDA has no packaged official schema or business rules. See the <a href="https://github.com/NaluKit/paniolo/blob/6c2d2dc169afa7bf266fa7feb36a7a5f296e67ad/README.md#scope">scope and limitations</a> before selecting these formats.</p>
+<p>Order-X BASIC and COMFORT are supported; EXTENDED has the supported COMFORT content. Some COMFORT and despatch-advice fields are outside the model. CIDA has no packaged official schema or business rules. See the <a href="https://github.com/NaluKit/paniolo/blob/421eeba757f13af1e31a3d756aec0a4c6b0e7712/README.md#scope">scope and limitations</a> before selecting these formats.</p>
 <h2 id="model-reference">Model reference</h2>
 <p>Model packages start with <code>io.github.nalukit.paniolo.model</code>. Records are immutable; mutable builders are for one operation/thread. Prefer <code>Type.create()...build()</code> for named construction. Constructors and builders enforce structural checks; validation against the official XML rules is separate. JavaDoc documents record components with BT/BG references where applicable.</p>
 <table>
@@ -395,7 +387,7 @@ CII: valid, warnings=false, number=R-2026-001, payable=238.00 EUR
 </table>
 <p>A valid result is not proof that every possible stage ran. Without <code>paniolo-pdfa</code>, PDF validation includes <code>PDFA-NOT-CHECKED</code>; without configured Peppol rules it includes <code>PEPPOL-RULES-NOT-CHECKED</code>. CIDA reports <code>CIDA-NOT-CHECKED</code>. Decide which stages and findings your application requires. XSD failure skips Schematron execution. Rule bundles are trusted application resources; local imports and declared lookup documents are restricted to configured resources, and rules are not downloaded during validation.</p>
 <p>With <code>calculationCheck(true)</code>, invoice validations also recalculate the amounts and report differences in the stage <code>CALCULATION</code> with rule IDs starting with <code>PANIOLO-CALC-</code>. These findings are warnings or information and never change <code>isValid()</code>. Which warnings a receiving process must not accept is decided separately with <code>AcceptancePolicy.officialRules().rejectOn(ruleIds...)</code> or <code>rejectOnWarnings()</code>; the official result stays unchanged.</p>
-<p>For direct validation without the facade, create an <code>InvoiceValidator</code> from a <code>ValidationProfile</code> and reuse it. <code>ValidationProfile</code> describes local XSDs, compiled Schematron XSLTs, severity overrides and permitted lookup documents. Raw <code>.sch</code> sources are not compiled by this API. See the <a href="https://github.com/NaluKit/paniolo/blob/6c2d2dc169afa7bf266fa7feb36a7a5f296e67ad/paniolo-validation/README.md">validation module</a> for factories and report structure.</p>
+<p>For direct validation without the facade, create an <code>InvoiceValidator</code> from a <code>ValidationProfile</code> and reuse it. <code>ValidationProfile</code> describes local XSDs, compiled Schematron XSLTs, severity overrides and permitted lookup documents. Raw <code>.sch</code> sources are not compiled by this API. See the <a href="https://github.com/NaluKit/paniolo/blob/421eeba757f13af1e31a3d756aec0a4c6b0e7712/paniolo-validation/README.md">validation module</a> for factories and report structure.</p>
 <h2 id="configuration-and-optional-modules">Configuration and optional modules</h2>
 <p><code>Paniolo.builder()</code> exposes the following configuration methods; each returns the same builder:</p>
 <table>
@@ -415,17 +407,18 @@ CII: valid, warnings=false, number=R-2026-001, payable=238.00 EUR
 </tbody>
 </table>
 <p>The XRechnung, Factur-X, French and Order-X defaults are packaged dependencies. The Peppol Despatch Advice rules have no published license and must be obtained separately and configured. Rule paths must remain available while the facade is in use. Builders themselves are not thread-safe.</p>
-<p>To add PDF, rendering or JSON support to the example POM, add the corresponding artifact with group ID <code>io.github.nalukit</code> and version <code>0.0.0-6c2d2dc169af</code>. No explicit registration is needed for the PDF providers. Add both <code>paniolo-facturx</code> and <code>paniolo-pdfa</code> to include PDF/A checking, and <code>paniolo-pdf-layout</code> (which brings <code>paniolo-facturx</code>) to create PDFs without a PDF of your own.</p>
-<p><code>PanioloVisualizer.create().toHtml(document)</code> writes a standalone HTML page that shows an invoice, order or despatch advice with the web component <code>&lt;paniolo-viewer&gt;</code>; web applications load the component from <code>/paniolo-visualizer/paniolo-visualizer.js</code> in the artifact. See the <a href="https://github.com/NaluKit/paniolo/blob/6c2d2dc169afa7bf266fa7feb36a7a5f296e67ad/paniolo-visualizer/README.md">visualizer module</a>. <code>MustangInvoiceAdapter.create().map(transaction)</code> maps a Mustang invoice to the model and lists every value it cannot carry over; see the <a href="https://github.com/NaluKit/paniolo/blob/6c2d2dc169afa7bf266fa7feb36a7a5f296e67ad/paniolo-mustang/README.md">Mustang module</a>.</p>
-<p><code>PanioloJson.create()</code> is the JSON entry point. <code>toJson</code>, <code>toPrettyJson</code> and <code>toBytes</code> serialize the model; <code>read(input, Invoice.class)</code> also accepts <code>Order.class</code> and <code>DespatchAdvice.class</code>. The JSON is Paniolo's storage format and follows this model version, not a standardized invoice exchange format. Loading performs model checks. See the <a href="https://github.com/NaluKit/paniolo/blob/6c2d2dc169afa7bf266fa7feb36a7a5f296e67ad/paniolo-json/README.md">JSON module</a>.</p>
+<p>To add PDF, rendering or JSON support to the example POM, add the corresponding artifact with group ID <code>io.github.nalukit</code> and version <code>1.0.0-rc01</code>. No explicit registration is needed for the PDF providers. Add both <code>paniolo-facturx</code> and <code>paniolo-pdfa</code> to include PDF/A checking, and <code>paniolo-pdf-layout</code> (which brings <code>paniolo-facturx</code>) to create PDFs without a PDF of your own.</p>
+<p><code>PanioloVisualizer.create().toHtml(document)</code> writes a standalone HTML page that shows an invoice, order or despatch advice with the web component <code>&lt;paniolo-viewer&gt;</code>; web applications load the component from <code>/paniolo-visualizer/paniolo-visualizer.js</code> in the artifact. See the <a href="https://github.com/NaluKit/paniolo/blob/421eeba757f13af1e31a3d756aec0a4c6b0e7712/paniolo-visualizer/README.md">visualizer module</a>. <code>MustangInvoiceAdapter.create().map(transaction)</code> maps a Mustang invoice to the model and lists every value it cannot carry over; see the <a href="https://github.com/NaluKit/paniolo/blob/421eeba757f13af1e31a3d756aec0a4c6b0e7712/paniolo-mustang/README.md">Mustang module</a>.</p>
+<p><code>PanioloJson.create()</code> is the JSON entry point. <code>toJson</code>, <code>toPrettyJson</code> and <code>toBytes</code> serialize the model; <code>read(input, Invoice.class)</code> also accepts <code>Order.class</code> and <code>DespatchAdvice.class</code>. The JSON is Paniolo's storage format and follows this model version, not a standardized invoice exchange format. Loading performs model checks. See the <a href="https://github.com/NaluKit/paniolo/blob/421eeba757f13af1e31a3d756aec0a4c6b0e7712/paniolo-json/README.md">JSON module</a>.</p>
 <h2 id="complete-generated-javadoc">Complete generated JavaDoc</h2>
-<p>Generate the full API reference from the same exported source and local version as the quickstart:</p>
-<pre><code class="language-sh">mvn -B -ntp -f &quot;$PANIOLO_QUICKSTART_DIR/source/pom.xml&quot; \
-  -Drevision=0.0.0-6c2d2dc169af \
+<p>Generate the full API reference from the release sources (tag <code>1.0.0-rc01</code>):</p>
+<pre><code class="language-sh">git clone --depth 1 --branch 1.0.0-rc01 https://github.com/NaluKit/paniolo.git \
+  &quot;$PANIOLO_QUICKSTART_DIR/source&quot;
+mvn -B -ntp -f &quot;$PANIOLO_QUICKSTART_DIR/source/pom.xml&quot; \
   org.apache.maven.plugins:maven-javadoc-plugin:3.12.0:aggregate \
   -Dshow=public -Ddoclint=all,-missing -DfailOnError=true
 </code></pre>
-<p>Open <code>$PANIOLO_QUICKSTART_DIR/source/target/reports/apidocs/index.html</code>. This generated reference contains the public types, constructors, exact overloads, record parameters and method JavaDoc of the pinned source. It includes the application APIs, provider interfaces and public helpers. The optional benchmark module is not part of the default build; add <code>-Pbenchmark</code> to include it.</p>
+<p>Open <code>$PANIOLO_QUICKSTART_DIR/source/target/reports/apidocs/index.html</code>. This generated reference contains the public types, constructors, exact overloads, record parameters and method JavaDoc of the release. It includes the application APIs, provider interfaces and public helpers. The optional benchmark module is not part of the default build; add <code>-Pbenchmark</code> to include it.</p>
 <p>The command checks JavaDoc syntax, links and markup; <code>-missing</code> suppresses completeness warnings for individual members and enum constants. It does not claim every public member is documented. The Markdown reference remains available without generating HTML.</p>
 <h2 id="troubleshooting">Troubleshooting</h2>
 <table>
@@ -433,12 +426,12 @@ CII: valid, warnings=false, number=R-2026-001, payable=238.00 EUR
 <tr><th>Symptom</th><th>Resolution</th></tr>
 </thead>
 <tbody>
-<tr><td><code>git cat-file</code> cannot find the commit</td><td>Use a clone containing the pinned source commit. A branch name or newer snapshot is not an equivalent baseline.</td></tr>
-<tr><td>Maven cannot resolve <code>0.0.0-6c2d2dc169af</code></td><td>Finish step 1, and use the same local Maven repository/settings for the library and example builds. This version is installed locally, not downloaded from Central.</td></tr>
+<tr><td><code>git clone</code> cannot find <code>1.0.0-rc01</code></td><td>Use the tag <code>1.0.0-rc01</code>; it is created when the release is published. A branch name or newer snapshot is not an equivalent baseline.</td></tr>
+<tr><td>Maven cannot resolve <code>1.0.0-rc01</code></td><td>Check network access to Maven Central and that your Maven settings (mirrors, proxies, repository managers) allow release artifacts from Central.</td></tr>
 <tr><td>Java reports an unsupported class version or compiler release</td><td>Run both Maven and <code>java</code> with JDK 21; check <code>mvn -version</code> as well as <code>java -version</code>.</td></tr>
 <tr><td>First build cannot download rules/dependencies</td><td>Enable network access for the build. Runtime processing uses the packaged rule bundles. Do not skip checksum failures.</td></tr>
 <tr><td><code>IllegalStateException</code> names a PDF module</td><td>Add <code>paniolo-facturx</code> at the same version; add <code>paniolo-pdfa</code> for conformance checks and <code>paniolo-pdf-layout</code> for rendered pages.</td></tr>
-<tr><td>Invalid result or warnings in the quickstart</td><td>Inspect the XML report in the exception. Confirm the exact source/version and unchanged sample values; the sample checks both syntaxes.</td></tr>
+<tr><td>Invalid result or warnings in the quickstart</td><td>Inspect the XML report in the exception. Confirm the exact version and unchanged sample values; the sample checks both syntaxes.</td></tr>
 <tr><td>App cannot find <code>example.Quickstart</code></td><td>Run the compile/copy step and the <code>java</code> command from the <code>app</code> directory. The classpath shown is for Linux/macOS.</td></tr>
 </tbody>
 </table>

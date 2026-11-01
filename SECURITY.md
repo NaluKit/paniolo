@@ -7,11 +7,10 @@ release; older versions receive no patches. To get security fixes, update to the
 
 | Version                | Supported | Notes                                                                 |
 |------------------------|-----------|-----------------------------------------------------------------------|
+| `1.0.x`                | Yes       | Current release line (`1.0.0-rc01`), published to Maven Central.      |
 | `HEAD-SNAPSHOT`        | No        | Development builds of the `dev` branch. Not for production use.       |
-| Local `0.0.0-<commit>` | No        | Source baselines built locally for the versioned API reference.       |
 
-Paniolo has no published release yet. Once the first version is released, it is listed here as
-supported. Each new release replaces the previous one as the only supported version.
+Each new release replaces the previous one as the only supported version.
 
 Paniolo processes invoices and orders received from third parties. Security relevant are in
 particular XML parsing (external entities, entity expansion), PDF parsing and attachment

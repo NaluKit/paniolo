@@ -24,7 +24,7 @@ After installing Paniolo from the repository root with `mvn install`, add:
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo</artifactId>
-  <version>HEAD-SNAPSHOT</version>
+  <version>1.0.0-rc01</version>
 </dependency>
 ```
 
