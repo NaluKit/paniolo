@@ -66,7 +66,7 @@
   </developers>
 
   <properties>
-    <revision>HEAD-SNAPSHOT</revision>
+    <revision>1.0.0-rc01</revision>
 
     <junit.version>5.14.4</junit.version>
     <saxon.version>12.10</saxon.version>
@@ -334,7 +334,7 @@
               <centralBaseUrl>https://central.sonatype.com</centralBaseUrl>
               <centralSnapshotsUrl>https://central.sonatype.com/repository/maven-snapshots/</centralSnapshotsUrl>
               <!--              <autoPublish>true</autoPublish>-->
-<!--              <waitUntil>published</waitUntil>-->
+              <!--              <waitUntil>published</waitUntil>-->
             </configuration>
           </plugin>
         </plugins>
