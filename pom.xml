@@ -330,8 +330,11 @@
               <excludeArtifacts>
                 <excludeArtifact>paniolo-cli</excludeArtifact>
               </excludeArtifacts>
-              <autoPublish>true</autoPublish>
-              <waitUntil>published</waitUntil>
+              <publishingServerId>central</publishingServerId>
+              <centralBaseUrl>https://central.sonatype.com</centralBaseUrl>
+              <centralSnapshotsUrl>https://central.sonatype.com/repository/maven-snapshots/</centralSnapshotsUrl>
+              <!--              <autoPublish>true</autoPublish>-->
+<!--              <waitUntil>published</waitUntil>-->
             </configuration>
           </plugin>
         </plugins>
