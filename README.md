@@ -188,7 +188,7 @@ Technical references: [XRechnung](https://xeinkauf.de/xrechnung/),
 
 For a complete, runnable example with a pinned source commit, exact Maven coordinates, and the
 expected output, see the [versioned API reference and reproducible quickstart](docs/api/1.0.0-rc01.md)
-(release `1.0.0-rc01` at `421eeba757f1`). It also documents the facade, model, optional
+(release `1.0.0-rc01` at `7b7f6401ef2d`). It also documents the facade, model, optional
 modules, validation results, and how to generate the full JavaDoc for that baseline.
 
 The reference above describes release `1.0.0-rc01` and uses its Maven Central artifacts. Each release
