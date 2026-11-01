@@ -2,14 +2,6 @@
 ### GWT template
 *.class
 
-#compilation logs
-.gwt/
-
-#old GWT (1.5) created this dir
-.gwt-tmp/
-### Java template
-# Compiled class file
-
 # Log file
 *.log
 
