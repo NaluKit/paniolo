@@ -39,15 +39,15 @@
                                                                                           href="quickstart.html">Quickstart</a><a href="formats.html">Formats
                                                                                                                                                    &
                                                                                                                                                    modules</a><a href="api.html">API
-                                                                                                                                                                                 reference</a><span>Source baseline</span>
-                    <p class="pn-meta">HEAD-SNAPSHOT<br><code>6c2d2dc169af</code></p></aside>
+                                                                                                                                                                                 reference</a><span>Release</span>
+                    <p class="pn-meta">1.0.0-rc01<br><code>7b7f6401ef2d</code></p></aside>
                 <article class="pn-docbody">
                     <div class="pn-crumb">Documentation / Getting started</div>
                     <h1>Your first e-invoice.</h1>
                     <p class="pn-lead">Build a complete invoice, write it as UBL and CII, validate it, and read it back.</p>
-                    <div class="pn-note">This documentation describes HEAD-SNAPSHOT at commit <code>6c2d2dc169af</code>.
-                                         Paniolo has no published release yet; the reproducible example uses local build
-                                         coordinates, not a Maven Central release.
+                    <div class="pn-note">This documentation describes release 1.0.0-rc01 at commit <code>7b7f6401ef2d</code>.
+                                         The reproducible example uses the published Maven Central artifacts of
+                                         exactly this version.
                     </div>
                     <h2>1. Prepare Java and Maven</h2>
                     <p>Paniolo needs Java 21 or newer at build and run time; there is no build for older Java versions.
@@ -57,16 +57,15 @@
                     <p>Applications fixed to Java 11 or 17 can run Paniolo in a separate Java 21 process, for example
                        behind the command line or a small HTTP service, and exchange XML, PDF, or JSON with it.</p>
                     <h2>2. Add Paniolo</h2>
-                    <p>For development against your checkout, run <code>mvn install</code> at the repository root, then add:</p>
+                    <p>Add the release from Maven Central:</p>
                     <pre><code>&lt;dependency&gt;
   &lt;groupId&gt;io.github.nalukit&lt;/groupId&gt;
   &lt;artifactId&gt;paniolo&lt;/artifactId&gt;
-  &lt;version&gt;HEAD-SNAPSHOT&lt;/version&gt;
+  &lt;version&gt;1.0.0-rc01&lt;/version&gt;
 &lt;/dependency&gt;</code></pre>
                     <p><code>paniolo</code> brings the model, UBL and CII, validation, and the official XRechnung, Factur-X,
                        and Order-X rules. PDF support, PDF/A checks, rendering, JSON, and the browser viewer are optional
-                       modules. For a fixed and reproducible build, follow the exact source-export and version steps in
-                       the reference instead.</p>
+                       modules. For a fixed and reproducible build, follow the exact steps in the reference.</p>
                     <h2>3. Create, export, and validate</h2>
                     <p>The complete example includes imports, seller and buyer details, invoice lines, and checks of the result.
                        Use it as the starting point for your application.</p>

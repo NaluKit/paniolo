@@ -29,7 +29,7 @@ Invoice received = paniolo.read(Files.readAllBytes(path));    // UBL, CII, ZUGFe
 - [What Paniolo can do](#what-paniolo-can-do)
 - [Scope](#scope)
 - [Installation](#installation)
-- [Versioned API reference and reproducible quickstart](docs/api/HEAD-SNAPSHOT-6c2d2dc169af.md)
+- [Versioned API reference and reproducible quickstart](docs/api/1.0.0-rc01.md)
 - [Using Paniolo](#using-paniolo): [send an invoice](#send-an-xrechnung),
   [receive an invoice](#receive-and-process-an-invoice), [Factur-X](#create-a-factur-x--zugferd-pdf),
   [ZUGFeRD 1.0](#migrate-zugferd-10), [Order-X](#orders-order-x),
@@ -187,12 +187,12 @@ Technical references: [XRechnung](https://xeinkauf.de/xrechnung/),
 ## Installation
 
 For a complete, runnable example with a pinned source commit, exact Maven coordinates, and the
-expected output, see the [versioned API reference and reproducible quickstart](docs/api/HEAD-SNAPSHOT-6c2d2dc169af.md)
-(API baseline: `HEAD-SNAPSHOT` at `6c2d2dc169af`). It also documents the facade, model, optional
+expected output, see the [versioned API reference and reproducible quickstart](docs/api/1.0.0-rc01.md)
+(release `1.0.0-rc01` at `7b7f6401ef2d`). It also documents the facade, model, optional
 modules, validation results, and how to generate the full JavaDoc for that baseline.
 
-Paniolo has no published release yet; the reference above describes a pinned source baseline and
-builds it locally. Each release gets its own reference `docs/api/<version>.md` whose quickstart
+The reference above describes release `1.0.0-rc01` and uses its Maven Central artifacts. Each release
+gets its own reference `docs/api/<version>.md` whose quickstart
 uses the published Maven Central artifacts of exactly that version (see
 [releases and security](#releases-and-security)).
 
@@ -202,15 +202,16 @@ Paniolo needs **Java 21** or newer, at build and at run time; there is no build 
 versions. If an application cannot leave Java 11 or 17, run Paniolo in its own Java 21 process (the
 [CLI](#command-line) or a small service around the facade) and exchange XML, PDF, or JSON with it.
 
-The Maven group ID is `io.github.nalukit`. The current development version is `HEAD-SNAPSHOT`;
-build it with `mvn install` from the repository root (see [building](#building-and-testing)).
+The Maven group ID is `io.github.nalukit`. The current release is `1.0.0-rc01` on Maven Central. The
+development version `HEAD-SNAPSHOT` is built with `mvn install` from the repository root (see
+[building](#building-and-testing)).
 Most applications need only `paniolo`:
 
 ```xml
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo</artifactId>
-  <version>HEAD-SNAPSHOT</version>
+  <version>1.0.0-rc01</version>
 </dependency>
 ```
 
@@ -460,7 +461,7 @@ JSON is a storage format, not an exchange format; see the [module README](paniol
 the documents are valid:
 
 ```sh
-java -jar paniolo-cli/target/paniolo-cli-HEAD-SNAPSHOT-all.jar validate invoice.xml
+java -jar paniolo-cli/target/paniolo-cli-1.0.0-rc01-all.jar validate invoice.xml
 paniolo to-xml invoice.json --syntax CII -o invoice.xml
 paniolo to-facturx invoice.json --pdf layout.pdf --profile EN16931 -o factur-x.pdf
 paniolo validate -f json inbox/*.pdf | jq -r 'select(.valid | not) | .file'
@@ -891,7 +892,7 @@ version it uses.
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo-xrechnung-rules</artifactId>
-  <version>HEAD-SNAPSHOT</version>
+  <version>1.0.0-rc01</version>
 </dependency>
 ```
 
@@ -1056,7 +1057,7 @@ Hybrid invoices (a PDF/A-3 document with embedded CII XML) need the optional mod
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo-facturx</artifactId>
-  <version>HEAD-SNAPSHOT</version>
+  <version>1.0.0-rc01</version>
 </dependency>
 ```
 

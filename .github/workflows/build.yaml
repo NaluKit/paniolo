@@ -196,7 +196,7 @@ jobs:
     permissions:
       contents: write
       packages: write
-    needs: [ test-jdk21, owasp ]
+    needs: [ test-jdk21, test-jdk25, owasp ]
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v5

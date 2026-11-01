@@ -10,7 +10,7 @@ it. It is based on Apache PDFBox and brings
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo-pdf-layout</artifactId>
-  <version>HEAD-SNAPSHOT</version>
+  <version>1.0.0-rc01</version>
 </dependency>
 ```
 
