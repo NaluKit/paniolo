@@ -166,6 +166,20 @@ public final class XmlElement {
   }
 
   /**
+   * First element reached by the path that carries text, or null. An empty element such as
+   * {@code <ram:ID/>} counts as absent, so an optional identifier written empty is not read.
+   *
+   * @param path slash separated prefixed names
+   * @return the first element with non-blank text, or null
+   */
+  public XmlElement findWithText(String path) {
+    return all(path).stream()
+                    .filter(found -> found.text() != null)
+                    .findFirst()
+                    .orElse(null);
+  }
+
+  /**
    * Trimmed text content; null for blank content.
    *
    * @return the text, or null

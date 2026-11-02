@@ -594,6 +594,22 @@ class InvoiceTest {
     assertNotNull(PaymentInstruction.create()
                                     .meansCode(PaymentMeansCode.CODE_10)
                                     .build());
+    // Payment to bank account may name the account (EN 16931 requires it for 30 and 58 only).
+    assertEquals(List.of(account),
+                 PaymentInstruction.create()
+                                   .meansCode(PaymentMeansCode.CODE_42)
+                                   .addCreditTransfer(account)
+                                   .build()
+                                   .creditTransfers());
+    assertNotNull(PaymentInstruction.create()
+                                    .meansCode(PaymentMeansCode.CODE_42)
+                                    .build());
+    assertThrows(IllegalArgumentException.class,
+                 () -> PaymentInstruction.create()
+                                         .meansCode(PaymentMeansCode.CODE_42)
+                                         .addCreditTransfer(account)
+                                         .directDebit(mandate)
+                                         .build());
   }
 
   @Test

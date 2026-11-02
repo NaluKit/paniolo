@@ -378,7 +378,7 @@ public final class ZugferdV1InvoiceReader
       var payee = settlement.find("ram:PayeeTradeParty");
       if (payee != null) {
         var globalId = payee.text("ram:ID") == null ?
-                       payee.find("ram:GlobalID") :
+                       payee.findWithText("ram:GlobalID") :
                        null;
         builder.payee(Payee.create()
                            .name(payee.text("ram:Name"))
@@ -626,7 +626,7 @@ public final class ZugferdV1InvoiceReader
                .originCountry(XmlElement.code(product.text("ram:OriginTradeCountry/ram:ID"),
                                               Country::of,
                                               "country"));
-        var standard = product.find("ram:GlobalID");
+        var standard = product.findWithText("ram:GlobalID");
         if (standard != null) {
           builder.standardItemId(standard.text(),
                                  standard.attribute("schemeID"));

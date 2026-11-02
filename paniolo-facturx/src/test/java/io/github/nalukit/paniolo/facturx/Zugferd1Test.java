@@ -21,7 +21,9 @@ import io.github.nalukit.paniolo.Paniolo;
 import io.github.nalukit.paniolo.config.FacturXProfile;
 import io.github.nalukit.paniolo.config.PdfAttachment;
 import io.github.nalukit.paniolo.model.common.CashDiscount;
+import io.github.nalukit.paniolo.model.common.CreditTransfer;
 import io.github.nalukit.paniolo.model.common.ProcessControl;
+import io.github.nalukit.paniolo.model.common.value.PaymentMeansCode;
 import io.github.nalukit.paniolo.validation.Severity;
 import io.github.nalukit.paniolo.xml.ReadMode;
 import io.github.nalukit.paniolo.xml.ReadWarning;
@@ -268,6 +270,56 @@ class Zugferd1Test {
    * ZUGFeRD 1.0 EXTENDED allows lines with a text only and lines without identifier, as the
    * official examples of the ZUGFeRD corpus use them (Mustang issues #594 and #572).
    */
+  /**
+   * Payment means 42 (payment to bank account) with the payee account is valid ZUGFeRD 1.0; the
+   * code and the account are kept as they are.
+   */
+  @Test
+  void readsPaymentToBankAccountWithItsAccount() {
+    String xml = new String(sample("comfort.xml"),
+                            StandardCharsets.UTF_8).replace("<ram:TypeCode>58</ram:TypeCode>",
+                                                            "<ram:TypeCode>42</ram:TypeCode>")
+                                                   .replace("<ram:Information>SEPA-Überweisung</ram:Information>",
+                                                            "<ram:Information>Zahlung auf Bankkonto</ram:Information>");
+    byte[] bytes  = xml.getBytes(StandardCharsets.UTF_8);
+    var    result = PANIOLO.validate(bytes);
+    assertTrue(result.isValid(),
+               () -> result.messages()
+                           .toString());
+    for (var mode : ReadMode.values()) {
+      var read    = PANIOLO.read(bytes,
+                                 mode);
+      var payment = read.invoice()
+                        .paymentInstruction();
+      assertEquals(PaymentMeansCode.CODE_42,
+                   payment.meansCode(),
+                   mode::toString);
+      assertEquals(List.of(new CreditTransfer("DE89370400440532013000",
+                                              "Muster GmbH",
+                                              "COBADEFFXXX")),
+                   payment.creditTransfers(),
+                   mode::toString);
+      assertEquals(List.of(),
+                   read.warnings(),
+                   mode::toString);
+    }
+    assertEquals(PaymentMeansCode.CODE_42,
+                 PANIOLO.importInvoice(bytes,
+                                       ReadMode.LENIENT)
+                        .invoice()
+                        .paymentInstruction()
+                        .meansCode());
+    // The migrated Factur-X EN 16931 document keeps code and account and stays valid.
+    byte[] migrated = PANIOLO.migrateZugferd1(bytes);
+    var    en16931  = PANIOLO.validate(migrated,
+                                       FacturXProfile.EN16931);
+    assertTrue(en16931.isValid(),
+               () -> en16931.messages()
+                            .toString());
+    assertEquals(PANIOLO.read(bytes),
+                 PANIOLO.read(migrated));
+  }
+
   @Test
   void readsTextLinesAndLinesWithoutIdentifier() {
     String xml = new String(sample("comfort.xml"),
