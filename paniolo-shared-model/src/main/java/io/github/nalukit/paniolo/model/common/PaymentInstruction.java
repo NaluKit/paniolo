@@ -25,13 +25,16 @@ import java.util.Objects;
 
 /**
  * Payment instructions (BG-16). Credit transfer (30/58) requires accounts, payment card
- * (48/54/55) requires card information and direct debit (59) requires a mandate. Only an
+ * (48/54/55) requires card information and direct debit (59) requires a mandate. Payment to bank
+ * account (42) may name accounts (BG-17): EN 16931 requires them for 30 and 58 only (BR-61) and
+ * forbids them for no code, and ZUGFeRD 1.0 invoices commonly use 42 with an IBAN. Only an
  * EXTENDED-CTC-FR invoice may name a card next to the credit transfer accounts.
  *
  * @param meansCode             payment means code (BT-81); required
  * @param meansText             payment means text (BT-82), or null
  * @param remittanceInformation remittance information (BT-83), or null
- * @param creditTransfers       credit transfer accounts (BG-17); required for payment means 30 and 58
+ * @param creditTransfers       credit transfer accounts (BG-17); required for payment means 30 and 58,
+ *                              optional for 42
  * @param paymentCard           payment card information (BG-18); required for payment means 48, 54 and 55;
  *                              next to credit transfer accounts (30/58) only in an EXTENDED-CTC-FR invoice
  * @param directDebit           direct debit information (BG-19); required for payment means 59
@@ -62,6 +65,10 @@ public record PaymentInstruction(PaymentMeansCode meansCode, String meansText, S
                                   creditTransfers.isEmpty(),
                                   paymentCard == null,
                                   "SEPA direct debit requires a mandate and no account or card");
+      case CODE_42 -> requireOnly(true,
+                                  true,
+                                  paymentCard == null && directDebit == null,
+                                  "Payment to bank account takes no card or mandate");
       default -> requireOnly(true,
                              creditTransfers.isEmpty(),
                              paymentCard == null && directDebit == null,

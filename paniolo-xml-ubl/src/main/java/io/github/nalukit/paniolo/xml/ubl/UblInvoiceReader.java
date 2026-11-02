@@ -243,7 +243,7 @@ public final class UblInvoiceReader
     }
     return party.children("cac:PartyIdentification")
                 .stream()
-                .map(id -> id.find("cbc:ID"))
+                .map(id -> id.findWithText("cbc:ID"))
                 .filter(id -> id != null && "SEPA".equals(id.attribute("schemeID")))
                 .map(XmlElement::text)
                 .findFirst()
@@ -262,12 +262,13 @@ public final class UblInvoiceReader
   }
 
   /**
-   * Returns every party identifier that is no SEPA creditor identifier, in document order.
+   * Returns every party identifier that is no SEPA creditor identifier, in document order; empty
+   * identifier elements count as absent.
    */
   private static List<XmlElement> identifiers(XmlElement party) {
     return party.children("cac:PartyIdentification")
                 .stream()
-                .map(id -> id.find("cbc:ID"))
+                .map(id -> id.findWithText("cbc:ID"))
                 .filter(id -> id != null && !"SEPA".equals(id.attribute("schemeID")))
                 .toList();
   }
@@ -276,7 +277,7 @@ public final class UblInvoiceReader
     if (party == null) {
       return null;
     }
-    var    endpoint = party.find("cbc:EndpointID");
+    var    endpoint = party.findWithText("cbc:EndpointID");
     String vatId    = null;
     String taxId    = null;
     for (var scheme : party.children("cac:PartyTaxScheme")) {
@@ -298,7 +299,7 @@ public final class UblInvoiceReader
     var identifier  = identifiers.isEmpty() ?
                       null :
                       identifiers.getFirst();
-    var legalId     = party.find("cac:PartyLegalEntity/cbc:CompanyID");
+    var legalId     = party.findWithText("cac:PartyLegalEntity/cbc:CompanyID");
     var builder     = Party.create();
     // Further identifiers, e.g. a second seller identifier (BT-29 is repeatable).
     for (var further : identifiers.subList(Math.min(1,
@@ -345,7 +346,7 @@ public final class UblInvoiceReader
       return null;
     }
     var identifier = identifier(payee);
-    var legalId    = payee.find("cac:PartyLegalEntity/cbc:CompanyID");
+    var legalId    = payee.findWithText("cac:PartyLegalEntity/cbc:CompanyID");
     return Payee.create()
                 .name(payee.text("cac:PartyName/cbc:Name"))
                 .identifier(identifier == null ?
@@ -376,7 +377,7 @@ public final class UblInvoiceReader
       return null;
     }
     var location = delivery.find("cac:DeliveryLocation/cac:Address");
-    var locationId = delivery.find("cac:DeliveryLocation/cbc:ID");
+    var locationId = delivery.findWithText("cac:DeliveryLocation/cbc:ID");
     return new DeliveryInformation(delivery.text("cac:DeliveryParty/cac:PartyName/cbc:Name"),
                                    locationId == null ?
                                    null :
@@ -464,12 +465,12 @@ public final class UblInvoiceReader
       builder.period(new InvoicePeriod(period.isoDate("cbc:StartDate"),
                                        period.isoDate("cbc:EndDate")));
     }
-    var object = line.find("cac:DocumentReference/cbc:ID");
+    var object = line.findWithText("cac:DocumentReference/cbc:ID");
     if (object != null) {
       builder.objectId(object.text(),
                        object.attribute("schemeID"));
     }
-    var standard = line.find("cac:Item/cac:StandardItemIdentification/cbc:ID");
+    var standard = line.findWithText("cac:Item/cac:StandardItemIdentification/cbc:ID");
     if (standard != null) {
       builder.standardItemId(standard.text(),
                              standard.attribute("schemeID"));

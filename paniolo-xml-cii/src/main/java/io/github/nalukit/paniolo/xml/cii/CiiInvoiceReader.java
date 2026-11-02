@@ -237,10 +237,10 @@ public final class CiiInvoiceReader
     // BT-71 is one location identifier: ram:ID, or ram:GlobalID with its scheme (BT-71-1).
     var    local    = shipTo == null ?
                       null :
-                      shipTo.find("ram:ID");
+                      shipTo.findWithText("ram:ID");
     var    global   = shipTo == null ?
                       null :
-                      shipTo.find("ram:GlobalID");
+                      shipTo.findWithText("ram:GlobalID");
     var    location = local != null ?
                       local :
                       global;
@@ -287,7 +287,7 @@ public final class CiiInvoiceReader
         taxId = id.text();
       }
     }
-    var uri     = party.find("ram:URIUniversalCommunication/ram:URIID");
+    var uri     = party.findWithText("ram:URIUniversalCommunication/ram:URIID");
     var contact = party.find("ram:DefinedTradeContact");
     // A contact with department, type, or fax is an EXTENDED contact.
     ExtendedContact extendedContact = null;
@@ -300,8 +300,10 @@ public final class CiiInvoiceReader
                                             contact.text("ram:EmailURIUniversalCommunication/ram:URIID"));
       contact         = null;
     }
-    var globalId = party.find("ram:GlobalID");
-    var legalId  = party.find("ram:SpecifiedLegalOrganization/ram:ID");
+    // Empty identifier elements count as absent.
+    var localId  = party.findWithText("ram:ID");
+    var globalId = party.findWithText("ram:GlobalID");
+    var legalId  = party.findWithText("ram:SpecifiedLegalOrganization/ram:ID");
     var builder = Party.create()
                        .name(party.text("ram:Name"))
                        .additionalLegalInformation(party.text("ram:Description"))
@@ -322,10 +324,10 @@ public final class CiiInvoiceReader
                                                     address(party.find("ram:SpecifiedLegalOrganization/ram:PostalTradeAddress")),
                                                     extendedContact,
                                                     // A global identifier next to ram:ID.
-                                                    !orderX || party.text("ram:ID") == null || globalId == null ?
+                                                    !orderX || localId == null || globalId == null ?
                                                     null :
                                                     globalId.text(),
-                                                    !orderX || party.text("ram:ID") == null || globalId == null ?
+                                                    !orderX || localId == null || globalId == null ?
                                                     null :
                                                     globalId.attribute("schemeID")))
                        .legalRegistrationId(legalId == null ?
@@ -335,8 +337,8 @@ public final class CiiInvoiceReader
                                             null :
                                             legalId.attribute("schemeID"));
     // An identifier without scheme is ram:ID, one with scheme ram:GlobalID.
-    if (party.text("ram:ID") != null) {
-      builder.identifier(party.text("ram:ID"));
+    if (localId != null) {
+      builder.identifier(localId.text());
     } else if (globalId != null) {
       builder.identifier(globalId.text(),
                          globalId.attribute("schemeID"));
@@ -346,12 +348,16 @@ public final class CiiInvoiceReader
       // identifier next to the local one; Order-X keeps the latter in its EXTENDED information.
       var further = new ArrayList<PartyIdentifier>();
       for (var id : party.children("ram:ID")) {
-        further.add(new PartyIdentifier(id.text(),
-                                        null));
+        if (id.text() != null) {
+          further.add(new PartyIdentifier(id.text(),
+                                          null));
+        }
       }
       for (var id : party.children("ram:GlobalID")) {
-        further.add(new PartyIdentifier(id.text(),
-                                        id.attribute("schemeID")));
+        if (id.text() != null) {
+          further.add(new PartyIdentifier(id.text(),
+                                          id.attribute("schemeID")));
+        }
       }
       further.subList(0,
                       Math.min(1,
@@ -558,7 +564,7 @@ public final class CiiInvoiceReader
              .originCountry(XmlElement.code(product.text("ram:OriginTradeCountry/ram:ID"),
                                             Country::of,
                                             "country"));
-      var standard = product.find("ram:GlobalID");
+      var standard = product.findWithText("ram:GlobalID");
       if (standard != null) {
         builder.standardItemId(standard.text(),
                                standard.attribute("schemeID"));
@@ -767,9 +773,9 @@ public final class CiiInvoiceReader
     }
     // An identifier without scheme is ram:ID, one with scheme ram:GlobalID.
     var globalId = payee.text("ram:ID") == null ?
-                   payee.find("ram:GlobalID") :
+                   payee.findWithText("ram:GlobalID") :
                    null;
-    var legalId = payee.find("ram:SpecifiedLegalOrganization/ram:ID");
+    var legalId = payee.findWithText("ram:SpecifiedLegalOrganization/ram:ID");
     return Payee.create()
                 .name(payee.text("ram:Name"))
                 .identifier(globalId == null ?

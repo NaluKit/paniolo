@@ -726,7 +726,9 @@ All details in the example are fictitious.
   schemes remains.
 - Payment means: credit transfer `30`/`58` with one or more `CreditTransfer` accounts, payment card `48`/`54`/`55`
   with `PaymentCardInformation`, SEPA direct debit `59` with `DirectDebit` (mandate, creditor ID, debited account).
-  Other codes carry no account data.
+  Payment to bank account `42` may name `CreditTransfer` accounts (optional): EN 16931 requires accounts for
+  `30`/`58` only (BR-61) and forbids them for no code, and ZUGFeRD 1.0 invoices commonly state `42` with an IBAN.
+  The code is kept as stated, not changed to `58`. Other codes carry no account data.
 - Supporting documents (BG-24): `.addSupportingDocument(AdditionalSupportingDocument.create().reference("Timesheet")
   .attachment(Attachment.create().content(bytes).mimeCode("application/pdf").filename("timesheet.pdf").build()).build())`.
 - Allowances and charges also take a base amount, percentage, and reason code (BT-92 to BT-105).
@@ -765,6 +767,11 @@ and the amount due with the values stated in the document. A difference raises a
 `IllegalArgumentException`: it indicates content outside the model, such as CII sub-lines of
 other producers or a line amount that is not quantity x net price, that would otherwise be lost
 silently. Run [validation](#validating-xml) first for documents from external sources; the readers check structure, not business rules.
+
+Empty optional elements, such as a seller written as `<ram:SellerTradeParty><ram:ID/>...`, an empty
+`ram:GlobalID`, `cbc:EndpointID`, or `cac:PartyIdentification/cbc:ID`, count as absent in both read
+modes and give no warning. EN 16931 and Factur-X allow them; XRechnung and Peppol forbid them
+(`PEPPOL-EN16931-R008`), which validation reports.
 
 For the supported deviations below, pass `ReadMode.LENIENT`. Structural model restrictions
 still apply; this is not a general import mode for every valid invoice. The result carries the
