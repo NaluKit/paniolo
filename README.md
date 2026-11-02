@@ -40,7 +40,15 @@ Invoice received = paniolo.read(Files.readAllBytes(path));    // UBL, CII, ZUGFe
   [validating Factur-X](#validating-factur-x--zugferd),
   [localized texts](#localized-enum-texts), [thread safety](#thread-safety-and-multi-user-use),
   [logging](#logging), [building](#building-and-testing), [releases and security](#releases-and-security),
-  [license](#license)
+  [license](#license), [the name](#the-name)
+
+## The name
+
+*Paniolo* is the Hawaiian word for a cowboy. In the 1830s, King Kamehameha III brought vaqueros
+from Mexico, then Spanish-speaking, to Hawaii to tame the wild cattle; the islanders called them
+*Españoles*, which became *paniolo* in Hawaiian. Like the other NaluKit projects (*nalu* is
+Hawaiian for "wave"), Paniolo carries a Hawaiian name, and the rider with the lasso in the logo is
+a paniolo rounding up invoices.
 
 ## What Paniolo can do
 
