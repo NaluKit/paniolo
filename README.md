@@ -1357,7 +1357,8 @@ version in Git. Release version, tag, Maven artifacts, the versioned API referen
 [`scripts/release/check-release.sh`](scripts/release/check-release.sh) checks this before and
 after publishing; its header describes the static checks and the `--artifacts` check against
 Maven Central. `HEAD-SNAPSHOT` is the development build of the `dev` branch and is not supported
-for production use.
+for production use. Changes per release, and those not yet released, are listed in
+[CHANGELOG.md](CHANGELOG.md).
 
 Supported release lines and how to report a vulnerability privately are described in
 [SECURITY.md](SECURITY.md). Please do not report vulnerabilities in public issues.
