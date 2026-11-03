@@ -26,9 +26,44 @@ on:
       - "CODE_OF_CONDUCT.md"
       - "README.md"
       - "SECURITY.md"
+  pull_request:
+    branches:
+      - dev
+      - main
+    paths-ignore:
+      - "CODE_OF_CONDUCT.md"
+      - "README.md"
+      - "SECURITY.md"
+
 jobs:
-  build-jdk21:
+  verify:
     runs-on: ubuntu-26.04
+    strategy:
+      fail-fast: false
+      matrix:
+        java: [ '21', '25' ]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+          cache: maven
+      - name: Verify with Maven
+        run: mvn verify -ntp
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: test-reports-jdk${{ matrix.java }}
+          path: |
+            **/target/surefire-reports/
+            **/target/failsafe-reports/
+
+  # Builds sources and JavaDoc with the release profile, without signing or publishing anything,
+  # so problems with the release build show up before a merge and not only in the deploy jobs.
+  release-dry-run:
+    runs-on: ubuntu-26.04
+    needs: [ verify ]
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-java@v5
@@ -36,23 +71,12 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
-      - name: Compile with Maven
-        run: mvn compile -ntp
-  build-jdk25:
-    runs-on: ubuntu-26.04
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '25'
-          cache: maven
-      - name: Compile with Maven
-        run: mvn compile -ntp
+      - name: Package with release profile
+        run: mvn verify -ntp -DskipTests -Dgpg.skip -P release
 
   check-versions:
     runs-on: ubuntu-26.04
-    needs: [ build-jdk21, build-jdk25 ]
+    needs: [ verify ]
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v5
@@ -64,41 +88,6 @@ jobs:
       - name: Check versions with Maven
         run: mvn versions:display-dependency-updates -ntp
 
-  test-jdk21:
-    runs-on: ubuntu-26.04
-    needs: [ build-jdk21 ]
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '21'
-          cache: maven
-      - name: Test with Maven
-        run: mvn test -ntp
-      - uses: actions/upload-artifact@v7
-        if: failure()
-        with:
-          name: surefire-report-jdk21
-          path: "**/target/surefire-reports/"
-  test-jdk25:
-    runs-on: ubuntu-26.04
-    needs: [ build-jdk25 ]
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '25'
-          cache: maven
-      - name: Test with Maven
-        run: mvn test -ntp
-      - uses: actions/upload-artifact@v7
-        if: failure()
-        with:
-          name: surefire-report-jdk25
-          path: "**/target/surefire-reports/"
-
   owasp:
     runs-on: ubuntu-26.04
     timeout-minutes: 8
@@ -106,7 +95,7 @@ jobs:
       actions: read
       contents: read
       security-events: write
-    needs: [ build-jdk21, build-jdk25 ]
+    needs: [ verify ]
     services:
       owasp-db:
         image: nalusolutionsgmbh/owasp-maven-action:latest
@@ -141,8 +130,8 @@ jobs:
     permissions:
       contents: write
       packages: write
-    needs: [ test-jdk21, test-jdk25, owasp ]
-    if: github.ref == 'refs/heads/dev'
+    needs: [ verify, release-dry-run, owasp ]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-java@v5
@@ -196,8 +185,8 @@ jobs:
     permissions:
       contents: write
       packages: write
-    needs: [ test-jdk21, test-jdk25, owasp ]
-    if: github.ref == 'refs/heads/main'
+    needs: [ verify, release-dry-run, owasp ]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v5
         with:
