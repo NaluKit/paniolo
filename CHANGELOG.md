@@ -6,6 +6,15 @@ reference in `docs/api/<version>.md`.
 
 ## [Unreleased]
 
+### Changed
+
+- Validation report PDF (`toReportPdf`, `paniolo validate -f pdf`) laid out as conformance report:
+  a verdict at the top in the color of the result (conform, conform with warnings, not conform –
+  rejection recommended), the number of findings per severity, the validation stages with their
+  findings and result, Schematron and PDF/A statistics when the validation collected them, and
+  every finding as a block with severity, rule, message and location. Findings are now grouped by
+  stage like the XML report. A report without findings shows the conform verdict.
+
 ### Fixed
 
 - Reading: empty optional elements count as absent instead of rejecting a valid invoice, in both

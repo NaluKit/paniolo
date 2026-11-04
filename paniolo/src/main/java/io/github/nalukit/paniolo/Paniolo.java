@@ -1938,14 +1938,15 @@ public final class Paniolo
    * byte[] pdf = paniolo.toReportPdf(result, path.getFileName().toString(), received);
    * }</pre>
    *
-   * <p>The report shows the validated file with its size and SHA-256, the profile and the rule
-   * releases of this instance, the time of rendering as validation time (UTC), the overall result,
-   * the number of findings per severity and stage, and every finding with severity, stage,
-   * complete rule identifier, message and location: the findings of {@link ValidationResult#toXml()}
-   * and the CLI JSON, in the order of {@link ValidationResult#messages()} like the JSON (the XML
-   * report groups them by stage). The findings table repeats
-   * its header on every page. The machine-readable report remains the basis; the PDF is a rendering
-   * of it.
+   * <p>The report is laid out as conformance report: a verdict in the color of the result (conform,
+   * conform with warnings, not conform with the recommendation to reject the document), the number
+   * of findings per severity, the time of rendering as validation time (UTC), the validated file with
+   * its size and SHA-256, the profile and the rule releases of this instance, the validation stages
+   * with their findings and result, the Schematron and PDF/A statistics if collected, and every
+   * finding as a block with severity, complete rule identifier, message and location: the findings
+   * of {@link ValidationResult#toXml()} and the CLI JSON, grouped by stage like the XML report. A
+   * result without findings is rendered with the conform verdict. The machine-readable report
+   * remains the basis; the PDF is a rendering of it.
    *
    * @param result   the validation result; must not be {@code null}
    * @param fileName name of the validated file, or {@code null}
