@@ -72,17 +72,19 @@ ValidationResult result = paniolo.validate(received);
 byte[] pdf = paniolo.toReportPdf(result, "R-2026-001.xml", received, PdfLayout.of(Locale.ENGLISH));
 ```
 
-The report shows the result, the validation time (UTC) and duration, the validated file with size
-and SHA-256, the rules applied (profile) and the rule releases of the instance (e.g. KoSIT
-XRechnung 3.0.2, Factur-X 1.09.2), the number of findings per severity and stage, and every finding
-with number, severity, stage, complete rule identifier, message and location. The findings table
-repeats its header on every page; a finding moves to the next page as a whole, only a finding
-longer than a page continues there. The findings are those of
-`ValidationResult.toXml()` and of the CLI JSON, in the order of `ValidationResult.messages()` like
-the JSON (the XML report groups them by stage). The machine-readable reports remain the basis; the
-PDF is a rendering of them. Labels are German (`PdfLayout.defaults()`), English, or French;
-logo and sender
-address of the layout are not used. In the CLI: `paniolo validate invoice.xml -f pdf -o report.pdf`.
+The report is laid out as conformance report. At the top, a verdict in the color of the result:
+conform (green), conform with warnings (amber), or not conform with the recommendation to reject
+the document (red), followed by the number of findings per severity. Then the validation time
+(UTC), duration and software, the validated file with size and SHA-256, the rules applied
+(profile) and the rule releases of the instance (e.g. KoSIT XRechnung 3.0.2, Factur-X 1.09.2), the
+validation stages with their findings per severity and result, and the Schematron and PDF/A
+statistics if the validation collected them. Every finding follows as a block with number,
+severity, complete rule identifier, message and location, grouped by stage like
+`ValidationResult.toXml()`; a block moves to the next page as a whole, only a block longer than a
+page continues there. A result without findings is rendered too: it shows the conform verdict and
+the stages that were run. The machine-readable reports remain the basis; the PDF is a rendering of
+them. Labels are German (`PdfLayout.defaults()`), English, or French; logo and sender address of
+the layout are not used. In the CLI: `paniolo validate invoice.xml -f pdf -o report.pdf`.
 
 ## Layout
 

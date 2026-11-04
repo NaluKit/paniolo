@@ -19,9 +19,12 @@ package io.github.nalukit.paniolo.pdflayout;
 
 import io.github.nalukit.paniolo.Paniolo;
 import io.github.nalukit.paniolo.config.PdfLayout;
+import io.github.nalukit.paniolo.validation.PdfaStatistics;
+import io.github.nalukit.paniolo.validation.SchematronStatistics;
 import io.github.nalukit.paniolo.validation.Severity;
 import io.github.nalukit.paniolo.validation.ValidationMessage;
 import io.github.nalukit.paniolo.validation.ValidationResult;
+import io.github.nalukit.paniolo.validation.ValidationStatistics;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.BeforeAll;
@@ -33,16 +36,19 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.HexFormat;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The validation report as PDF: page breaks, complete rule identifiers, and the same findings as
- * the XML report.
+ * The validation report as PDF: verdict for errors, warnings and no findings, page breaks,
+ * complete rule identifiers, and the same findings as the XML report.
  */
 class ValidationReportPdfTest {
   private static final Paniolo PANIOLO = Paniolo.create();
@@ -138,53 +144,67 @@ class ValidationReportPdfTest {
                       .matcher(all)
                       .find(),
                all);
+    assertTrue(all.contains("not conform"),
+               all);
+    assertTrue(all.contains("It is recommended to reject the document."),
+               all);
     for (Severity severity : Severity.values()) {
-      assertTrue(all.contains(severity.name() + " " + result.count(severity)),
+      assertTrue(all.contains(result.count(severity) + "\n"),
+                 severity + " in " + all);
+      assertTrue(all.contains("(" + severity.name() + ")"),
                  severity + " in " + all);
     }
+    // Every stage of the findings in the overview.
+    for (var stage : ValidationMessage.Stage.values()) {
+      assertTrue(all.contains(stage.name()),
+                 stage + " in " + all);
+    }
 
-    // Every finding in the order of the XML report: number, severity, stage, complete rule id.
+    // Every finding grouped by stage like the XML report, numbered through: header with number and
+    // severity, then the complete rule identifier.
     var xml = Pattern.compile("<message[^>]*?\\srule=\"([^\"]+)\"")
                      .matcher(result.toXml())
                      .results()
+                     .map(match -> match.group(1))
                      .toList();
-    assertEquals(result.messages()
-                       .size(),
-                 xml.size());
+    var byStage = new LinkedHashMap<ValidationMessage.Stage, List<ValidationMessage>>();
+    for (var message : result.messages()) {
+      byStage.computeIfAbsent(message.stage(),
+                              stage -> new ArrayList<>())
+             .add(message);
+    }
+    var grouped = byStage.values()
+                         .stream()
+                         .flatMap(List::stream)
+                         .toList();
+    assertEquals(xml,
+                 grouped.stream()
+                        .map(ValidationMessage::ruleId)
+                        .toList());
     var lines = all.lines()
                    .toList();
     int from = 0;
-    for (int i = 0; i < result.messages()
-                              .size(); i++) {
-      var    message = result.messages()
-                             .get(i);
-      String row     = (i + 1) + " " + message.severity() + " " + message.stage() + " " + message.ruleId();
+    for (int i = 0; i < grouped.size(); i++) {
+      var    message = grouped.get(i);
+      String header  = (i + 1) + " · ";
+      String code    = "(" + message.severity() + ")";
       int    found   = -1;
-      for (int l = from; l < lines.size(); l++) {
+      for (int l = from; l < lines.size() - 1; l++) {
         if (lines.get(l)
-                 .startsWith(row + " ")) {
+                 .startsWith(header) &&
+            lines.get(l)
+                 .endsWith(code)) {
           found = l;
           break;
         }
       }
       assertTrue(found >= 0,
-                 () -> "row " + row + " not found");
+                 () -> "finding " + header + code + " not found");
+      assertEquals("Rule " + message.ruleId(),
+                   lines.get(found + 1),
+                   "rule of finding " + (i + 1));
       from = found + 1;
     }
-    // The XML report groups the findings by stage; within each stage the order is the same.
-    var byStage = new java.util.LinkedHashMap<ValidationMessage.Stage, List<String>>();
-    for (var message : result.messages()) {
-      byStage.computeIfAbsent(message.stage(),
-                              stage -> new ArrayList<>())
-             .add(message.ruleId());
-    }
-    assertEquals(byStage.values()
-                        .stream()
-                        .flatMap(List::stream)
-                        .toList(),
-                 xml.stream()
-                    .map(match -> match.group(1))
-                    .toList());
     // Messages are wrapped, not cut: every message is in the report completely.
     String flowing = all.replaceAll("\\s+",
                                     " ");
@@ -193,22 +213,12 @@ class ValidationReportPdfTest {
                  message.message());
     }
 
-    // The table header is repeated on every page with findings, and every page is numbered.
-    int pagesWithRows = 0;
+    // Every page is numbered.
     for (int p = 0; p < pages.size(); p++) {
-      String page = pages.get(p);
-      if (Pattern.compile("(?m)^\\d+ (FATAL|ERROR|WARNING|INFO) ")
-                 .matcher(page)
-                 .find()) {
-        pagesWithRows++;
-        assertTrue(page.contains("No. Severity Stage Rule Message"),
-                   "header on page " + (p + 1));
-      }
-      assertTrue(page.contains("Page " + (p + 1) + " of " + pages.size()),
+      assertTrue(pages.get(p)
+                      .contains("Page " + (p + 1) + " of " + pages.size()),
                  "number of page " + (p + 1));
     }
-    assertTrue(pagesWithRows >= pages.size() - 1,
-               "pages with findings: " + pagesWithRows);
   }
 
   @Test
@@ -226,6 +236,10 @@ class ValidationReportPdfTest {
                all);
     assertTrue(all.contains("ungültig"),
                all);
+    assertTrue(all.contains("nicht konform"),
+               all);
+    assertTrue(all.contains("XSD – XML-Schema"),
+               all);
     for (var message : result.messages()) {
       assertTrue(all.contains(message.ruleId()),
                  message.ruleId());
@@ -239,12 +253,83 @@ class ValidationReportPdfTest {
                                                                             List.of()),
                                                        null,
                                                        null,
-                                                       PdfLayout.of(Locale.ENGLISH))));
+                                                       PdfLayout.of(Locale.ENGLISH))))
+                       .replaceAll("\\s+",
+                                   " ");
     assertTrue(all.contains("No findings."),
+               all);
+    assertTrue(all.contains("The validated document conforms to the rules applied. No errors and no warnings were found."),
                all);
     assertTrue(all.contains("valid"),
                all);
+    assertFalse(all.contains("invalid"),
+                all);
     assertTrue(all.contains("Factur-X 1."),
+               all);
+  }
+
+  @Test
+  void warningsOnlyAreConformWithWarnings() {
+    var result = new ValidationResult("EN16931 XRechnung (CII)",
+                                      List.of(new ValidationMessage("BR-DE-21",
+                                                                    Severity.WARNING,
+                                                                    "Die Spezifikationskennung sollte der XRechnung entsprechen.",
+                                                                    "/rsm:CrossIndustryInvoice[1]",
+                                                                    ValidationMessage.Stage.SCHEMATRON),
+                                              new ValidationMessage("PANIOLO-INFO",
+                                                                    Severity.INFO,
+                                                                    "Hinweis zur Rechnung.",
+                                                                    "",
+                                                                    ValidationMessage.Stage.CALCULATION)));
+    byte[] pdf = PANIOLO.toReportPdf(result,
+                                     "warnung.xml",
+                                     null);
+    assertEquals(List.of(),
+                 PdfLayoutTest.pdfaFailures(pdf));
+    String all = String.join("\n",
+                             pages(pdf))
+                       .replaceAll("\\s+",
+                                   " ");
+    assertTrue(all.contains("enthält aber Warnungen (1), die geprüft werden sollten."),
+               all);
+    assertTrue(all.contains("konform, Warnungen"),
+               all);
+    assertTrue(all.contains("gültig"),
+               all);
+    assertFalse(all.contains("ungültig"),
+                all);
+    assertTrue(all.contains("1 · Warnung (WARNING)"),
+               all);
+    assertTrue(all.contains("2 · Hinweis (INFO)"),
+               all);
+  }
+
+  @Test
+  void showsStatisticsOfTheValidation() {
+    var result = new ValidationResult("Factur-X EN16931",
+                                      List.of()).withStatistics(new ValidationStatistics(List.of(new SchematronStatistics("FACTUR-X_EN16931.xslt",
+                                                                                                                                12,
+                                                                                                                                345,
+                                                                                                                                0,
+                                                                                                                                2)),
+                                                                                         List.of(new PdfaStatistics("3b",
+                                                                                                                    "PDF/A-3B",
+                                                                                                                    true,
+                                                                                                                    1234,
+                                                                                                                    0,
+                                                                                                                    Map.of()))));
+    String all = String.join("\n",
+                             pages(PANIOLO.toReportPdf(result,
+                                                       "factur-x.pdf",
+                                                       new byte[] { 1, 2, 3 },
+                                                       PdfLayout.of(Locale.ENGLISH))));
+    assertTrue(all.contains("SCHEMATRON"),
+               all);
+    assertTrue(all.contains("PDF_A"),
+               all);
+    assertTrue(all.contains("FACTUR-X_EN16931.xslt 12 345 0 2"),
+               all);
+    assertTrue(all.contains("1234 0 conform"),
                all);
   }
 
