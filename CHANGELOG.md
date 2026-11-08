@@ -17,6 +17,16 @@ reference in `docs/api/<version>.md`.
 
 ### Fixed
 
+- Validation: a standalone invoice whose specification identifier (BT-24) states plain EN 16931,
+  Peppol BIS Billing or an unknown identifier, not XRechnung, reports the findings of the
+  XRechnung rules (`BR-DE`, `BR-DEX`, `BR-TMP`, and `PEPPOL-EN16931` except for Peppol) as
+  information, with the information `XR-NOT-STATED`. XRechnung is a CIUS of EN 16931 and does not
+  apply to such a document. A ZUGFeRD EN 16931 invoice without buyer reference was valid as PDF
+  but invalid as extracted XML (FATAL `BR-DE-15`); Mustang reports it as information as well.
+  Documents that state XRechnung are validated as before. To keep rejecting, use
+  `AcceptancePolicy.officialRules().rejectOn("BR-DE-15")`. The optional calculation check keeps its
+  warning when the matching official rule (e.g. `PEPPOL-EN16931-R120`) is only information. 59
+  official EN 16931 examples of the public corpus are now valid in the automatic validation.
 - Reading: empty optional elements count as absent instead of rejecting a valid invoice, in both
   read modes and without a `ReadWarning`. A seller written as `<ram:SellerTradeParty><ram:ID/>...`
   failed with `party identifier must not be blank`. This applies to party identifiers

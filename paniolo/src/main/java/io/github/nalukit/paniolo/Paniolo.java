@@ -84,6 +84,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -495,6 +496,84 @@ public final class Paniolo
     return profile == null || profile == FacturXProfile.EN16931 || profile == FacturXProfile.XRECHNUNG ?
            null :
            profile;
+  }
+
+  /**
+   * Prefixes of the rule identifiers of the XRechnung CIUS: the German rules, those of the
+   * extension, the temporary rules, and the Peppol rules XRechnung adopts. The EN 16931 rules
+   * (e.g. {@code BR-DEC-01}) do not start with any of them.
+   */
+  private static final List<String> XRECHNUNG_RULE_PREFIXES = List.of("BR-DE-",
+                                                                      "BR-DEX-",
+                                                                      "BR-TMP-",
+                                                                      "PEPPOL-EN16931-");
+
+  /**
+   * Returns true if a specification identifier states XRechnung, its extension or an older version
+   * of it, e.g. {@code urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0}.
+   */
+  private static boolean statesXrechnung(String specificationId) {
+    return specificationId != null && specificationId.toLowerCase(Locale.ROOT)
+                                                     .contains("xrechnung");
+  }
+
+  /**
+   * Reports the findings of the XRechnung rules of a document that does not state XRechnung as
+   * information: XRechnung is a CIUS of EN 16931, and its rules (e.g. {@code BR-DE-15}, buyer
+   * reference) do not apply to a plain EN 16931 invoice. The findings stay visible, e.g. for
+   * deciding whether the document could be sent as XRechnung; a recipient that requires XRechnung
+   * rejects on them with an {@link io.github.nalukit.paniolo.validation.AcceptancePolicy}. The
+   * Peppol rules stay as they are for a document that states Peppol BIS Billing. If any finding
+   * was changed, the information {@code XR-NOT-STATED} explains why.
+   */
+  private static ValidationResult xrechnungRulesInformative(String specificationId,
+                                                            ValidationResult result) {
+    var     messages   = new ArrayList<ValidationMessage>();
+    boolean downgraded = false;
+    for (var message : result.messages()) {
+      if (message.severity() != Severity.INFO && isXrechnungRule(message.ruleId(),
+                                                                 specificationId)) {
+        messages.add(new ValidationMessage(message.ruleId(),
+                                           Severity.INFO,
+                                           message.message(),
+                                           message.location(),
+                                           message.stage()));
+        downgraded = true;
+      } else {
+        messages.add(message);
+      }
+    }
+    if (!downgraded) {
+      return result;
+    }
+    messages.add(new ValidationMessage("XR-NOT-STATED",
+                                       Severity.INFO,
+                                       "The document states " +
+                                       (specificationId == null ?
+                                        "no specification identifier" :
+                                        specificationId) +
+                                       ", not XRechnung; the findings of the XRechnung rules are reported as information and do not make it invalid",
+                                       "",
+                                       ValidationMessage.Stage.SCHEMATRON));
+    return result.withMessages(messages);
+  }
+
+  /**
+   * Returns true if a rule belongs to the XRechnung CIUS and does not apply to a document of the
+   * specification identifier. The Peppol rules {@code PEPPOL-EN16931} apply to a document that
+   * states Peppol BIS Billing.
+   */
+  private static boolean isXrechnungRule(String ruleId,
+                                         String specificationId) {
+    if (ruleId == null) {
+      return false;
+    }
+    if (ruleId.startsWith("PEPPOL-EN16931-") && specificationId != null && specificationId.toLowerCase(Locale.ROOT)
+                                                                                      .contains("peppol")) {
+      return false;
+    }
+    return XRECHNUNG_RULE_PREFIXES.stream()
+                                  .anyMatch(ruleId::startsWith);
   }
 
   /**
@@ -1368,8 +1447,14 @@ public final class Paniolo
    *
    * <p><b>Which rules are applied?</b> They are chosen from the specification identifier (BT-24):
    * <ul>
-   *   <li>XRechnung, EN 16931 and unknown identifiers &ndash; the EN 16931 and XRechnung rules of the
-   *       configured KoSIT bundle.</li>
+   *   <li>XRechnung &ndash; the EN 16931 and XRechnung rules of the configured KoSIT bundle.</li>
+   *   <li>Plain EN 16931, Peppol BIS Billing and unknown identifiers &ndash; the same rules, but the
+   *       findings of the XRechnung CIUS ({@code BR-DE}, {@code BR-DEX}, {@code BR-TMP} and, except
+   *       for Peppol, {@code PEPPOL-EN16931}) are information, e.g. a missing buyer reference
+   *       {@code BR-DE-15}: they do not apply to a document that does not state XRechnung. The
+   *       information {@code XR-NOT-STATED} says so. A recipient that requires XRechnung rejects
+   *       on them with an {@link io.github.nalukit.paniolo.validation.AcceptancePolicy}, e.g.
+   *       {@code AcceptancePolicy.officialRules().rejectOn("BR-DE-15")}.</li>
    *   <li>An older XRechnung version 1.2, 2.0, 2.1, 2.2 or 2.3 &ndash; the packaged KoSIT release of
    *       that version (see {@code XrechnungRules.LEGACY_VERSIONS}), with the information
    *       {@code XR-OLDER-VERSION}.</li>
@@ -3247,10 +3332,19 @@ public final class Paniolo
                                            String specificationId,
                                            Supplier<Reader> content,
                                            Function<InvoiceValidator, ValidationResult> validation) {
-    if (profile == null || profile == FacturXProfile.XRECHNUNG) {
+    if (profile == FacturXProfile.XRECHNUNG) {
       return validateXrechnung(type,
                                specificationId,
                                validation);
+    }
+    if (profile == null) {
+      var result = validateXrechnung(type,
+                                     specificationId,
+                                     validation);
+      return statesXrechnung(specificationId) ?
+             result :
+             xrechnungRulesInformative(specificationId,
+                                       result);
     }
     if (profile == FacturXProfile.EXTENDED_CTC_FR && type == ValidationProfile.Syntax.CII) {
       return validateExtendedCtcFr(isFrenchDomestic(content.get()),

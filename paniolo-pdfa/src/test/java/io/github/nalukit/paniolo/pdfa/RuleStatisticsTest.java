@@ -91,9 +91,13 @@ class RuleStatisticsTest {
         assertTrue(stylesheet.activePatterns() > 0 && stylesheet.firedRules() > 0,
                    stylesheet::toString);
       }
-      // Every Schematron finding is one failed assert or successful report.
+      // Every Schematron finding is one failed assert or successful report, apart from the notes
+      // of Paniolo about the rule selection, e.g. XR-NOT-STATED for plain EN 16931.
       assertEquals(result.messages(ValidationMessage.Stage.SCHEMATRON)
-                         .size(),
+                         .stream()
+                         .filter(message -> !message.ruleId()
+                                                    .startsWith("XR-"))
+                         .count(),
                    stylesheets.stream()
                               .mapToInt(stylesheet -> stylesheet.failedAsserts() + stylesheet.successfulReports())
                               .sum(),

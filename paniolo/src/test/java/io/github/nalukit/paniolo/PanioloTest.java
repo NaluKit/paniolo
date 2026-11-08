@@ -18,8 +18,11 @@
 package io.github.nalukit.paniolo;
 
 import io.github.nalukit.paniolo.config.InvoiceSyntax;
+import io.github.nalukit.paniolo.model.common.ProcessControl;
 import io.github.nalukit.paniolo.model.common.value.InvoiceTypeCode;
 import io.github.nalukit.paniolo.rules.xrechnung.XrechnungRules;
+import io.github.nalukit.paniolo.validation.AcceptancePolicy;
+import io.github.nalukit.paniolo.validation.Severity;
 import io.github.nalukit.paniolo.validation.ValidationProfile;
 import io.github.nalukit.paniolo.xml.ExportVariant;
 import io.github.nalukit.paniolo.xml.ReadMode;
@@ -28,6 +31,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
@@ -81,6 +85,88 @@ class PanioloTest {
     assertEquals(invoice,
                  PANIOLO.read(new ByteArrayInputStream(PANIOLO.toBytes(invoice,
                                                                        syntax))));
+  }
+
+  /**
+   * XRechnung is a CIUS of EN 16931: a document that states plain EN 16931 does not have to meet
+   * the German rules, e.g. the buyer reference of BR-DE-15. Their findings are information.
+   */
+  @ParameterizedTest
+  @EnumSource(InvoiceSyntax.class)
+  void plainEn16931ReportsXrechnungRulesAsInformation(InvoiceSyntax syntax) {
+    var invoice = TestInvoices.builder(InvoiceTypeCode.CODE_380,
+                                       "R-1")
+                              .processControl(ProcessControl.en16931())
+                              .buyerReference(null)
+                              .build();
+    var result = PANIOLO.validate(PANIOLO.toBytes(invoice,
+                                                  syntax));
+    assertTrue(result.isValid(),
+               () -> result.messages()
+                           .toString());
+    assertTrue(result.messages()
+                     .stream()
+                     .anyMatch(m -> m.ruleId()
+                                     .equals("BR-DE-15") && m.severity() == Severity.INFO),
+               () -> result.messages()
+                           .toString());
+    assertTrue(result.messages()
+                     .stream()
+                     .anyMatch(m -> m.ruleId()
+                                     .equals("XR-NOT-STATED") && m.severity() == Severity.INFO),
+               () -> result.messages()
+                           .toString());
+    assertTrue(result.messages()
+                     .stream()
+                     .filter(m -> m.ruleId()
+                                   .startsWith("BR-DE-"))
+                     .allMatch(m -> m.severity() == Severity.INFO),
+               () -> result.messages()
+                           .toString());
+    // A recipient that requires XRechnung rejects on the rule.
+    assertFalse(AcceptancePolicy.officialRules()
+                                .rejectOn("BR-DE-15")
+                                .evaluate(result)
+                                .accepted());
+    // The explicitly chosen document type applies the XRechnung rules as they are.
+    var strict = PANIOLO.validate(PANIOLO.toBytes(invoice,
+                                                  syntax),
+                                  syntax == InvoiceSyntax.CII ?
+                                  ValidationProfile.Syntax.CII :
+                                  ValidationProfile.Syntax.UBL_INVOICE);
+    assertFalse(strict.isValid());
+  }
+
+  /**
+   * The Peppol rules adopted by XRechnung apply to a document that states Peppol BIS Billing, e.g.
+   * the business process of PEPPOL-EN16931-R001; the German rules do not.
+   */
+  @Test
+  void peppolKeepsPeppolRules() {
+    var invoice = TestInvoices.builder(InvoiceTypeCode.CODE_380,
+                                       "R-1")
+                              .processControl(ProcessControl.create()
+                                                            .businessProcessId(null)
+                                                            .specificationId("urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0")
+                                                            .build())
+                              .buyerReference(null)
+                              .build();
+    var result = PANIOLO.validate(PANIOLO.toBytes(invoice,
+                                                  InvoiceSyntax.UBL));
+    assertFalse(result.isValid());
+    assertTrue(result.messages()
+                     .stream()
+                     .anyMatch(m -> m.ruleId()
+                                     .equals("PEPPOL-EN16931-R001") && m.severity() != Severity.INFO),
+               () -> result.messages()
+                           .toString());
+    assertTrue(result.messages()
+                     .stream()
+                     .filter(m -> m.ruleId()
+                                   .startsWith("BR-DE-"))
+                     .allMatch(m -> m.severity() == Severity.INFO),
+               () -> result.messages()
+                           .toString());
   }
 
   @Test

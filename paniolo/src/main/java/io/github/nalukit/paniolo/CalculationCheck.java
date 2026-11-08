@@ -297,7 +297,9 @@ public final class CalculationCheck {
     Set<String> duplicates = new TreeSet<>();
     if (counterpart != null) {
       for (var finding : official) {
-        if (finding.ruleId() != null && finding.stage() != ValidationMessage.Stage.CALCULATION && counterpart.test(finding.ruleId())) {
+        // An official finding reported as information only, e.g. PEPPOL-EN16931-R120 of a document
+        // that does not state XRechnung, does not replace the warning.
+        if (finding.ruleId() != null && finding.stage() != ValidationMessage.Stage.CALCULATION && finding.severity() != Severity.INFO && counterpart.test(finding.ruleId())) {
           duplicates.add(finding.ruleId());
         }
       }

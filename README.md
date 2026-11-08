@@ -952,11 +952,15 @@ the same profile. `InvoiceValidator` does not detect profiles; the `Paniolo` fac
 `ValidationProfile.en16931(bundle, syntax)` checks EN 16931 without the XRechnung rules, and
 `ValidationProfile.facturX(FacturXRules.bundle(), level)` uses the official Factur-X rules
 packaged in `paniolo-facturx-rules` (or an extracted FeRD / FNFE-MPE release).
-For standalone XML, the facade falls back to EN 16931 **and XRechnung** when BT-24 is plain
-EN 16931, a Peppol identifier, or an unrecognized identifier. It can therefore reject a valid
-general EN 16931 invoice for additional XRechnung requirements. Use
-`InvoiceValidator` with `ValidationProfile.en16931(bundle, syntax)` when only EN 16931 is intended;
-a Factur-X PDF or an explicit Factur-X profile uses the profile selection described below.
+For standalone XML, the facade applies EN 16931 and XRechnung also when BT-24 is plain
+EN 16931, a Peppol identifier, or an unrecognized identifier. XRechnung is a CIUS of EN 16931 and
+does not apply to such a document, so the findings of its rules (`BR-DE`, `BR-DEX`, `BR-TMP`, and
+`PEPPOL-EN16931` unless BT-24 states Peppol) are reported as information, together with the
+information `XR-NOT-STATED`. A plain EN 16931 invoice without buyer reference is therefore valid
+and shows `BR-DE-15` as information, as in Mustang. A recipient that requires XRechnung rejects on
+these rules with an `AcceptancePolicy`, e.g. `AcceptancePolicy.officialRules().rejectOn("BR-DE-15")`.
+`validate(xml, ValidationProfile.Syntax)` and `InvoiceValidator` apply the rules unchanged.
+A Factur-X PDF or an explicit Factur-X profile uses the profile selection described below.
 
 `validate` accepts a `String`, `byte[]`, or `InputStream`. The caller manages the stream.
 An `InvoiceValidator` can be reused and shared between threads; its rules are compiled
