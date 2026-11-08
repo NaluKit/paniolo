@@ -24,6 +24,12 @@ reference in `docs/api/<version>.md`.
   (`ram:URIID`, `cbc:EndpointID`), legal registration identifiers, the deliver-to location, and
   item and object identifiers in the CII, UBL and ZUGFeRD 1.0 readers. Validation of XRechnung
   and Peppol documents still reports empty elements (`PEPPOL-EN16931-R008`).
+- Model: payment means other than `30`, `58`, `42`, `48`, `54`, `55` and `59` may carry credit
+  transfer accounts (BG-17), payment card information (BG-18) and a direct debit mandate (BG-19).
+  Invoices with `ZZZ` (mutually defined) and e.g. an account failed to read with
+  `Payment means ZZZ does not take accounts, cards or mandates`; the same applied to `49` (direct
+  debit) with a mandate. EN 16931 forbids these groups for no code, and XRechnung restricts only
+  the named codes (BR-DE-23 to BR-DE-25), which the validation still reports.
 - Model: payment means `42` (payment to bank account) may name credit transfer accounts (BG-17).
   ZUGFeRD 1.0 invoices with `42` and a `PayeePartyCreditorFinancialAccount` failed with
   `Payment means 42 does not take accounts, cards or mandates`. EN 16931 requires accounts for

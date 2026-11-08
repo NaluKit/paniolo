@@ -578,11 +578,28 @@ class InvoiceTest {
                  () -> PaymentInstruction.create()
                                          .meansCode(PaymentMeansCode.CODE_59)
                                          .build());
-    assertThrows(IllegalArgumentException.class,
-                 () -> PaymentInstruction.create()
-                                         .meansCode(PaymentMeansCode.CODE_10)
-                                         .addCreditTransfer(account)
-                                         .build());
+    // EN 16931 forbids accounts, cards and mandates for no code: mutually defined (ZZZ) and the
+    // other codes may carry any of them.
+    var mutuallyDefined = PaymentInstruction.create()
+                                            .meansCode(PaymentMeansCode.CODE_ZZZ)
+                                            .addCreditTransfer(account)
+                                            .paymentCard(card)
+                                            .directDebit(mandate)
+                                            .build();
+    assertEquals(List.of(account),
+                 mutuallyDefined.creditTransfers());
+    assertEquals(card,
+                 mutuallyDefined.paymentCard());
+    assertEquals(mandate,
+                 mutuallyDefined.directDebit());
+    assertNotNull(PaymentInstruction.create()
+                                    .meansCode(PaymentMeansCode.CODE_49)
+                                    .directDebit(mandate)
+                                    .build());
+    assertNotNull(PaymentInstruction.create()
+                                    .meansCode(PaymentMeansCode.CODE_10)
+                                    .addCreditTransfer(account)
+                                    .build());
     assertNotNull(PaymentInstruction.create()
                                     .meansCode(PaymentMeansCode.CODE_54)
                                     .paymentCard(card)

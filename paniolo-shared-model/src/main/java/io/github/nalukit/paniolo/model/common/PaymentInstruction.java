@@ -28,16 +28,20 @@ import java.util.Objects;
  * (48/54/55) requires card information and direct debit (59) requires a mandate. Payment to bank
  * account (42) may name accounts (BG-17): EN 16931 requires them for 30 and 58 only (BR-61) and
  * forbids them for no code, and ZUGFeRD 1.0 invoices commonly use 42 with an IBAN. Only an
- * EXTENDED-CTC-FR invoice may name a card next to the credit transfer accounts.
+ * EXTENDED-CTC-FR invoice may name a card next to the credit transfer accounts. All other codes,
+ * e.g. mutually defined (ZZZ) or direct debit (49), may carry accounts, a card and a mandate;
+ * profile rules on them are reported by the validation.
  *
  * @param meansCode             payment means code (BT-81); required
  * @param meansText             payment means text (BT-82), or null
  * @param remittanceInformation remittance information (BT-83), or null
  * @param creditTransfers       credit transfer accounts (BG-17); required for payment means 30 and 58,
- *                              optional for 42
+ *                              not allowed for 48, 54, 55 and 59, optional for all other codes
  * @param paymentCard           payment card information (BG-18); required for payment means 48, 54 and 55;
- *                              next to credit transfer accounts (30/58) only in an EXTENDED-CTC-FR invoice
- * @param directDebit           direct debit information (BG-19); required for payment means 59
+ *                              next to credit transfer accounts (30/58) only in an EXTENDED-CTC-FR invoice;
+ *                              not allowed for 42 and 59, optional for all other codes
+ * @param directDebit           direct debit information (BG-19); required for payment means 59;
+ *                              not allowed for 30, 58, 42, 48, 54 and 55, optional for all other codes
  */
 public record PaymentInstruction(PaymentMeansCode meansCode, String meansText, String remittanceInformation, List<CreditTransfer> creditTransfers, PaymentCardInformation paymentCard, DirectDebit directDebit) {
   /**
@@ -69,10 +73,11 @@ public record PaymentInstruction(PaymentMeansCode meansCode, String meansText, S
                                   true,
                                   paymentCard == null && directDebit == null,
                                   "Payment to bank account takes no card or mandate");
-      default -> requireOnly(true,
-                             creditTransfers.isEmpty(),
-                             paymentCard == null && directDebit == null,
-                             "Payment means " + meansCode.getCode() + " does not take accounts, cards or mandates");
+      // EN 16931 forbids accounts, cards and mandates for no payment means code, and XRechnung
+      // (BR-DE-23 to BR-DE-25) restricts only 30/58, 48/54/55 and 59. ZZZ ("mutually defined"),
+      // direct debit (49) and all other codes may carry any of them.
+      default -> {
+      }
     }
   }
 
