@@ -144,7 +144,7 @@ public final class InvoiceValidator {
              .setConfigurationProperty(Feature.ALLOW_EXTERNAL_FUNCTIONS,
                                        false);
       factory.getConfiguration()
-             .setUnparsedTextURIResolver((uri, encoding, config) -> {
+             .setUnparsedTextURIResolver((uri, encoding, config, ignored) -> {
                throw new XPathException("External text access is disabled");
              });
       factory.getConfiguration()
