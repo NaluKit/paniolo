@@ -64,7 +64,10 @@ blocks, turns ZUGFeRD 1.0 text-only lines into notes, and reports each deviation
 `ReadWarning`: `READ-LINE-NET-PRICE`, `READ-TAX-TOTAL`, `READ-PAYABLE-AMOUNT`, `READ-REASON-CODE`,
 `READ-PERCENTAGE`, `READ-PAYMENT-MEANS`, and `READ-TEXT-LINE`. A tax of another type than VAT
 (CII `TypeCode`, UBL `TaxScheme/ID`, e.g. `AAM`) is never read as VAT: strict reading rejects it,
-lenient reading reports it as `READ-OTHER-TAX` and leaves it out.
+lenient reading reports it as `READ-OTHER-TAX` and leaves it out. In EXTENDED, an exemption
+reason of a line, allowance, or charge that differs from its VAT breakdown, and a further breakdown
+of the same category and rate with another reason, are rejected by strict reading and reported as
+`READ-TAX-EXEMPTION` by lenient reading, which keeps the text of the first breakdown.
 
 Both modes report values the model does not keep or interpret, without changing an amount:
 `READ-CASH-DISCOUNT` (a payment terms line that looks like a cash discount, kept as text),

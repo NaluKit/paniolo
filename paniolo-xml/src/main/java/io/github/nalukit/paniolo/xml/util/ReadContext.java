@@ -202,6 +202,27 @@ public final class ReadContext {
                                  message + ", the tax was not read and the calculated totals lack it"));
   }
 
+  /**
+   * Handles an exemption reason or code (BT-120, BT-121, BT-X-96, BT-X-97) the model cannot keep
+   * next to another one of the same VAT category and rate: strict reading rejects the document,
+   * lenient reading reports the stated and the kept value.
+   *
+   * @param lineId   the line, or null for the document level
+   * @param conflict the location and the conflicting values
+   * @param handling which value lenient reading keeps
+   * @throws IllegalArgumentException in strict reading
+   */
+  public void taxExemption(String lineId,
+                           String conflict,
+                           String handling) {
+    if (mode == ReadMode.STRICT) {
+      throw new IllegalArgumentException(conflict);
+    }
+    warnings.add(new ReadWarning(ReadWarning.TAX_EXEMPTION,
+                                 lineId,
+                                 conflict + "; " + handling));
+  }
+
   private static String plain(BigDecimal value) {
     return value == null ?
            "-" :
