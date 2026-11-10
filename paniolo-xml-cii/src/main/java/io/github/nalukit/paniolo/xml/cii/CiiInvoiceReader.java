@@ -464,7 +464,8 @@ public final class CiiInvoiceReader
                                XmlElement agreement,
                                XmlElement delivery,
                                XmlElement settlement,
-                               Map<String, TaxCategory> categories) {
+                               Map<String, TaxCategory> categories,
+                               ReadContext exemptions) {
     String test = context.text("ram:TestIndicator/udt:Indicator");
     String copy = header.text("ram:CopyIndicator/udt:Indicator");
     extended.testIndicator(test == null ?
@@ -515,11 +516,16 @@ public final class CiiInvoiceReader
               .shipFrom(party(delivery.find("ram:ShipFromTradeParty")))
               .deliveryNoteReference(documentReference(delivery.find("ram:DeliveryNoteReferencedDocument")));
     }
-    for (var service : settlement.children("ram:SpecifiedLogisticsServiceCharge")) {
+    var services = settlement.children("ram:SpecifiedLogisticsServiceCharge");
+    for (int index = 0; index < services.size(); index++) {
+      var service = services.get(index);
       extended.addLogisticsServiceCharge(new LogisticsServiceCharge(service.text("ram:Description"),
                                                                     service.decimal("ram:AppliedAmount"),
                                                                     InvoiceConsistency.complete(tax(service.find("ram:AppliedTradeTax")),
-                                                                                                categories)));
+                                                                                                categories,
+                                                                                                null,
+                                                                                                "Logistics service charge " + (index + 1),
+                                                                                                exemptions)));
     }
     for (var advance : settlement.children("ram:SpecifiedAdvancePayment")) {
       var tax = advance.find("ram:IncludedTradeTax");
@@ -562,6 +568,7 @@ public final class CiiInvoiceReader
    */
   private static InvoiceLine invoiceLine(XmlElement item,
                                          Map<String, TaxCategory> categories,
+                                         ReadContext exemptions,
                                          ReadContext context) {
     var quantity   = item.find("ram:SpecifiedLineTradeDelivery/ram:BilledQuantity");
     var price      = item.find("ram:SpecifiedLineTradeAgreement/ram:NetPriceProductTradePrice");
@@ -598,7 +605,10 @@ public final class CiiInvoiceReader
                              .tax(InvoiceConsistency.complete(tax(lineTaxes.isEmpty() ?
                                                                   null :
                                                                   lineTaxes.get(0)),
-                                                              categories))
+                                                              categories,
+                                                              lineId,
+                                                              "Line " + lineId,
+                                                              exemptions))
                              .orderLineReference(item.text("ram:SpecifiedLineTradeAgreement/ram:BuyerOrderReferencedDocument/ram:LineID"));
     if (product != null) {
       builder.name(product.text("ram:Name"))
@@ -888,6 +898,13 @@ public final class CiiInvoiceReader
       throw new IllegalArgumentException("CII header trade agreement or settlement is missing");
     }
     String currency = settlement.text("ram:InvoiceCurrencyCode");
+    var processControl = new ProcessControl(context.text("ram:BusinessProcessSpecifiedDocumentContextParameter/ram:ID"),
+                                            context.text("ram:GuidelineSpecifiedDocumentContextParameter/ram:ID"));
+    // Only EXTENDED states exemption reasons of lines, allowances, and charges (BT-X-96, BT-X-97);
+    // elsewhere such an element is no business term and the breakdown applies without report.
+    var exemptions = processControl.isExtended() ?
+                     readContext :
+                     null;
     var builder = Invoice.create()
                          .number(header.text("ram:ID"))
                          .issueDate(header.basicDate("ram:IssueDateTime/udt:DateTimeString"))
@@ -897,8 +914,7 @@ public final class CiiInvoiceReader
                          .currencyCode(XmlElement.code(currency,
                                                        CurrencyCode::of,
                                                        "currency"))
-                         .processControl(new ProcessControl(context.text("ram:BusinessProcessSpecifiedDocumentContextParameter/ram:ID"),
-                                                            context.text("ram:GuidelineSpecifiedDocumentContextParameter/ram:ID")))
+                         .processControl(processControl)
                          .buyerReference(agreement.text("ram:BuyerReference"));
     for (var note : header.children("ram:IncludedNote")) {
       builder.addNote(new InvoiceNote(note.text("ram:SubjectCode"),
@@ -988,14 +1004,17 @@ public final class CiiInvoiceReader
     }
     taxPoint(builder,
              headerTaxes);
-    var categories = InvoiceConsistency.byCategoryAndRate(breakdowns);
+    var categories = InvoiceConsistency.byCategoryAndRate(breakdowns,
+                                                          exemptions);
     var period     = settlement.find("ram:BillingSpecifiedPeriod");
     if (period != null) {
       builder.invoicePeriod(new InvoicePeriod(period.basicDate("ram:StartDateTime/udt:DateTimeString"),
                                               period.basicDate("ram:EndDateTime/udt:DateTimeString")));
     }
+    int adjustmentNumber = 0;
     for (var adjustment : settlement.children("ram:SpecifiedTradeAllowanceCharge")) {
       boolean charge = Boolean.parseBoolean(adjustment.text("ram:ChargeIndicator/udt:Indicator"));
+      adjustmentNumber++;
       builder.addAdjustment(new DocumentAdjustment(charge,
                                                    adjustment.decimal("ram:ActualAmount"),
                                                    adjustment.decimal("ram:BasisAmount"),
@@ -1009,7 +1028,12 @@ public final class CiiInvoiceReader
                                                                           adjustment.text("ram:Reason"),
                                                                           null),
                                                    InvoiceConsistency.complete(tax(adjustment.find("ram:CategoryTradeTax")),
-                                                                               categories),
+                                                                               categories,
+                                                                               null,
+                                                                               "Document " + (charge ?
+                                                                                              "charge " :
+                                                                                              "allowance ") + adjustmentNumber,
+                                                                               exemptions),
                                                    adjustmentExtension(adjustment)));
     }
     // Terms with a partial amount, penalty, or discount are EXTENDED terms; the first plain term
@@ -1061,6 +1085,7 @@ public final class CiiInvoiceReader
     for (var item : items) {
       builder.addLine(invoiceLine(item,
                                   categories,
+                                  exemptions,
                                   readContext));
     }
     if (items.isEmpty()) {
@@ -1086,7 +1111,8 @@ public final class CiiInvoiceReader
              agreement,
              delivery,
              settlement,
-             categories);
+             categories,
+             exemptions);
     builder.extended(extended.build());
     return readContext.result(builder.build(),
                               statedAmounts(summation,

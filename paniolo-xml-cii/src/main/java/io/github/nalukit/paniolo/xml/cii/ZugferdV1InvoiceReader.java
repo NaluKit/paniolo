@@ -398,7 +398,12 @@ public final class ZugferdV1InvoiceReader
                                                context)) {
         breakdowns.add(tax(tax));
       }
-      var categories = InvoiceConsistency.byCategoryAndRate(breakdowns);
+      // Only EXTENDED keeps exemption reasons of lines, allowances, and charges (BT-X-96, BT-X-97).
+      var exemptions = extended ?
+                       context :
+                       null;
+      var categories = InvoiceConsistency.byCategoryAndRate(breakdowns,
+                                                            exemptions);
       var period     = settlement.find("ram:BillingSpecifiedPeriod");
       if (period != null) {
         builder.invoicePeriod(new InvoicePeriod(period.basicDate("ram:StartDateTime/udt:DateTimeString"),
@@ -424,12 +429,20 @@ public final class ZugferdV1InvoiceReader
                                                      reason,
                                                      code,
                                                      InvoiceConsistency.complete(tax(adjustment.find("ram:CategoryTradeTax")),
-                                                                                 categories)));
+                                                                                 categories,
+                                                                                 null,
+                                                                                 "Document " + (charge ?
+                                                                                                "charge" :
+                                                                                                "allowance"),
+                                                                                 exemptions)));
       }
       var extendedInformation = ExtendedInformation.create();
       for (var service : settlement.children("ram:SpecifiedLogisticsServiceCharge")) {
         var tax = InvoiceConsistency.complete(tax(service.find("ram:AppliedTradeTax")),
-                                              categories);
+                                              categories,
+                                              null,
+                                              "Logistics service charge",
+                                              exemptions);
         if (extended) {
           extendedInformation.addLogisticsServiceCharge(new LogisticsServiceCharge(service.text("ram:Description"),
                                                                                    service.decimal("ram:AppliedAmount"),
@@ -605,7 +618,12 @@ public final class ZugferdV1InvoiceReader
                                                          "unit code"))
                                .tax(InvoiceConsistency.complete(tax(lineTax(settlement,
                                                                             lineId)),
-                                                                categories));
+                                                                categories,
+                                                                lineId,
+                                                                "Line " + lineId,
+                                                                extended ?
+                                                                context :
+                                                                null));
       var note = item.find("ram:AssociatedDocumentLineDocument/ram:IncludedNote");
       if (note != null) {
         builder.note(content(note));
