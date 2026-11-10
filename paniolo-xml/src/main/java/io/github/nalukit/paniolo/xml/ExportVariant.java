@@ -27,7 +27,24 @@ public enum ExportVariant {
   ORIGINAL,
   /**
    * The invoice model written anew; amounts the model recalculated on reading replace the stated
-   * ones, see {@link ImportResult#deviations()}.
+   * ones, see {@link ImportResult#deviations()}. Refused if the document states taxes of another
+   * type than VAT ({@link ReadWarning#OTHER_TAX}), as the export would drop them and lower the
+   * amount due; see {@link #NORMALIZED_DROPPING_OTHER_TAXES}.
    */
-  NORMALIZED
+  NORMALIZED,
+  /**
+   * Like {@link #NORMALIZED}, but the caller explicitly accepts that taxes of another type than VAT
+   * ({@link ReadWarning#OTHER_TAX}, e.g. the insurance tax AAM) are not written: their amounts are
+   * missing from the total tax amount and the amount due of the export.
+   */
+  NORMALIZED_DROPPING_OTHER_TAXES;
+
+  /**
+   * Whether the variant writes the invoice model anew.
+   *
+   * @return true for {@link #NORMALIZED} and {@link #NORMALIZED_DROPPING_OTHER_TAXES}
+   */
+  public boolean isNormalized() {
+    return this != ORIGINAL;
+  }
 }

@@ -406,6 +406,43 @@ public final class UblInvoiceReader
                                        "country"));
   }
 
+  /**
+   * Whether a tax category belongs to VAT; a category without tax scheme counts as VAT.
+   */
+  private static boolean isVat(XmlElement category) {
+    String scheme = category == null ?
+                    null :
+                    category.text("cac:TaxScheme/cbc:ID");
+    return scheme == null || "VAT".equals(scheme.strip());
+  }
+
+  /**
+   * Returns the first VAT category of a line item and reports categories of other tax schemes,
+   * which are not read.
+   */
+  private static XmlElement lineTax(XmlElement line,
+                                    ReadContext context) {
+    XmlElement vat    = null;
+    String     lineId = line.text("cbc:ID");
+    var        taxes  = line.all("cac:Item/cac:ClassifiedTaxCategory");
+    for (int index = 0; index < taxes.size(); index++) {
+      var category = taxes.get(index);
+      if (!isVat(category)) {
+        context.otherTax(category.text("cac:TaxScheme/cbc:ID")
+                                 .strip(),
+                         lineId,
+                         "line " + lineId + " tax " + (index + 1),
+                         category.text("cbc:ID"),
+                         category.decimal("cbc:Percent"),
+                         null,
+                         null);
+      } else if (vat == null) {
+        vat = category;
+      }
+    }
+    return vat;
+  }
+
   private static TaxCategory tax(XmlElement category) {
     if (category == null) {
       return null;
@@ -449,7 +486,8 @@ public final class UblInvoiceReader
                              .priceBaseQuantity(baseQuantity == null ?
                                                 BigDecimal.ONE :
                                                 baseQuantity)
-                             .tax(InvoiceConsistency.complete(tax(line.find("cac:Item/cac:ClassifiedTaxCategory")),
+                             .tax(InvoiceConsistency.complete(tax(lineTax(line,
+                                                                          context)),
                                                               categories))
                              .note(line.text("cbc:Note"))
                              .buyerAccountingReference(line.text("cbc:AccountingCost"))
@@ -607,8 +645,25 @@ public final class UblInvoiceReader
                        .findFirst()
                        .orElse(null);
     if (taxTotal != null) {
-      taxTotal.all("cac:TaxSubtotal/cac:TaxCategory")
-              .forEach(category -> breakdowns.add(tax(category)));
+      var subtotals = taxTotal.children("cac:TaxSubtotal");
+      for (int index = 0; index < subtotals.size(); index++) {
+        var subtotal = subtotals.get(index);
+        var category = subtotal.find("cac:TaxCategory");
+        if (category == null) {
+          continue;
+        }
+        if (isVat(category)) {
+          breakdowns.add(tax(category));
+        } else {
+          readContext.otherTax(category.text("cac:TaxScheme/cbc:ID"),
+                               null,
+                               "header tax " + (index + 1),
+                               category.text("cbc:ID"),
+                               category.decimal("cbc:Percent"),
+                               subtotal.decimal("cbc:TaxableAmount"),
+                               subtotal.decimal("cbc:TaxAmount"));
+        }
+      }
     }
     var categories = InvoiceConsistency.byCategoryAndRate(breakdowns);
     for (var adjustment : root.children("cac:AllowanceCharge")) {

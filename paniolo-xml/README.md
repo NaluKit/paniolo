@@ -62,7 +62,9 @@ keeps the calculated totals, drops allowance reason codes outside UNTDID 5189 th
 reason text and percentages without base amount, keeps only the first of differing payment means
 blocks, turns ZUGFeRD 1.0 text-only lines into notes, and reports each deviation as a
 `ReadWarning`: `READ-LINE-NET-PRICE`, `READ-TAX-TOTAL`, `READ-PAYABLE-AMOUNT`, `READ-REASON-CODE`,
-`READ-PERCENTAGE`, `READ-PAYMENT-MEANS`, and `READ-TEXT-LINE`.
+`READ-PERCENTAGE`, `READ-PAYMENT-MEANS`, and `READ-TEXT-LINE`. A tax of another type than VAT
+(CII `TypeCode`, UBL `TaxScheme/ID`, e.g. `AAM`) is never read as VAT: strict reading rejects it,
+lenient reading reports it as `READ-OTHER-TAX` and leaves it out.
 
 Both modes report values the model does not keep or interpret, without changing an amount:
 `READ-CASH-DISCOUNT` (a payment terms line that looks like a cash discount, kept as text),
@@ -78,6 +80,8 @@ provide `read(Document, ReadMode)`; the other read methods delegate to it.
 `importXml(byte[], ReadMode)` returns an `ImportResult` with
 both the read result and the original XML. `ImportResult.export(ExportVariant.ORIGINAL, null)`
 returns those original bytes; `NORMALIZED` takes an `InvoiceXmlWriter` and writes the model again.
+It is refused after `READ-OTHER-TAX`, as it would drop that tax and change the amount due;
+`NORMALIZED_DROPPING_OTHER_TAXES` accepts the loss explicitly.
 The facade exposes this through `importInvoice` and `export`; see
 [importing received invoices](../README.md#importing-received-invoices-with-their-original-amounts).
 

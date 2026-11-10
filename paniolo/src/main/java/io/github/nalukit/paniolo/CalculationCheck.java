@@ -63,7 +63,9 @@ import java.util.regex.Pattern;
  *       allowances, charges and VAT breakdown</td><td>BR-CO-10 to BR-CO-17, BR-xx-08 and BR-xx-09
  *       (EN 16931)</td></tr>
  *   <tr><td>{@link #NOT_CHECKED}</td><td>the amounts could not be recalculated, e.g. because sub-lines
- *       do not add up (BR-DEX-02) or the structure is not supported</td><td>&ndash;</td></tr>
+ *       do not add up (BR-DEX-02) or the structure is not supported; if the document states a tax
+ *       other than VAT (e.g. AAM), only BT-110, BT-112 and BT-115 are not checked and named so</td>
+ *       <td>&ndash;</td></tr>
  * </table>
  */
 public final class CalculationCheck {
@@ -90,6 +92,9 @@ public final class CalculationCheck {
   public static final String NOT_CHECKED      = "PANIOLO-CALC-NOT-CHECKED";
 
   private static final BigDecimal                     CENT       = new BigDecimal("0.01");
+  private static final List<String>                   OTHER_TAX_TOTALS = List.of("BT-110",
+                                                                                 "BT-112",
+                                                                                 "BT-115");
   private static final Set<String>                    ROUNDED    = Set.of("BT-110",
                                                                           "BT-112",
                                                                           "BT-115");
@@ -203,7 +208,26 @@ public final class CalculationCheck {
                                                                              .totals()
                                                                              .vatBreakdowns()
                                                                              .size())));
+    // Taxes of another type than VAT (e.g. AAM) are not in the model: the totals that include them
+    // cannot be recalculated, so a difference there is no finding about the sender.
+    var otherTaxes = imported.warnings()
+                             .stream()
+                             .filter(warning -> ReadWarning.OTHER_TAX.equals(warning.code()))
+                             .map(ReadWarning::message)
+                             .toList();
+    if (!otherTaxes.isEmpty()) {
+      findings.add(new ValidationMessage(NOT_CHECKED,
+                                         Severity.INFO,
+                                         "The amounts BT-110, BT-112 and BT-115 were not recalculated: the document states taxes the model does not support. " + String.join("; ",
+                                                                                                                                                          otherTaxes),
+                                         String.join(", ",
+                                                     OTHER_TAX_TOTALS),
+                                         ValidationMessage.Stage.CALCULATION));
+    }
     for (AmountDeviation deviation : imported.deviations()) {
+      if (!otherTaxes.isEmpty() && OTHER_TAX_TOTALS.contains(deviation.businessTerm())) {
+        continue;
+      }
       if (deviation.lineId() == null) {
         boolean rounding = ROUNDED.contains(deviation.businessTerm()) && deviation.stated()
                                                                                  .subtract(deviation.calculated() == null ?

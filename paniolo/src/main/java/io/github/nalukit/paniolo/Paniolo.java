@@ -1335,7 +1335,12 @@ public final class Paniolo
    *   <li>{@link ExportVariant#ORIGINAL} &ndash; the received XML, byte for byte. A syntax, if given,
    *       must be the syntax of the received XML; the original is never converted.</li>
    *   <li>{@link ExportVariant#NORMALIZED} &ndash; the invoice model written in the given syntax. If
-   *       {@link ImportResult#isNormalized()} is true, the amounts differ from the received ones.</li>
+   *       {@link ImportResult#isNormalized()} is true, the amounts differ from the received ones. It
+   *       is refused if the document states taxes of another type than VAT, e.g. AAM
+   *       ({@link io.github.nalukit.paniolo.xml.ReadWarning#OTHER_TAX}).</li>
+   *   <li>{@link ExportVariant#NORMALIZED_DROPPING_OTHER_TAXES} &ndash; like
+   *       {@link ExportVariant#NORMALIZED}, but explicitly without those taxes; the amount due is
+   *       lower than the received one.</li>
    * </ul>
    *
    * @param imported the import result; must not be {@code null}
@@ -1362,7 +1367,7 @@ public final class Paniolo
       }
     }
     byte[] result = imported.export(variant,
-                                    variant == ExportVariant.NORMALIZED ?
+                                    variant.isNormalized() ?
                                     writer(syntax) :
                                     null);
     super.logStop(watch);
