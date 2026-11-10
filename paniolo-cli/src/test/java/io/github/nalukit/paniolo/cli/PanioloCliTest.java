@@ -1080,7 +1080,8 @@ class PanioloCliTest {
     assertTrue(out.contains("unknown.xml: UNKNOWN, not validated, root element {urn:example}Order"),
                out);
     assertTrue(out.lines()
-                  .anyMatch(line -> line.contains("broken.xml: MALFORMED") && line.contains("must start and end within the same entity")),
+                  // the parser message after the position is localized by the JDK, so only the locale-independent part is checked
+                  .anyMatch(line -> line.contains("broken.xml: MALFORMED, not validated, ParseError at [row,col]:[1,11]")),
                out);
     assertTrue(out.contains("plain.pdf: PDF, producer"),
                out);
