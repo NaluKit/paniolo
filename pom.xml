@@ -69,7 +69,7 @@
     <revision>HEAD-SNAPSHOT</revision>
 
     <junit.version>6.1.3</junit.version>
-    <saxon.version>12.10</saxon.version>
+    <saxon.version>13.1</saxon.version>
     <pdfbox.version>3.0.8</pdfbox.version>
     <verapdf.version>1.30.3</verapdf.version>
     <jackson.version>2.22.4</jackson.version>
