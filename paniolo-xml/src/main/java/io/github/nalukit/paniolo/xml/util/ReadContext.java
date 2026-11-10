@@ -172,6 +172,43 @@ public final class ReadContext {
   }
 
   /**
+   * Handles a tax of another type than VAT, e.g. the insurance tax {@code AAM} of Factur-X
+   * EXTENDED: strict reading rejects the document, lenient reading reports the tax without reading
+   * it. The tax is never read as VAT, and no total is adjusted for it.
+   *
+   * @param typeCode the stated tax type code, e.g. {@code AAM}
+   * @param lineId   the line of a line tax, or null for the document level
+   * @param location where the tax is stated, e.g. {@code line 2} or {@code header tax 3}
+   * @param category the stated category code, or null
+   * @param rate     the stated rate, or null
+   * @param basis    the stated basis amount, or null
+   * @param amount   the stated tax amount, or null
+   * @throws IllegalArgumentException in strict reading
+   */
+  public void otherTax(String typeCode,
+                       String lineId,
+                       String location,
+                       String category,
+                       BigDecimal rate,
+                       BigDecimal basis,
+                       BigDecimal amount) {
+    String message = "Tax type " + typeCode + " at " + location + " (category " + category + ", rate " + plain(rate) + ", basis " + plain(basis) + ", amount " + plain(amount) +
+                     ") is not supported; the model keeps VAT only";
+    if (mode == ReadMode.STRICT) {
+      throw new IllegalArgumentException(message);
+    }
+    warnings.add(new ReadWarning(ReadWarning.OTHER_TAX,
+                                 lineId,
+                                 message + ", the tax was not read and the calculated totals lack it"));
+  }
+
+  private static String plain(BigDecimal value) {
+    return value == null ?
+           "-" :
+           value.toPlainString();
+  }
+
+  /**
    * Reports a value of the document that the model does not keep.
    *
    * @param code    the warning code, e.g. {@link ReadWarning#IDENTIFIER}

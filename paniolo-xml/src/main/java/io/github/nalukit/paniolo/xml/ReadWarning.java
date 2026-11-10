@@ -78,6 +78,13 @@ public record ReadWarning(String code, String lineId, String message) {
    * EN 16931:2017, and terms new in EN 16931:2026 were not read.
    */
   public static final String SPECIFICATION_VERSION = "READ-SPECIFICATION-VERSION";
+  /**
+   * The document states a tax of another type than VAT, e.g. the insurance tax {@code AAM} that
+   * Factur-X EXTENDED allows (tax type code other than {@code VAT}). The model keeps VAT only, so
+   * the tax was not read: the calculated totals lack its amount, and a normalized export would drop
+   * it and change the amount due. The message names the tax type, its location, and its amounts.
+   */
+  public static final String OTHER_TAX      = "READ-OTHER-TAX";
 
   /**
    * Creates the warning.

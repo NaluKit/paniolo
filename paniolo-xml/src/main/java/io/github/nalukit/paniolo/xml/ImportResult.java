@@ -132,18 +132,37 @@ public final class ImportResult {
    * @param variant the original or the normalized document
    * @param writer  the writer of the normalized document; ignored for {@link ExportVariant#ORIGINAL}
    * @return the original bytes or the normalized XML encoded as UTF-8
-   * @throws NullPointerException     if variant is null, or writer is null for
-   *                                  {@link ExportVariant#NORMALIZED}
-   * @throws IllegalArgumentException if the writer cannot express the invoice
+   * @throws NullPointerException     if variant is null, or writer is null for a normalized
+   *                                  variant
+   * @throws IllegalArgumentException if the writer cannot express the invoice, or
+   *                                  {@link ExportVariant#NORMALIZED} would drop taxes of another type
+   *                                  than VAT ({@link ReadWarning#OTHER_TAX})
    */
   public byte[] export(ExportVariant variant,
                        InvoiceXmlWriter writer) {
     return switch (Objects.requireNonNull(variant,
                                           "variant")) {
       case ORIGINAL -> originalXml();
-      case NORMALIZED -> Objects.requireNonNull(writer,
-                                                "writer")
-                                .toBytes(read.invoice());
+      case NORMALIZED -> {
+        var dropped = read.warnings()
+                          .stream()
+                          .filter(warning -> ReadWarning.OTHER_TAX.equals(warning.code()))
+                          .map(ReadWarning::message)
+                          .toList();
+        if (!dropped.isEmpty()) {
+          Objects.requireNonNull(writer,
+                                 "writer");
+          throw new IllegalArgumentException("The normalized export would drop taxes the model does not support and change the amount due: " + String.join("; ",
+                                                                                                                                                             dropped) +
+                                             ". Export " + ExportVariant.ORIGINAL + ", or " + ExportVariant.NORMALIZED_DROPPING_OTHER_TAXES + " to accept the loss");
+        }
+        yield Objects.requireNonNull(writer,
+                                     "writer")
+                     .toBytes(read.invoice());
+      }
+      case NORMALIZED_DROPPING_OTHER_TAXES -> Objects.requireNonNull(writer,
+                                                                     "writer")
+                                                     .toBytes(read.invoice());
     };
   }
 

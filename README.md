@@ -795,6 +795,7 @@ result.warnings().forEach(w -> log(w.code(), w.lineId(), w.message()));
 | `READ-PERCENTAGE`     | Allowance or charge percentage without its base amount                             | The percentage is dropped and the stated amount kept; no base amount is derived                                                                                          |
 | `READ-PAYMENT-MEANS`  | A further payment means block with other means, text, card, or mandate             | The block is not merged; the model keeps the first payment instruction (BG-16)                                                                                           |
 | `READ-TEXT-LINE`      | A ZUGFeRD 1.0 line with text only, without item and quantity                       | The text becomes an invoice note (BG-1)                                                                                                                                  |
+| `READ-OTHER-TAX`      | A tax of another type than VAT, e.g. the insurance tax `AAM` of Factur-X EXTENDED   | The tax is not read and never taken for VAT; the calculated totals lack it, and `NORMALIZED` export is refused (see below)                                                |
 
 Three warnings report values the model does not keep or interpret, without changing an amount.
 They are given in **both** modes, so `isExact()` can be `false` after a strict read as well:
@@ -838,7 +839,12 @@ byte[] ubl     = paniolo.export(received, ExportVariant.NORMALIZED, InvoiceSynta
 
 The export variant is always an explicit choice: `ORIGINAL` returns the received XML (for a PDF
 the embedded invoice XML) and is never converted into another syntax; `NORMALIZED` writes the
-model with its recalculated amounts.
+model with its recalculated amounts. The model keeps VAT only: if the document states another tax
+type such as the insurance tax `AAM` (`READ-OTHER-TAX`), `NORMALIZED` is refused, because the
+export would drop that tax and lower the amount due. `NORMALIZED_DROPPING_OTHER_TAXES` writes the
+model anyway and documents that the loss is accepted. The calculation check
+(`calculationCheck(true)`) then reports BT-110, BT-112 and BT-115 as `PANIOLO-CALC-NOT-CHECKED`
+instead of as differences.
 
 XML written by Paniolo reads back into an equal `Invoice`. Values without an EN 16931
 counterpart that the writers add (UBL card `NetworkID`, CII project name, the `NA` order

@@ -383,6 +383,41 @@ public final class CiiInvoiceReader
                                        "country"));
   }
 
+  /**
+   * Returns the VAT blocks of a list of tax blocks and reports every block of another tax type,
+   * e.g. the insurance tax {@code AAM} of Factur-X EXTENDED, without reading it. A block without
+   * tax type code counts as VAT, as older documents leave it out.
+   *
+   * @param taxes    the tax blocks in document order
+   * @param lineId   the line the blocks belong to, or null for the document level
+   * @param location the location for messages, e.g. {@code line 2} or {@code header}
+   * @param context  the state of the read
+   * @return the VAT blocks in document order
+   */
+  static List<XmlElement> vatTaxes(List<XmlElement> taxes,
+                                   String lineId,
+                                   String location,
+                                   ReadContext context) {
+    var vat = new ArrayList<XmlElement>();
+    for (int index = 0; index < taxes.size(); index++) {
+      var    tax  = taxes.get(index);
+      String type = tax.text("ram:TypeCode");
+      if (type == null || "VAT".equals(type.strip())) {
+        vat.add(tax);
+      } else {
+        context.otherTax(type.strip(),
+                         lineId,
+                         location + " tax " + (index + 1),
+                         tax.text("ram:CategoryCode"),
+                         Objects.requireNonNullElse(tax.decimal("ram:RateApplicablePercent"),
+                                                    tax.decimal("ram:ApplicablePercent")),
+                         tax.decimal("ram:BasisAmount"),
+                         tax.decimal("ram:CalculatedAmount"));
+      }
+    }
+    return vat;
+  }
+
   private static TaxCategory tax(XmlElement tax) {
     if (tax == null) {
       return null;
@@ -403,7 +438,7 @@ public final class CiiInvoiceReader
   /**
    * Reads the totals and the VAT breakdown of a document without lines.
    */
-  private static DocumentTotals statedTotals(XmlElement settlement,
+  private static DocumentTotals statedTotals(List<XmlElement> taxes,
                                              XmlElement summation,
                                              BigDecimal statedTax) {
     var totals = DocumentTotals.create()
@@ -412,7 +447,7 @@ public final class CiiInvoiceReader
                                .taxTotal(statedTax == null ?
                                          BigDecimal.ZERO :
                                          statedTax);
-    for (var tax : settlement.children("ram:ApplicableTradeTax")) {
+    for (var tax : taxes) {
       totals.addVatBreakdown(tax(tax),
                              tax.decimal("ram:BasisAmount"),
                              tax.decimal("ram:CalculatedAmount"));
@@ -533,11 +568,18 @@ public final class CiiInvoiceReader
     var gross      = item.find("ram:SpecifiedLineTradeAgreement/ram:GrossPriceProductTradePrice");
     var settlement = item.find("ram:SpecifiedLineTradeSettlement");
     var product    = item.find("ram:SpecifiedTradeProduct");
+    String lineId = item.text("ram:AssociatedDocumentLineDocument/ram:LineID");
+    var lineTaxes = settlement == null ?
+                    List.<XmlElement>of() :
+                    vatTaxes(settlement.children("ram:ApplicableTradeTax"),
+                             lineId,
+                             "line " + lineId,
+                             context);
     BigDecimal baseQuantity = price == null ?
                               null :
                               price.decimal("ram:BasisQuantity");
     var builder = InvoiceLine.create()
-                             .id(item.text("ram:AssociatedDocumentLineDocument/ram:LineID"))
+                             .id(lineId)
                              .note(item.text("ram:AssociatedDocumentLineDocument/ram:IncludedNote/ram:Content"))
                              .quantity(quantity == null ?
                                        null :
@@ -553,7 +595,9 @@ public final class CiiInvoiceReader
                              .priceBaseQuantity(baseQuantity == null ?
                                                 BigDecimal.ONE :
                                                 baseQuantity)
-                             .tax(InvoiceConsistency.complete(tax(item.find("ram:SpecifiedLineTradeSettlement/ram:ApplicableTradeTax")),
+                             .tax(InvoiceConsistency.complete(tax(lineTaxes.isEmpty() ?
+                                                                  null :
+                                                                  lineTaxes.get(0)),
                                                               categories))
                              .orderLineReference(item.text("ram:SpecifiedLineTradeAgreement/ram:BuyerOrderReferencedDocument/ram:LineID"));
     if (product != null) {
@@ -934,12 +978,16 @@ public final class CiiInvoiceReader
                                             CurrencyCode::of,
                                             "currency"));
 
+    var headerTaxes = vatTaxes(settlement.children("ram:ApplicableTradeTax"),
+                               null,
+                               "header",
+                               readContext);
     var breakdowns = new ArrayList<TaxCategory>();
-    for (var tax : settlement.children("ram:ApplicableTradeTax")) {
+    for (var tax : headerTaxes) {
       breakdowns.add(tax(tax));
     }
     taxPoint(builder,
-             settlement.children("ram:ApplicableTradeTax"));
+             headerTaxes);
     var categories = InvoiceConsistency.byCategoryAndRate(breakdowns);
     var period     = settlement.find("ram:BillingSpecifiedPeriod");
     if (period != null) {
@@ -1020,7 +1068,7 @@ public final class CiiInvoiceReader
       if (summation == null) {
         throw new IllegalArgumentException("CII monetary summation is missing");
       }
-      builder.statedTotals(statedTotals(settlement,
+      builder.statedTotals(statedTotals(headerTaxes,
                                         summation,
                                         statedTax));
       if (summation.find("ram:TotalPrepaidAmount") == null) {

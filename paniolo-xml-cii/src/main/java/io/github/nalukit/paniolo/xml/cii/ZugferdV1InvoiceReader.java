@@ -392,7 +392,10 @@ public final class ZugferdV1InvoiceReader
       }
 
       var breakdowns = new ArrayList<TaxCategory>();
-      for (var tax : settlement.children("ram:ApplicableTradeTax")) {
+      for (var tax : CiiInvoiceReader.vatTaxes(settlement.children("ram:ApplicableTradeTax"),
+                                               null,
+                                               "header",
+                                               context)) {
         breakdowns.add(tax(tax));
       }
       var categories = InvoiceConsistency.byCategoryAndRate(breakdowns);
@@ -554,6 +557,23 @@ public final class ZugferdV1InvoiceReader
       }
     }
 
+    /**
+     * Returns the first VAT block of a line and reports blocks of other tax types.
+     */
+    private XmlElement lineTax(XmlElement settlement,
+                               String lineId) {
+      if (settlement == null) {
+        return null;
+      }
+      var taxes = CiiInvoiceReader.vatTaxes(settlement.children("ram:ApplicableTradeTax"),
+                                            lineId,
+                                            "line " + lineId,
+                                            context);
+      return taxes.isEmpty() ?
+             null :
+             taxes.get(0);
+    }
+
     private InvoiceLine line(XmlElement item,
                              int position,
                              Map<String, TaxCategory> categories) {
@@ -583,9 +603,8 @@ public final class ZugferdV1InvoiceReader
                                .unitCode(XmlElement.code(quantity.attribute("unitCode"),
                                                          UnitCode::of,
                                                          "unit code"))
-                               .tax(InvoiceConsistency.complete(tax(settlement == null ?
-                                                                    null :
-                                                                    settlement.find("ram:ApplicableTradeTax")),
+                               .tax(InvoiceConsistency.complete(tax(lineTax(settlement,
+                                                                            lineId)),
                                                                 categories));
       var note = item.find("ram:AssociatedDocumentLineDocument/ram:IncludedNote");
       if (note != null) {
