@@ -76,7 +76,7 @@
 
     <plugin.central-publishing.version>0.8.0</plugin.central-publishing.version>
     <plugin.compiler.version>3.16.0</plugin.compiler.version>
-    <plugin.dependency-check.version>12.1.6</plugin.dependency-check.version>
+    <plugin.dependency-check.version>13.0.0</plugin.dependency-check.version>
     <plugin.download.version>1.13.0</plugin.download.version>
     <plugin.enforcer.version>3.5.0</plugin.enforcer.version>
     <plugin.flatten.version>1.9.0</plugin.flatten.version>
