@@ -24,7 +24,10 @@ import io.github.nalukit.paniolo.model.order.OrderTypeCode;
 import io.github.nalukit.paniolo.model.order.OrderXProfile;
 import io.github.nalukit.paniolo.validation.ValidationMessage;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * Service provider for Factur-X / ZUGFeRD PDF handling, implemented by {@code paniolo-facturx}
@@ -181,6 +184,28 @@ public interface FacturXSupport {
    * @throws IllegalArgumentException if the PDF contains no supported invoice XML
    */
   EmbeddedInvoice extract(byte[] pdf);
+
+  /**
+   * Hands the embedded invoice XML as stream to {@code probe}, as a cheap check whether a PDF is a
+   * hybrid invoice. Implementations should neither read the XMP metadata nor buffer the XML, so the
+   * probe can stop after the first elements; the default extracts the whole invoice.
+   *
+   * @param pdf   the PDF document
+   * @param probe reads the start of the XML; its result is returned
+   * @param <T>   type of the result
+   * @return the result of {@code probe}, or {@code null} if the content is no readable PDF, is
+   * encrypted or contains no invoice file
+   */
+  default <T> T probeInvoice(byte[] pdf,
+                             Function<InputStream, T> probe) {
+    byte[] xml;
+    try {
+      xml = extract(pdf).xml();
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
+    return probe.apply(new ByteArrayInputStream(xml));
+  }
 
   /**
    * Checks the Factur-X / ZUGFeRD container: embedded invoice file, its relationship and MIME type,

@@ -6,6 +6,16 @@ reference in `docs/api/<version>.md`.
 
 ## [Unreleased]
 
+### Added
+
+- `Paniolo.isEInvoice(byte[])` and `Paniolo.probe(byte[])`: cheap check whether XML or a PDF is an
+  EN 16931 electronic invoice (UBL Invoice, UBL CreditNote, CII, or a Factur-X / ZUGFeRD 2.x PDF
+  with such XML embedded). Only the start of the XML is read, the root element and for CII the
+  specification identifier (BT-24); for a PDF only the embedded files and the start of the invoice
+  XML, without XMP metadata, page content or PDF/A checks. The profiles MINIMUM and BASIC WL, which
+  are no electronic invoices in Germany, and unsuitable content, including ZUGFeRD 1.0, yield
+  `false` / an empty result instead of an exception. A PDF needs `paniolo-facturx`.
+
 ### Changed
 
 - Validation report PDF (`toReportPdf`, `paniolo validate -f pdf`) laid out as conformance report:

@@ -58,6 +58,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
 
 /**
  * Factur-X / ZUGFeRD implementation based on Apache PDFBox, registered for
@@ -1064,6 +1065,33 @@ public final class PdfBoxFacturXSupport
     } catch (IOException e) {
       throw new UncheckedIOException("Cannot read the attachments of the PDF document",
                                      e);
+    }
+  }
+
+  @Override
+  public <T> T probeInvoice(byte[] pdf,
+                            Function<InputStream, T> probe) {
+    Objects.requireNonNull(pdf,
+                           "pdf");
+    Objects.requireNonNull(probe,
+                           "probe");
+    try (PDDocument document = load(pdf)) {
+      // No XMP: the first invoice file in the order of INVOICE_NAMES is enough to answer.
+      var files = invoiceFiles(document.getDocumentCatalog());
+      if (files.isEmpty()) {
+        return null;
+      }
+      PDEmbeddedFile embedded = embeddedFile(files.values()
+                                                  .iterator()
+                                                  .next());
+      if (embedded == null) {
+        return null;
+      }
+      try (InputStream input = embedded.createInputStream()) {
+        return probe.apply(input);
+      }
+    } catch (IllegalArgumentException | IOException e) {
+      return null;
     }
   }
 

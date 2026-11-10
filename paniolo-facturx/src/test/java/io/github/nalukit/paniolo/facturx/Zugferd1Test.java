@@ -68,7 +68,7 @@ class Zugferd1Test {
   /**
    * A ZUGFeRD 1.0 PDF: the XML embedded as {@code ZUGFeRD-invoice.xml} next to another attachment.
    */
-  private static byte[] zugferd1Pdf(byte[] xml)
+  static byte[] zugferd1Pdf(byte[] xml)
       throws Exception {
     byte[] embedded = SUPPORT.embed(TestPdfs.pdfA2b(),
                                     xml,

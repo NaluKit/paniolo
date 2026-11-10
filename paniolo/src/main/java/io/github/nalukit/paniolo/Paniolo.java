@@ -61,11 +61,13 @@ import io.github.nalukit.paniolo.xml.ubl.DespatchAdviceWriter;
 import io.github.nalukit.paniolo.xml.ubl.UblInvoiceReader;
 import io.github.nalukit.paniolo.xml.ubl.UblInvoiceWriter;
 import io.github.nalukit.paniolo.xml.util.SpecificationGenerations;
+import io.github.nalukit.paniolo.xml.util.XmlDocuments;
 
 import javax.xml.namespace.QName;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -227,6 +229,7 @@ public final class Paniolo
     extends PanioloBase {
   private static final String                               UBL                   = "urn:oasis:names:specification:ubl:schema:xsd:";
   private static final String                               CII                   = "urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100";
+  private static final String                               RAM                   = "urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100";
   /**
    * The CIUS part of the specification identifier of XRechnung 1.2 to 2.3.
    */
@@ -355,6 +358,22 @@ public final class Paniolo
 
   private static ValidationProfile.Syntax detect(String namespace,
                                                  String localName) {
+    var syntax = syntax(namespace,
+                        localName);
+    if (syntax != null) {
+      return syntax;
+    }
+    if (ZugferdV1InvoiceReader.RSM.equals(namespace)) {
+      throw new IllegalArgumentException("ZUGFeRD 1.0 is no EN 16931 invoice; validate it with Paniolo.validate(byte[]) or migrate it with Paniolo.migrateZugferd1");
+    }
+    throw new IllegalArgumentException("Unsupported invoice document: {" + namespace + "}" + localName);
+  }
+
+  /**
+   * Returns the EN 16931 document type of a root element, or null if it is none.
+   */
+  private static ValidationProfile.Syntax syntax(String namespace,
+                                                 String localName) {
     if ((UBL + "Invoice-2").equals(namespace) && "Invoice".equals(localName)) {
       return ValidationProfile.Syntax.UBL_INVOICE;
     }
@@ -364,10 +383,7 @@ public final class Paniolo
     if (CII.equals(namespace) && "CrossIndustryInvoice".equals(localName)) {
       return ValidationProfile.Syntax.CII;
     }
-    if (ZugferdV1InvoiceReader.RSM.equals(namespace)) {
-      throw new IllegalArgumentException("ZUGFeRD 1.0 is no EN 16931 invoice; validate it with Paniolo.validate(byte[]) or migrate it with Paniolo.migrateZugferd1");
-    }
-    throw new IllegalArgumentException("Unsupported invoice document: {" + namespace + "}" + localName);
+    return null;
   }
 
   private static byte[] readAll(InputStream input) {
@@ -460,27 +476,9 @@ public final class Paniolo
    * Returns the name of the root element, or null for malformed XML.
    */
   private static QName rootName(byte[] xml) {
-    var factory = XMLInputFactory.newDefaultFactory();
-    factory.setProperty(XMLInputFactory.SUPPORT_DTD,
-                        false);
-    factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES,
-                        false);
-    try {
-      var reader = factory.createXMLStreamReader(new ByteArrayInputStream(xml));
-      try {
-        while (reader.hasNext()) {
-          if (reader.next() == XMLStreamConstants.START_ELEMENT) {
-            return reader.getName();
-          }
-        }
-      } finally {
-        reader.close();
-      }
-    } catch (XMLStreamException e) {
-      return null;
-    }
-    return null;
+    return XmlDocuments.rootName(new ByteArrayInputStream(xml));
   }
+
 
   /**
    * Returns the Factur-X profile a standalone CII document is validated with: MINIMUM, BASIC WL,
@@ -1425,6 +1423,120 @@ public final class Paniolo
     ValidationProfile.Syntax result = detectRoot(xml);
     super.logStop(watch);
     return result;
+  }
+
+  /**
+   * Checks cheaply whether a document is an electronic invoice according to EN 16931: UBL Invoice,
+   * UBL CreditNote or CII XML, or a Factur-X / ZUGFeRD 2.x PDF with such an XML embedded. Never
+   * throws for unsuitable content.
+   *
+   * <p>Only the start of the XML is read: the root element and, for CII, the specification
+   * identifier (BT-24) in the document context. For a PDF, only the cross-reference table, the
+   * catalog with the embedded files and the start of the embedded invoice XML are read, without XMP
+   * metadata, page content or PDF/A checks. Validity is not checked; use {@link #validate(byte[])}
+   * for that.
+   *
+   * <pre>{@code
+   * byte[] received = Files.readAllBytes(path);
+   * if (paniolo.isEInvoice(received)) {
+   *   ValidationResult result = paniolo.validate(received);
+   * }
+   * }</pre>
+   *
+   * <p>The Factur-X / ZUGFeRD profiles MINIMUM and BASIC WL carry no invoice lines and are no
+   * electronic invoices in Germany; like ZUGFeRD 1.0, Order-X and despatch advices they yield
+   * {@code false}. A CII document without BT-24 counts as an electronic invoice.
+   *
+   * @param xmlOrPdf invoice XML or PDF; must not be {@code null}
+   * @return {@code true} if the document is an electronic invoice
+   * @throws IllegalStateException if the content is a PDF and {@code paniolo-facturx} is missing
+   * @see #probe(byte[])
+   */
+  public boolean isEInvoice(byte[] xmlOrPdf) {
+    return probe(xmlOrPdf).isPresent();
+  }
+
+  /**
+   * Determines cheaply the document type of an electronic invoice in XML or PDF form, like
+   * {@link #isEInvoice(byte[])}, and returns it. Unlike {@link #detect(byte[])}, it accepts PDFs
+   * and reports unsuitable content as empty result instead of an exception.
+   *
+   * @param xmlOrPdf invoice XML or PDF; must not be {@code null}
+   * @return the document type, or empty if the content is no electronic invoice (also for malformed
+   * XML, unreadable or encrypted PDFs, ZUGFeRD 1.0, and the profiles MINIMUM and BASIC WL)
+   * @throws IllegalStateException if the content is a PDF and {@code paniolo-facturx} is missing
+   */
+  public Optional<ValidationProfile.Syntax> probe(byte[] xmlOrPdf) {
+    Objects.requireNonNull(xmlOrPdf,
+                           "xmlOrPdf");
+    PanioloStopWatch watch = super.logStart("Paniolo.probe");
+    ValidationProfile.Syntax result = isPdf(xmlOrPdf) ?
+                                      facturX().probeInvoice(xmlOrPdf,
+                                                             Paniolo::probeXml) :
+                                      probeXml(new ByteArrayInputStream(xmlOrPdf));
+    super.logStop(watch);
+    return Optional.ofNullable(result);
+  }
+
+  /**
+   * Reads the start of invoice XML: the root element and, for CII, BT-24 up to the end of the
+   * document context. Returns null for no electronic invoice, MINIMUM and BASIC WL.
+   */
+  private static ValidationProfile.Syntax probeXml(InputStream input) {
+    try {
+      var reader = XmlDocuments.streamReader(input);
+      try {
+        while (reader.hasNext()) {
+          if (reader.next() == XMLStreamConstants.START_ELEMENT) {
+            var syntax = syntax(reader.getNamespaceURI(),
+                                reader.getLocalName());
+            if (syntax != ValidationProfile.Syntax.CII) {
+              return syntax;
+            }
+            var profile = FacturXProfile.ofSpecificationId(ciiSpecificationId(reader));
+            return profile == FacturXProfile.MINIMUM || profile == FacturXProfile.BASIC_WL ?
+                   null :
+                   syntax;
+          }
+        }
+      } finally {
+        reader.close();
+      }
+    } catch (XMLStreamException e) {
+      return null;
+    }
+    return null;
+  }
+
+  /**
+   * BT-24 of a CII invoice whose root element the reader is positioned on, or null if the document
+   * context has none. Stops at the end of the document context.
+   */
+  private static String ciiSpecificationId(XMLStreamReader reader)
+      throws XMLStreamException {
+    boolean guideline = false;
+    while (reader.hasNext()) {
+      int event = reader.next();
+      if (event == XMLStreamConstants.START_ELEMENT) {
+        if (!guideline && RAM.equals(reader.getNamespaceURI()) && "GuidelineSpecifiedDocumentContextParameter".equals(reader.getLocalName())) {
+          guideline = true;
+        } else if (guideline && RAM.equals(reader.getNamespaceURI()) && "ID".equals(reader.getLocalName())) {
+          return reader.getElementText()
+                       .strip();
+        } else if (CII.equals(reader.getNamespaceURI()) && "ExchangedDocument".equals(reader.getLocalName())) {
+          // The document context precedes the document; without context there is no BT-24.
+          return null;
+        }
+      } else if (event == XMLStreamConstants.END_ELEMENT) {
+        if ("ExchangedDocumentContext".equals(reader.getLocalName())) {
+          return null;
+        }
+        if (RAM.equals(reader.getNamespaceURI()) && "GuidelineSpecifiedDocumentContextParameter".equals(reader.getLocalName())) {
+          guideline = false;
+        }
+      }
+    }
+    return null;
   }
 
   /**

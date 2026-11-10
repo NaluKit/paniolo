@@ -23,8 +23,13 @@ import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
 import javax.xml.XMLConstants;
+import javax.xml.namespace.QName;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamConstants;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
 import java.io.FilterInputStream;
 import java.io.FilterReader;
 import java.io.IOException;
@@ -58,6 +63,52 @@ public final class XmlDocuments {
                          "");
     return factory;
   }
+
+  /**
+   * Returns the name of the root element without reading the rest of the document. DTDs and
+   * external entities are not processed; the caller's stream is not closed.
+   *
+   * @param input the XML document
+   * @return the qualified name of the root element, or {@code null} if the XML is malformed before
+   * the root element or has none
+   */
+  public static QName rootName(InputStream input) {
+    try {
+      var reader = streamReader(input);
+      try {
+        while (reader.hasNext()) {
+          if (reader.next() == XMLStreamConstants.START_ELEMENT) {
+            return reader.getName();
+          }
+        }
+      } finally {
+        reader.close();
+      }
+    } catch (XMLStreamException e) {
+      return null;
+    }
+    return null;
+  }
+
+  /**
+   * Creates a namespace-aware StAX reader that processes neither DTDs nor external entities, for
+   * reading only the start of a document. Closing the reader does not close the caller's stream.
+   *
+   * @param input the XML document
+   * @return the reader
+   * @throws XMLStreamException if the reader cannot be created
+   */
+  public static XMLStreamReader streamReader(InputStream input)
+      throws XMLStreamException {
+    var factory = XMLInputFactory.newDefaultFactory();
+    factory.setProperty(XMLInputFactory.SUPPORT_DTD,
+                        false);
+    factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES,
+                        false);
+    return factory.createXMLStreamReader(java.util.Objects.requireNonNull(input,
+                                                                          "input"));
+  }
+
 
   /**
    * Creates an empty namespace-aware document.
