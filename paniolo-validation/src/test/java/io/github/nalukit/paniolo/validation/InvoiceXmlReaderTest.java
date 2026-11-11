@@ -23,6 +23,7 @@ import io.github.nalukit.paniolo.model.common.InvoiceLine;
 import io.github.nalukit.paniolo.model.common.TaxCategory;
 import io.github.nalukit.paniolo.model.common.value.InvoiceTypeCode;
 import io.github.nalukit.paniolo.xml.ExportVariant;
+import io.github.nalukit.paniolo.xml.ImportResult;
 import io.github.nalukit.paniolo.xml.InvoiceXmlReader;
 import io.github.nalukit.paniolo.xml.InvoiceXmlWriter;
 import io.github.nalukit.paniolo.xml.ReadMode;
@@ -40,6 +41,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
@@ -311,6 +313,50 @@ class InvoiceXmlReaderTest {
                    () -> result.export(ExportVariant.NORMALIZED,
                                        null));
     }
+  }
+
+  @Test
+  void importKeepsItsOwnSnapshotOfTheXml() {
+    var invoice = InvoiceSamples.basic(InvoiceSamples.invoice())
+                                .build();
+    var    reader   = new CiiInvoiceReader();
+    byte[] expected = new CiiInvoiceWriter().toBytes(invoice);
+    byte[] input    = expected.clone();
+    var    result   = reader.importXml(input,
+                                       ReadMode.STRICT);
+    // Changing the input afterwards changes neither the kept original nor the invoice.
+    Arrays.fill(input,
+                          (byte) ' ');
+    assertArrayEquals(expected,
+                      result.originalXml());
+    assertArrayEquals(expected,
+                      result.export(ExportVariant.ORIGINAL,
+                                    null));
+    assertEquals(invoice,
+                 result.invoice());
+    // Arrays handed out are copies.
+    result.export(ExportVariant.ORIGINAL,
+                  null)[0] = 0;
+    result.originalXml()[0] = 0;
+    assertArrayEquals(expected,
+                      result.originalXml());
+
+    // The public constructor still copies the array it is given.
+    byte[] given       = expected.clone();
+    var    read        = reader.fromBytes(expected,
+                                          ReadMode.STRICT);
+    var    constructed = new ImportResult(given,
+                                          ReadMode.STRICT,
+                                          read);
+    given[0] = 0;
+    assertArrayEquals(expected,
+                      constructed.originalXml());
+    assertEquals(result,
+                 constructed);
+    assertThrows(NullPointerException.class,
+                 () -> new ImportResult(null,
+                                        ReadMode.STRICT,
+                                        read));
   }
 
   @Test

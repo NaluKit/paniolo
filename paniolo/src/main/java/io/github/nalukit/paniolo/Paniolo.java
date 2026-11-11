@@ -3357,7 +3357,8 @@ public final class Paniolo
     }
     var messages = new ArrayList<>(result.messages());
     try {
-      messages.addAll(CalculationCheck.check(invoiceReader(xml).importXml(xml,
+      // Only the read result is needed; importXml would also keep a copy of the XML.
+      messages.addAll(CalculationCheck.check(invoiceReader(xml).fromBytes(xml,
                                                                           ReadMode.LENIENT),
                                              result.messages()));
     } catch (IllegalArgumentException | UncheckedIOException e) {
