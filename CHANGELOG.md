@@ -8,6 +8,14 @@ reference in `docs/api/<version>.md`.
 
 ### Added
 
+- Release evidence for audits: every module is published with its SBOM in CycloneDX format
+  (`<module>-<version>-cyclonedx.json`); the build is reproducible (fixed archive timestamp, set
+  to the commit time of the release); the release JARs carry a GitHub build provenance
+  attestation; the GitHub release lists the JARs, SBOMs, `SHA256SUMS`, the OWASP
+  Dependency-Check report of the release build, and the changes of the version.
+  `scripts/release/collect-release-files.sh` collects these files, also to rebuild and compare a
+  release. `SECURITY.md` describes how releases are built and how to verify them. The CI builds
+  include the public invoice corpus.
 - PDF/A check: control over the JavaScript rules veraPDF compiles and caches per thread (Mustang
   issue 1158, veraPDF issue 1616). `Paniolo.builder().pdfaScriptCache(PdfaScriptCache)` selects
   `REUSE` (default, unchanged behavior: kept for later checks on the same thread) or

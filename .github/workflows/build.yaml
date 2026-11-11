@@ -64,8 +64,10 @@ jobs:
           distribution: temurin
           java-version: ${{ matrix.java }}
           cache: maven
+      # The public invoice corpus (test-paniolo-invoice-corpus) is part of every build: it is the
+      # regression evidence for the validation results. Its fixtures are in the repository.
       - name: Verify with Maven
-        run: mvn verify -ntp
+        run: mvn verify -ntp -P invoice-corpus
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
@@ -167,6 +169,9 @@ jobs:
     permissions:
       contents: write
       packages: write
+      # build provenance attestations of the release artifacts
+      id-token: write
+      attestations: write
     needs: [ verify, release-dry-run, owasp ]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
     steps:
@@ -212,6 +217,14 @@ jobs:
         env:
           VERSION: ${{ steps.project.outputs.version }}
         run: scripts/release/check-release.sh "$VERSION"
+      # Reproducible builds: the archives carry the commit time in UTC, so anyone can rebuild the
+      # released commit and compare the JARs byte for byte (see SECURITY.md).
+      - name: Determine build timestamp
+        id: timestamp
+        run: |
+          timestamp=$(TZ=UTC0 git log -1 --format=%cd --date=format-local:%Y-%m-%dT%H:%M:%SZ)
+          echo "Build timestamp: $timestamp"
+          echo "value=$timestamp" >> "$GITHUB_OUTPUT"
       - name: Check that the tag does not exist yet
         if: steps.mode.outputs.release == 'true'
         env:
@@ -235,8 +248,9 @@ jobs:
           MAVEN_GPG_PASSPHRASE: ${{ secrets.OSSRH_GPG_SECRET_KEY_PASSWORD_NALUKIT_GITHUB_USER }}
           RELEASE: ${{ steps.mode.outputs.release }}
           REVISION: ${{ steps.mode.outputs.revision }}
+          TIMESTAMP: ${{ steps.timestamp.outputs.value }}
         run: |
-          args=(deploy -ntp -DskipTests -Drevision="$REVISION" -P release)
+          args=(deploy -ntp -DskipTests -Drevision="$REVISION" -Dproject.build.outputTimestamp="$TIMESTAMP" -P release)
           if [[ "$RELEASE" == true ]]; then
             args+=(-Daether.checksums.algorithms=MD5)
           fi
@@ -253,11 +267,39 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REVISION: ${{ steps.mode.outputs.revision }}
+          TIMESTAMP: ${{ steps.timestamp.outputs.value }}
         # the other modules were installed into the local repository by the Maven Central deploy above
-        run: mvn deploy -ntp -pl paniolo-cli -DskipTests -Drevision="$REVISION" -Dgithub.packages.url="https://maven.pkg.github.com/$GITHUB_REPOSITORY"
+        run: mvn deploy -ntp -pl paniolo-cli -DskipTests -Drevision="$REVISION" -Dproject.build.outputTimestamp="$TIMESTAMP" -Dgithub.packages.url="https://maven.pkg.github.com/$GITHUB_REPOSITORY"
+      # The evidence of the release: every published JAR with its SBOM, the SHA-256 checksums,
+      # the OWASP report of this run and the release notes from CHANGELOG.md.
+      - name: Collect release files
+        if: steps.mode.outputs.release == 'true'
+        env:
+          VERSION: ${{ steps.project.outputs.version }}
+        run: scripts/release/collect-release-files.sh "$VERSION" release-files
+      - uses: actions/download-artifact@v7
+        if: steps.mode.outputs.release == 'true'
+        with:
+          name: OWASP report
+          path: owasp-report
+      - name: Add the OWASP report
+        if: steps.mode.outputs.release == 'true'
+        env:
+          VERSION: ${{ steps.project.outputs.version }}
+        run: |
+          report=$(find owasp-report -name dependency-check-report.html | head -n 1)
+          cp "$report" "release-files/paniolo-$VERSION-dependency-check-report.html"
+      - name: Attest build provenance
+        if: steps.mode.outputs.release == 'true'
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: release-files/*.jar
       - name: Create GitHub release
         if: steps.mode.outputs.release == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.project.outputs.version }}
-        run: gh release create "$VERSION" --target "$GITHUB_SHA" --title "$VERSION" --notes "Release of version $VERSION"
+        run: |
+          gh release create "$VERSION" --target "$GITHUB_SHA" --title "$VERSION" \
+            --notes-file release-files/RELEASE-NOTES.md \
+            release-files/*.jar release-files/*.json release-files/*.html release-files/SHA256SUMS
