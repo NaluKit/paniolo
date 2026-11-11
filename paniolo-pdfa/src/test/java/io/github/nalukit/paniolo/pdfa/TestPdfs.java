@@ -59,6 +59,18 @@ final class TestPdfs {
   }
 
   /**
+   * The same document declaring another PDF/A part and conformance, e.g. 1 and B, without
+   * changing the content; it may violate that flavour.
+   */
+  static byte[] pdfA(int part,
+                     String conformance) {
+    return create(true,
+                  false,
+                  part,
+                  conformance);
+  }
+
+  /**
    * The same document without PDF/A identification.
    */
   static byte[] plainPdf() {
@@ -99,6 +111,16 @@ final class TestPdfs {
 
   private static byte[] create(boolean pdfa,
                                boolean encrypted) {
+    return create(pdfa,
+                  encrypted,
+                  2,
+                  "B");
+  }
+
+  private static byte[] create(boolean pdfa,
+                               boolean encrypted,
+                               int part,
+                               String conformance) {
     try (var document = new PDDocument()) {
       document.setVersion(1.7f);
       var page = new PDPage(PDRectangle.A4);
@@ -149,8 +171,8 @@ final class TestPdfs {
                                     <x:xmpmeta xmlns:x="adobe:ns:meta/">
                                      <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
                                       <rdf:Description rdf:about="" xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/">
-                                       <pdfaid:part>2</pdfaid:part>
-                                       <pdfaid:conformance>B</pdfaid:conformance>
+                                       <pdfaid:part>%2$d</pdfaid:part>
+                                       <pdfaid:conformance>%3$s</pdfaid:conformance>
                                       </rdf:Description>
                                       <rdf:Description rdf:about="" xmlns:dc="http://purl.org/dc/elements/1.1/">
                                        <dc:title><rdf:Alt><rdf:li xml:lang="x-default">Rechnung R-1</rdf:li></rdf:Alt></dc:title>
@@ -164,7 +186,9 @@ final class TestPdfs {
                                     <?xpacket end="w"?>""".formatted(java.time.ZonedDateTime.ofInstant(created.toInstant(),
                                                                                                        created.getTimeZone()
                                                                                                               .toZoneId())
-                                                                                            .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX")))).getBytes(StandardCharsets.UTF_8));
+                                                                                            .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX")),
+                                                                                    part,
+                                                                                    conformance)).getBytes(StandardCharsets.UTF_8));
         document.getDocumentCatalog()
                 .setMetadata(metadata);
       }

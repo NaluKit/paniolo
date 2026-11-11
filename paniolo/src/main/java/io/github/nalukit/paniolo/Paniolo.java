@@ -22,6 +22,7 @@ import io.github.nalukit.paniolo.config.FacturXResult;
 import io.github.nalukit.paniolo.config.InvoiceSyntax;
 import io.github.nalukit.paniolo.config.PdfAttachment;
 import io.github.nalukit.paniolo.config.PdfLayout;
+import io.github.nalukit.paniolo.config.PdfaScriptCache;
 import io.github.nalukit.paniolo.config.PdfProducer;
 import io.github.nalukit.paniolo.config.UnknownDocumentHandling;
 import io.github.nalukit.paniolo.model.Invoice;
@@ -254,6 +255,7 @@ public final class Paniolo
   private final        boolean                              calculationCheck;
   private final        boolean                              ruleStatistics;
   private final        UnknownDocumentHandling              unknownDocuments;
+  private final        PdfaScriptCache                      pdfaScriptCache;
   private final        String                               xrechnungRelease;
   private final        String                               facturXRelease;
   private final        String                               orderXRelease;
@@ -276,6 +278,7 @@ public final class Paniolo
                   boolean calculationCheck,
                   boolean ruleStatistics,
                   UnknownDocumentHandling unknownDocuments,
+                  PdfaScriptCache pdfaScriptCache,
                   String xrechnungRelease,
                   String facturXRelease,
                   String orderXRelease) {
@@ -288,9 +291,37 @@ public final class Paniolo
     this.calculationCheck    = calculationCheck;
     this.ruleStatistics      = ruleStatistics;
     this.unknownDocuments    = unknownDocuments;
+    this.pdfaScriptCache     = pdfaScriptCache;
     this.xrechnungRelease    = xrechnungRelease;
     this.facturXRelease      = facturXRelease;
     this.orderXRelease       = orderXRelease;
+  }
+
+  /**
+   * Releases the PDF/A rules veraPDF compiled and cached for the <em>calling</em> thread, e.g. at
+   * the end of a batch or before a worker thread is returned to its pool. Later PDF/A checks on the
+   * thread compile them again.
+   *
+   * <pre>{@code
+   * try {
+   *   for (byte[] pdf : batch) {
+   *     results.add(paniolo.validate(pdf));
+   *   }
+   * } finally {
+   *   Paniolo.releasePdfaScriptCache();   // on the thread that validated the batch
+   * }
+   * }</pre>
+   *
+   * <p>veraPDF keeps the compiled rules per thread, so the method must run on the thread that ran
+   * the checks; it cannot release the caches of other threads, and a separate cleanup thread
+   * releases nothing. It is safe to call at any time, also with empty caches or without
+   * {@code paniolo-pdfa}, where it does nothing. It also clears rules compiled by other veraPDF
+   * validations on the same thread. To release after every check, configure
+   * {@link Builder#pdfaScriptCache(PdfaScriptCache)} with
+   * {@link PdfaScriptCache#CLEAR_AFTER_CHECK} instead.
+   */
+  public static void releasePdfaScriptCache() {
+    PdfaHolder.SUPPORT.ifPresent(PdfaSupport::releaseThreadCaches);
   }
 
   /**
@@ -3649,7 +3680,8 @@ public final class Paniolo
    */
   private ValidationResult pdfa(byte[] pdf) {
     return PdfaHolder.SUPPORT.map(support -> support.check(pdf,
-                                                           ruleStatistics))
+                                                           ruleStatistics,
+                                                           pdfaScriptCache))
                              .orElseGet(() -> new ValidationResult("PDF/A",
                                                                    List.of(new ValidationMessage("PDFA-NOT-CHECKED",
                                                                                                  Severity.INFO,
@@ -3788,6 +3820,7 @@ public final class Paniolo
     private boolean calculationCheck;
     private boolean ruleStatistics;
     private UnknownDocumentHandling unknownDocuments = UnknownDocumentHandling.THROW;
+    private PdfaScriptCache         pdfaScriptCache  = PdfaScriptCache.REUSE;
 
     private Builder() {
     }
@@ -3819,6 +3852,35 @@ public final class Paniolo
     public Builder unknownDocuments(UnknownDocumentHandling handling) {
       this.unknownDocuments = Objects.requireNonNull(handling,
                                                      "handling");
+      return this;
+    }
+
+    /**
+     * Selects what the PDF/A check of {@code paniolo-pdfa} does with the rules veraPDF compiles and
+     * caches for the thread that runs the check; see {@link PdfaScriptCache}.
+     *
+     * <pre>{@code
+     * Paniolo paniolo = Paniolo.builder()
+     *                          .pdfaScriptCache(PdfaScriptCache.CLEAR_AFTER_CHECK)
+     *                          .build();
+     * paniolo.validate(pdf);   // the compiled rules are released on this thread afterwards
+     * }</pre>
+     *
+     * <p>{@link PdfaScriptCache#REUSE} (default) keeps them for later checks on the same thread,
+     * which is fastest for a fixed pool of worker threads. {@link PdfaScriptCache#CLEAR_AFTER_CHECK}
+     * releases them on the validating thread after every PDF/A check, also when it fails, at the
+     * cost of compiling them for every check. To release them at the end of a batch instead, keep
+     * {@code REUSE} and call {@link Paniolo#releasePdfaScriptCache()} on the worker thread. The
+     * setting applies to every PDF/A check of the instance ({@code validate} of a PDF,
+     * {@code validateOrder} and {@code validateDespatchAdvice} of a PDF) and never changes the
+     * findings. Without {@code paniolo-pdfa} it has no effect.
+     *
+     * @param cache the strategy; must not be {@code null}
+     * @return this builder
+     */
+    public Builder pdfaScriptCache(PdfaScriptCache cache) {
+      this.pdfaScriptCache = Objects.requireNonNull(cache,
+                                                    "cache");
       return this;
     }
 
@@ -4074,6 +4136,7 @@ public final class Paniolo
                          calculationCheck,
                          ruleStatistics,
                          unknownDocuments,
+                         pdfaScriptCache,
                          configured == null ?
                          "KoSIT XRechnung " + XrechnungRules.VERSION + " (" + XrechnungRules.RELEASE + ")" :
                          "XRechnung rules from " + configured,

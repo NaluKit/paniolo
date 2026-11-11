@@ -1,0 +1,20 @@
+strategy=CLEAR_AFTER_CHECK threads=4 warmup=3 rounds=12 passes=4 documents=6 checksPerRound=96 java=21.0.12.1
+documents: XRechnung PDF 1 line | XRechnung PDF 100 lines | PDF/A-2b without invoice | PDF/A-1b declared without invoice | PDF/A-3u declared without invoice | broken PDF
+phase  round  wall_ms  ms_per_check  metaspace_mb  loaded_classes  unloaded_classes  cached_scripts  script_loaders
+warmup      1      841         35.04          36.0            6402              4607               0              0
+warmup      2      665         27.71          36.6            6450              8943               0              0
+warmup      3      595         24.79          36.9            6448             13279               0              0
+measure      4      567         23.63          37.2            6462             17615               0              0
+measure      5      574         23.92          37.5            6457             21951               0              0
+measure      6      550         22.92          37.5            6457             26287               0              0
+measure      7      527         21.96          37.5            6453             30623               0              0
+measure      8      510         21.25          37.6            6465             34959               0              0
+measure      9      493         20.54          37.8            6464             39295               0              0
+measure     10      586         24.42          37.8            6459             43631               0              0
+measure     11      538         22.42          37.8            6455             47967               0              0
+measure     12      510         21.25          37.9            6453             52303               0              0
+measure     13      511         21.29          37.9            6445             56639               0              0
+measure     14      504         21.00          37.9            6441             60975               0              0
+measure     15      491         20.46          37.9            6439             65311               0              0
+summary: mean_wall_ms=530.1 metaspace_first_mb=37.2 metaspace_last_mb=37.9 metaspace_delta_mb=0.69 loaded_first=6462 loaded_last=6439 loaded_delta=-23 cached_scripts_last=0
+findings fingerprint: 67521b5e (6 documents)

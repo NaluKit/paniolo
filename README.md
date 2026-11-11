@@ -508,6 +508,7 @@ Paniolo paniolo = Paniolo.builder()
 | `despatchAdviceRules(xsltFile)`  | `validateDespatchAdvice` also runs the compiled Peppol BIS Despatch Advice Schematron                    | UBL schema only, information `PEPPOL-RULES-NOT-CHECKED`                             |
 | `calculationCheck(true)`         | Invoice validations also recalculate the amounts (stage `CALCULATION`, warnings only)                    | Official rules only                                                                 |
 | `ruleStatistics(true)`           | Results carry `statistics()`: fired rules per Schematron stylesheet, PDF/A checks; slower, for audits    | `statistics()` is null                                                              |
+| `pdfaScriptCache(CLEAR_AFTER_CHECK)` | The PDF/A check releases the rules veraPDF compiled for the validating thread after every check; see [`paniolo-pdfa`](paniolo-pdfa/README.md#compiled-rules-per-thread) | `REUSE`: kept per thread for later checks; `Paniolo.releasePdfaScriptCache()` releases them on demand |
 | `unknownDocuments(REPORT_INVALID)` | Undetectable documents give an invalid result (`XML-PARSE`, `PANIOLO-UNKNOWN-DOCUMENT`), as in Mustang | `IllegalArgumentException` (`THROW`)                                                |
 
 The paths of `facturXRules`, `extendedCtcFrRules`, `orderXRules`, and `despatchAdviceRules` are

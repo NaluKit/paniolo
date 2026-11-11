@@ -8,6 +8,16 @@ reference in `docs/api/<version>.md`.
 
 ### Added
 
+- PDF/A check: control over the JavaScript rules veraPDF compiles and caches per thread (Mustang
+  issue 1158, veraPDF issue 1616). `Paniolo.builder().pdfaScriptCache(PdfaScriptCache)` selects
+  `REUSE` (default, unchanged behavior: kept for later checks on the same thread) or
+  `CLEAR_AFTER_CHECK` (released on the validating thread after every PDF/A check, in a `finally`
+  also when the check fails). `Paniolo.releasePdfaScriptCache()` releases the caches of the calling
+  thread on demand, e.g. at the end of a batch. Both act on the validating thread only, need no
+  lock and never change findings. The SPI `PdfaSupport` gains `check(pdf, statistics, cache)` and
+  `releaseThreadCaches()` with defaults. The load test `PdfaScriptCacheLoad` in
+  `paniolo-benchmark` measures time, Metaspace and classes of the strategies; see
+  `paniolo-pdfa/README.md`.
 - `ValidationProfile.xrechnung(bundle, syntax, XrechnungScenario)` loads the standard, extension or
   CVD scenario of a KoSIT bundle; `ValidationProfile.xrechnungSpecifications(bundle)` returns the
   specification identifiers its XRechnung scenarios accept, as `XrechnungSpecification` with

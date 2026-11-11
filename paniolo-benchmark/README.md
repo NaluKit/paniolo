@@ -17,6 +17,7 @@ java -jar paniolo-benchmark/target/benchmarks.jar
 | `ColdStartBenchmark`          | the first `validate` in a fresh JVM: rule extraction and compilation                                                      |
 | `ConcurrentValidateBenchmark` | throughput of one shared instance with 4 threads (`-t` to change)                                                         |
 | `HeapFootprint` (main class)  | retained heap of the compiled rules and bytes allocated per call                                                          |
+| `PdfaScriptCacheLoad` (main class) | load test of the veraPDF script caches per `PdfaScriptCache` strategy: time, Metaspace, loaded and unloaded classes, cached scripts per round with a fixed worker pool; needs `target/pdfa-lib` |
 
 Useful options:
 
@@ -47,6 +48,15 @@ java -cp "paniolo-benchmark/target/benchmarks.jar:paniolo-benchmark/target/pdfa-
 
 Both benchmarks check in their setup whether PDF/A is checked and abort on the wrong class path,
 so results with and without PDF/A are never mixed up.
+
+`PdfaScriptCacheLoad` needs the same class path. Run each strategy in its own JVM, because
+Metaspace and class counts are JVM-wide; arguments are strategy, threads, warmup rounds, measured
+rounds and passes over the input per worker and round:
+
+```bash
+java -cp "paniolo-benchmark/target/benchmarks.jar:paniolo-benchmark/target/pdfa-lib/*" \
+  io.github.nalukit.paniolo.benchmark.PdfaScriptCacheLoad CLEAR_AFTER_CHECK 4 3 12 4
+```
 
 ## Recording results
 

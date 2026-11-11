@@ -17,6 +17,7 @@
  */
 package io.github.nalukit.paniolo.spi;
 
+import io.github.nalukit.paniolo.config.PdfaScriptCache;
 import io.github.nalukit.paniolo.validation.ValidationMessage;
 import io.github.nalukit.paniolo.validation.ValidationResult;
 
@@ -51,5 +52,37 @@ public interface PdfaSupport {
                                  boolean statistics) {
     return new ValidationResult("PDF/A",
                                 validate(pdf));
+  }
+
+  /**
+   * Validates like {@link #check(byte[], boolean)} and handles the caches the implementation keeps
+   * for the calling thread as the strategy says: with {@link PdfaScriptCache#CLEAR_AFTER_CHECK} they
+   * are released on the calling thread after the check, also when it fails. Implementations
+   * without such caches only check.
+   *
+   * @param pdf        the PDF document
+   * @param statistics whether to collect the statistics of the check
+   * @param cache      what to do with the caches of the calling thread
+   * @return the findings of stage {@code PDF_A}, with statistics if requested and available
+   */
+  default ValidationResult check(byte[] pdf,
+                                 boolean statistics,
+                                 PdfaScriptCache cache) {
+    try {
+      return check(pdf,
+                   statistics);
+    } finally {
+      if (cache == PdfaScriptCache.CLEAR_AFTER_CHECK) {
+        releaseThreadCaches();
+      }
+    }
+  }
+
+  /**
+   * Releases the caches the implementation keeps for the calling thread, e.g. compiled rules. Safe
+   * to call at any time, also with empty caches; later checks build them again. Caches of other
+   * threads are not affected. The default does nothing.
+   */
+  default void releaseThreadCaches() {
   }
 }
