@@ -1369,8 +1369,10 @@ A release is published to Maven Central under group ID `io.github.nalukit` and t
 version in Git. Release version, tag, Maven artifacts, the versioned API reference
 `docs/api/<version>.md` and its runnable quickstart describe the same commit;
 [`scripts/release/check-release.sh`](scripts/release/check-release.sh) checks this before and
-after publishing; its header describes the static checks and the `--artifacts` check against
-Maven Central. `HEAD-SNAPSHOT` is the development build of the `dev` branch and is not supported
+after publishing; its header describes the static checks, the `--site` check of the website
+(maintained in [NaluKit/nalukit-web-site](https://github.com/NaluKit/nalukit-web-site)) and the
+`--artifacts` check against Maven Central. The CI build runs the static checks for every pull
+request against `main`. `HEAD-SNAPSHOT` is the development build of the `dev` branch and is not supported
 for production use. Changes per release, and those not yet released, are listed in
 [CHANGELOG.md](CHANGELOG.md).
 
@@ -1426,6 +1428,7 @@ UNECE.
 
 ### Logo
 
-The Paniolo logo and all variants in `docs/branding/` and `docs/site/assets/` were generated with
-AI image generation and then traced and edited for the project; see the
+The Paniolo logo and all variants in `docs/branding/` and in `src/content/paniolo/assets/` of the
+website repository [NaluKit/nalukit-web-site](https://github.com/NaluKit/nalukit-web-site) were
+generated with AI image generation and then traced and edited for the project; see the
 [branding README](docs/branding/README.md#origin-and-rights).
