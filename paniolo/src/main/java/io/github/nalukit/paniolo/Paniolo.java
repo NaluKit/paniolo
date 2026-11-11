@@ -1608,14 +1608,17 @@ public final class Paniolo
    */
   public ValidationResult validate(String xml) {
     PanioloStopWatch watch = super.logStart("Paniolo.validate");
-    if (isZugferd1(xml.getBytes(StandardCharsets.UTF_8))) {
+    // Converted once for detection and the calculation check; the rules still validate the
+    // characters, so the encoding of the XML declaration stays ignored.
+    byte[] bytes = xml.getBytes(StandardCharsets.UTF_8);
+    if (isZugferd1(bytes)) {
       ValidationResult result = validateZugferd1(zugferd1Validator().validate(xml));
       return measured(watch,
-                      calculated(xml.getBytes(StandardCharsets.UTF_8),
+                      calculated(bytes,
                                  result));
     }
     var unknown = new ArrayList<ValidationMessage>();
-    var type    = detect(xml.getBytes(StandardCharsets.UTF_8),
+    var type    = detect(bytes,
                          unknown,
                          ValidationMessage.Stage.XML);
     if (type == null) {
@@ -1631,7 +1634,7 @@ public final class Paniolo
                                               () -> new StringReader(xml),
                                               validator -> validator.validate(xml));
     return measured(watch,
-                    calculated(xml.getBytes(StandardCharsets.UTF_8),
+                    calculated(bytes,
                                result));
   }
 
