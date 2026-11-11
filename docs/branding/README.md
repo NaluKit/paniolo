@@ -46,8 +46,9 @@ reduced to 64 colors. Use the GitHub `<picture>` element to switch by color sche
 
 The original concept (not part of this repository) was created with AI image generation for the Paniolo
 project, on behalf of Frank Hossfeld. All other files in this folder and the logo files in
-`docs/site/assets/` are derived from it as described above (cleaned up, split, traced with
-VTracer, cropped, scaled). The wordmark is part of the generated concept and was traced from it;
+`src/content/paniolo/assets/` of the website repository
+[NaluKit/nalukit-web-site](https://github.com/NaluKit/nalukit-web-site) are derived from it as
+described above (cleaned up, split, traced with VTracer, cropped, scaled). The wordmark is part of the generated concept and was traced from it;
 it is not set in a font.
 
 Images that are generated purely by AI may not be protected by copyright in every jurisdiction.
