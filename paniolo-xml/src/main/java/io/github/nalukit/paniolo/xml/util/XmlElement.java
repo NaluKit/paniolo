@@ -163,10 +163,45 @@ public final class XmlElement {
    * @return the first element, or null
    */
   public XmlElement find(String path) {
-    var found = all(path);
-    return found.isEmpty() ?
-           null :
-           found.get(0);
+    return first(element,
+                 path.split("/"),
+                 0,
+                 false);
+  }
+
+  /**
+   * First element reached by the steps from {@code index} on, in the order of {@link #all(String)};
+   * stops at the first match instead of collecting all of them. A parent whose children do not
+   * complete the path is passed over for the next one.
+   */
+  private XmlElement first(Element parent,
+                           String[] steps,
+                           int index,
+                           boolean withText) {
+    String name = steps[index];
+    String prefix = name.contains(":") ?
+                    name.substring(0,
+                                   name.indexOf(':')) :
+                    "";
+    String namespace = namespaces.get(prefix);
+    String local     = name.substring(name.indexOf(':') + 1);
+    boolean last     = index == steps.length - 1;
+    for (Node node = parent.getFirstChild(); node != null; node = node.getNextSibling()) {
+      if (node instanceof Element child && local.equals(child.getLocalName()) && java.util.Objects.equals(namespace,
+                                                                                                          child.getNamespaceURI())) {
+        XmlElement found = last ?
+                           new XmlElement(child,
+                                          namespaces) :
+                           first(child,
+                                 steps,
+                                 index + 1,
+                                 withText);
+        if (found != null && (!last || !withText || found.text() != null)) {
+          return found;
+        }
+      }
+    }
+    return null;
   }
 
   /**
@@ -177,10 +212,10 @@ public final class XmlElement {
    * @return the first element with non-blank text, or null
    */
   public XmlElement findWithText(String path) {
-    return all(path).stream()
-                    .filter(found -> found.text() != null)
-                    .findFirst()
-                    .orElse(null);
+    return first(element,
+                 path.split("/"),
+                 0,
+                 true);
   }
 
   /**
