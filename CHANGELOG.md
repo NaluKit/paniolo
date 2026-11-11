@@ -8,6 +8,10 @@ reference in `docs/api/<version>.md`.
 
 ### Added
 
+- `ValidationProfile.xrechnung(bundle, syntax, XrechnungScenario)` loads the standard, extension or
+  CVD scenario of a KoSIT bundle; `ValidationProfile.xrechnungSpecifications(bundle)` returns the
+  specification identifiers its XRechnung scenarios accept, as `XrechnungSpecification` with
+  scenario and document type.
 - `Paniolo.isEInvoice(byte[])` and `Paniolo.probe(byte[])`: cheap check whether XML or a PDF is an
   EN 16931 electronic invoice (UBL Invoice, UBL CreditNote, CII, or a Factur-X / ZUGFeRD 2.x PDF
   with such XML embedded). Only the start of the XML is read, the root element and for CII the
@@ -27,6 +31,29 @@ reference in `docs/api/<version>.md`.
 
 ### Fixed
 
+- Validation: a document whose specification identifier (BT-24) states XRechnung, but that no
+  supported XRechnung version and scenario accepts for its document type, is invalid with the new
+  error `XR-SPECIFICATION-UNSUPPORTED` (location BT-24; the message names the identifier, the
+  reason and the supported identifiers). Before, such a document was validated against the current
+  XRechnung rules and stayed valid with the warning `BR-DE-21`, e.g. for
+  `...#urn:xoev-de:kosit:standard:xrechnung_3.0`, `...#urn:xeinkauf.de:kosit:xrechnung_9.9` or
+  `...xrechnung_3.0#garbage` (Mustang issue 1343). The identifier is now compared exactly, as by
+  the KoSIT validator, with a central table of the identifiers of every packaged release (3.0 and
+  1.2 to 2.3), which a test keeps equal to their `scenarios.xml`. The document is still checked
+  against the current rules, so their findings stay visible. This also applies to
+  `validate(xml, ValidationProfile.Syntax)`. Plain EN 16931, Peppol BIS Billing, Factur-X and
+  EN 16931:2026 (`EN16931-2026-NOT-SUPPORTED`) are unchanged. Changed expectations:
+  - Unknown versions (e.g. XRechnung 1.1), other spellings, surrounding whitespace and appended
+    parts of a supported identifier are now invalid instead of valid with `BR-DE-21`.
+  - The extension of an older version for a document type without extension scenario
+    (XRechnung 2.0 / 2.1 CII, XRechnung 1.2, UBL CreditNote) is invalid instead of being checked
+    as the standard scenario: the KoSIT release of that version has no such scenario.
+  - The XRechnung CVD identifier (`...xrechnung_3.0#compliant#urn:xeinkauf.de:kosit:xrechnung:cvd_0.9`)
+    is validated with the KoSIT CVD scenario and its severity overrides instead of the standard one.
+  - With `Builder.rules(bundle)` the accepted identifiers are read from the `scenarios.xml` of the
+    bundle (`ValidationProfile.xrechnungSpecifications(bundle)`) and take precedence over those of
+    the packaged older releases. To accept another identifier the bundle names it; no change of
+    Paniolo is needed.
 - Validation: a standalone invoice whose specification identifier (BT-24) states plain EN 16931,
   Peppol BIS Billing or an unknown identifier, not XRechnung, reports the findings of the
   XRechnung rules (`BR-DE`, `BR-DEX`, `BR-TMP`, and `PEPPOL-EN16931` except for Peppol) as

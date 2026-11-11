@@ -141,6 +141,53 @@ class PanioloCliTest {
                  new ObjectMapper().readTree(json.out()));
   }
 
+  /**
+   * A specification identifier that states XRechnung but is not supported makes the document
+   * invalid (Mustang issue 1343), which the exit code and the XML report show.
+   */
+  @Test
+  void reportsAnUnsupportedXrechnungIdentifierThroughTheExitCode()
+      throws IOException {
+    for (var syntax : new String[] { "UBL", "CII" }) {
+      var written = run("to-xml",
+                        invoiceJson.toString(),
+                        "-s",
+                        syntax);
+      assertEquals(PanioloCli.EXIT_OK,
+                   written.exitCode(),
+                   written.err());
+      Path valid = dir.resolve("en16931-" + syntax + ".xml");
+      Files.writeString(valid,
+                        written.out());
+      assertEquals(PanioloCli.EXIT_OK,
+                   run("validate",
+                       "-q",
+                       valid.toString()).exitCode());
+      for (var id : new String[] { "urn:cen.eu:en16931:2017#compliant#urn:xoev-de:kosit:standard:xrechnung_3.0",
+                                   "urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_9.9",
+                                   "urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0#garbage" }) {
+        Path invalid = dir.resolve("unsupported-" + syntax + ".xml");
+        Files.writeString(invalid,
+                          written.out()
+                                 .replace(">urn:cen.eu:en16931:2017<",
+                                          ">" + id + "<"));
+        var xml = run("validate",
+                      "-f",
+                      "xml",
+                      invalid.toString());
+        assertEquals(PanioloCli.EXIT_INVALID,
+                     xml.exitCode(),
+                     xml.out());
+        assertTrue(xml.out()
+                      .contains("rule=\"XR-SPECIFICATION-UNSUPPORTED\""),
+                   xml.out());
+        assertTrue(xml.out()
+                      .contains(id),
+                   xml.out());
+      }
+    }
+  }
+
   @Test
   void convertsBetweenSyntaxesThroughStandardStreams() {
     var ubl = run("to-xml",
