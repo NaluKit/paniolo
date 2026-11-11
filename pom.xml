@@ -334,9 +334,12 @@
             <configuration>
               <publishingServerId>central</publishingServerId>
               <deploymentName>paniolo ${project.version}</deploymentName>
-              <!-- paniolo-cli is published to GitHub Packages, not to Maven Central -->
+              <!-- paniolo-cli is published to GitHub Packages, not to Maven Central; the benchmarks
+                   and the invoice corpus tests are never published, even if their profile is active -->
               <excludeArtifacts>
                 <excludeArtifact>paniolo-cli</excludeArtifact>
+                <excludeArtifact>paniolo-benchmark</excludeArtifact>
+                <excludeArtifact>test-paniolo-invoice-corpus</excludeArtifact>
               </excludeArtifacts>
               <centralBaseUrl>https://central.sonatype.com</centralBaseUrl>
               <centralSnapshotsUrl>https://central.sonatype.com/repository/maven-snapshots/</centralSnapshotsUrl>
