@@ -21,7 +21,7 @@ import io.github.nalukit.paniolo.model.common.InvoiceLine;
 import io.github.nalukit.paniolo.validation.Severity;
 import io.github.nalukit.paniolo.validation.ValidationMessage;
 import io.github.nalukit.paniolo.xml.AmountDeviation;
-import io.github.nalukit.paniolo.xml.ImportResult;
+import io.github.nalukit.paniolo.xml.ReadResult;
 import io.github.nalukit.paniolo.xml.ReadWarning;
 
 import java.math.BigDecimal;
@@ -127,11 +127,11 @@ public final class CalculationCheck {
   /**
    * Checks the amounts of an invoice read in {@link io.github.nalukit.paniolo.xml.ReadMode#LENIENT}.
    *
-   * @param imported the imported invoice
+   * @param imported the invoice as read, with its warnings and deviations
    * @param official the findings of the official rules, to mark duplicates
    * @return the findings of the calculation stage
    */
-  static List<ValidationMessage> check(ImportResult imported,
+  static List<ValidationMessage> check(ReadResult imported,
                                        List<ValidationMessage> official) {
     var findings = new ArrayList<ValidationMessage>();
     var recalculated = new HashSet<String>();

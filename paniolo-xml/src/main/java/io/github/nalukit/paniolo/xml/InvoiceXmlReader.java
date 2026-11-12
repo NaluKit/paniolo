@@ -136,11 +136,12 @@ public interface InvoiceXmlReader {
    */
   default ImportResult importXml(byte[] xml,
                                  ReadMode mode) {
+    // One snapshot for reading and keeping; the result takes it over without a second copy.
     byte[] original = xml.clone();
-    return new ImportResult(original,
-                            mode,
-                            fromBytes(original,
-                                      mode));
+    return ImportResult.ofOwnedCopy(original,
+                                    mode,
+                                    fromBytes(original,
+                                              mode));
   }
 
   /**

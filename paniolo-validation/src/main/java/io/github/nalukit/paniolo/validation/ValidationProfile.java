@@ -26,6 +26,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Pattern;
@@ -49,6 +50,14 @@ public record ValidationProfile(String name, Path resourceRoot, Path schema, Lis
    * error, like every finding without flag.
    */
   public static final  String       UNFLAGGED_REPORTS = "#unflagged-report";
+  /**
+   * Namespace of the KoSIT {@code scenarios.xml}.
+   */
+  private static final String       SCENARIOS_NS      = "http://www.xoev.de/de/validator/framework/1/scenarios";
+  /**
+   * A string literal of an XPath expression, in single or double quotes.
+   */
+  private static final Pattern      LITERAL           = Pattern.compile("'([^']*)'|\"([^\"]*)\"");
   /**
    * Factur-X / ZUGFeRD profiles with their own XSD and Schematron in the official package.
    */
@@ -366,15 +375,9 @@ public record ValidationProfile(String name, Path resourceRoot, Path schema, Lis
    */
   public static ValidationProfile xrechnung(Path bundle,
                                             Syntax syntax) {
-    String document = switch (syntax) {
-      case UBL_INVOICE -> "(UBL Invoice)";
-      case UBL_CREDIT_NOTE -> "(UBL CreditNote)";
-      case CII -> "(CII)";
-    };
-    // Releases for XRechnung 1.2 name the scenarios "EN16931 CIUS XRechnung".
-    return scenario(bundle,
-                    "EN16931 XRechnung " + document,
-                    "EN16931 CIUS XRechnung " + document);
+    return xrechnung(bundle,
+                     syntax,
+                     XrechnungScenario.STANDARD);
   }
 
   /**
@@ -390,12 +393,102 @@ public record ValidationProfile(String name, Path resourceRoot, Path schema, Lis
    */
   public static ValidationProfile xrechnungExtension(Path bundle,
                                                      Syntax syntax) {
+    if (syntax == Syntax.UBL_CREDIT_NOTE) {
+      throw new IllegalArgumentException("The XRechnung extension has no scenario for UBL CreditNote");
+    }
+    return xrechnung(bundle,
+                     syntax,
+                     XrechnungScenario.EXTENSION);
+  }
+
+  /**
+   * Loads a scenario of an extracted KoSIT bundle, e.g. the standard CIUS, the extension or the CVD
+   * scenario of a document type, with its severity overrides.
+   *
+   * @param bundle   directory of the extracted KoSIT bundle
+   * @param syntax   syntax of the documents to validate
+   * @param scenario the scenario
+   * @return the validation profile
+   * @throws ValidationException if the bundle cannot be read or has no such scenario for the syntax
+   */
+  public static ValidationProfile xrechnung(Path bundle,
+                                            Syntax syntax,
+                                            XrechnungScenario scenario) {
     return scenario(bundle,
-                    switch (syntax) {
-                      case UBL_INVOICE -> "EN16931 XRechnung Extension (UBL Invoice)";
-                      case CII -> "EN16931 XRechnung Extension (CII)";
-                      case UBL_CREDIT_NOTE -> throw new IllegalArgumentException("The XRechnung extension has no scenario for UBL CreditNote");
-                    });
+                    scenario.names(Objects.requireNonNull(syntax,
+                                                          "syntax"))
+                            .toArray(String[]::new));
+  }
+
+  /**
+   * Returns the specification identifiers (BT-24) a KoSIT bundle accepts, read from the
+   * {@code match} expressions of the XRechnung scenarios in its {@code scenarios.xml}: the string
+   * literals of each standard, extension and CVD scenario, each with the scenario and document type.
+   * Other scenarios, e.g. plain EN 16931, are ignored.
+   *
+   * <p>The KoSIT validator selects the scenario by these expressions, so they describe exactly which
+   * identifiers the bundle supports. Releases for XRechnung 1.2 use {@code starts-with}; their
+   * literal is returned as an exact identifier as well.
+   *
+   * @param bundle directory of the extracted KoSIT bundle
+   * @return the identifiers in the order of the scenarios; never empty
+   * @throws ValidationException if the bundle cannot be read or names no XRechnung identifier
+   */
+  public static List<XrechnungSpecification> xrechnungSpecifications(Path bundle) {
+    try (var input = Files.newInputStream(scenariosXml(bundle))) {
+      var    document       = XmlDocuments.parse(input);
+      var    specifications = new ArrayList<XrechnungSpecification>();
+      var    scenarios      = document.getElementsByTagNameNS(SCENARIOS_NS,
+                                                              "scenario");
+      for (int i = 0; i < scenarios.getLength(); i++) {
+        Element scenario = (Element) scenarios.item(i);
+        var target = XrechnungScenario.of(text(scenario,
+                                               "name"));
+        if (target == null) {
+          continue;
+        }
+        var matcher = LITERAL.matcher(text(scenario,
+                                           "match"));
+        while (matcher.find()) {
+          String literal = matcher.group(1) != null ?
+                           matcher.group(1) :
+                           matcher.group(2);
+          if (literal.toLowerCase(Locale.ROOT)
+                     .contains("xrechnung")) {
+            specifications.add(new XrechnungSpecification(literal,
+                                                          target.scenario(),
+                                                          target.syntax()));
+          }
+        }
+      }
+      if (specifications.isEmpty()) {
+        throw new IOException("No XRechnung specification identifier in the scenarios");
+      }
+      return List.copyOf(specifications);
+    } catch (Exception e) {
+      throw new ValidationException("Cannot read the XRechnung specification identifiers of bundle: " + bundle,
+                                    e);
+    }
+  }
+
+  private static Path scenariosXml(Path bundle)
+      throws IOException {
+    return new LocalResources(bundle).resolve("scenarios.xml",
+                                              bundle.toAbsolutePath()
+                                                    .resolve("placeholder")
+                                                    .toUri()
+                                                    .toString());
+  }
+
+  private static String text(Element element,
+                             String name) {
+    var nodes = element.getElementsByTagNameNS(SCENARIOS_NS,
+                                               name);
+    return nodes.getLength() == 0 ?
+           "" :
+           nodes.item(0)
+                .getTextContent()
+                .trim();
   }
 
   /**

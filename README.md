@@ -501,13 +501,14 @@ Paniolo paniolo = Paniolo.builder()
 
 | Builder method                   | Effect                                                                                                   | Without it                                                                          |
 |----------------------------------|----------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
-| `rules(bundle)`                  | An extracted KoSIT validator configuration instead of the packaged release, e.g. during a version change | The packaged release from `paniolo-xrechnung-rules`                                 |
+| `rules(bundle)`                  | An extracted KoSIT validator configuration instead of the packaged release, e.g. during a version change; the accepted BT-24 identifiers come from its `scenarios.xml` | The packaged release from `paniolo-xrechnung-rules`                                 |
 | `facturXRules(packageDirectory)` | An extracted Factur-X / ZUGFeRD release instead of the packaged one, e.g. during a version change        | The packaged release from `paniolo-facturx-rules` (ZUGFeRD 2.5.2 / Factur-X 1.09.2) |
 | `extendedCtcFrRules(directory)`  | Another release of the French EXTENDED-CTC-FR and BR-FR rules (FNFE-MPE France_RFE)                      | The packaged release from `paniolo-facturx-rules` (France_RFE 1.4.0.04)             |
 | `orderXRules(packageDirectory)`  | Another Order-X release in `validateOrder`; the Schematron must be compiled to SVRL                      | The packaged Order-X 1.0 rules from `paniolo-facturx-rules`                         |
 | `despatchAdviceRules(xsltFile)`  | `validateDespatchAdvice` also runs the compiled Peppol BIS Despatch Advice Schematron                    | UBL schema only, information `PEPPOL-RULES-NOT-CHECKED`                             |
 | `calculationCheck(true)`         | Invoice validations also recalculate the amounts (stage `CALCULATION`, warnings only)                    | Official rules only                                                                 |
 | `ruleStatistics(true)`           | Results carry `statistics()`: fired rules per Schematron stylesheet, PDF/A checks; slower, for audits    | `statistics()` is null                                                              |
+| `pdfaScriptCache(CLEAR_AFTER_CHECK)` | The PDF/A check releases the rules veraPDF compiled for the validating thread after every check; see [`paniolo-pdfa`](paniolo-pdfa/README.md#compiled-rules-per-thread) | `REUSE`: kept per thread for later checks; `Paniolo.releasePdfaScriptCache()` releases them on demand |
 | `unknownDocuments(REPORT_INVALID)` | Undetectable documents give an invalid result (`XML-PARSE`, `PANIOLO-UNKNOWN-DOCUMENT`), as in Mustang | `IllegalArgumentException` (`THROW`)                                                |
 
 The paths of `facturXRules`, `extendedCtcFrRules`, `orderXRules`, and `despatchAdviceRules` are
@@ -953,6 +954,38 @@ Documents that state an older XRechnung version (1.2 to 2.3) are validated by th
 the last KoSIT release of that version, which `paniolo-xrechnung-rules` packages as well, with the
 information `XR-OLDER-VERSION`.
 
+#### XRechnung specification identifier
+
+The facade selects the XRechnung version and scenario (standard, extension, CVD) by the complete
+specification identifier (BT-24), compared exactly as the KoSIT validator does: no other spelling,
+no surrounding whitespace, no appended parts. The supported identifiers are those of the
+`scenarios.xml` of the configured bundle and of the packaged older releases. An extension is only
+accepted for the document types its scenario exists for:
+
+| Version  | Standard                     | Extension            | CVD                          |
+|----------|------------------------------|----------------------|------------------------------|
+| 3.0      | UBL Invoice, CreditNote, CII | UBL Invoice, CII     | UBL Invoice, CreditNote, CII |
+| 2.2, 2.3 | UBL Invoice, CreditNote, CII | UBL Invoice, CII     | &ndash;                      |
+| 2.0, 2.1 | UBL Invoice, CreditNote, CII | UBL Invoice          | &ndash;                      |
+| 1.2      | UBL Invoice, CreditNote, CII | &ndash;              | &ndash;                      |
+
+A document whose identifier states XRechnung (contains `xrechnung` in any spelling) but matches
+none of them, for example `urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_9.9`,
+`...#urn:xoev-de:kosit:standard:xrechnung_3.0` or `...xrechnung_3.0#garbage`, is **invalid** with
+the error `XR-SPECIFICATION-UNSUPPORTED` at BT-24. Its message names the identifier, the reason
+and the supported identifiers. The document is still checked against the configured XRechnung
+rules, so their findings stay visible; they do not lift the error. Before, the KoSIT rules only
+reported such an identifier with the warning `BR-DE-21`. `validate(xml, ValidationProfile.Syntax)`
+reports the error as well. Plain EN 16931, Peppol BIS Billing and Factur-X identifiers are not
+affected, and EN 16931:2026 keeps its error `EN16931-2026-NOT-SUPPORTED`.
+
+For a custom bundle (`Paniolo.builder().rules(bundle)`) the accepted identifiers are read from the
+`match` expressions of its XRechnung scenarios in `scenarios.xml`;
+`ValidationProfile.xrechnungSpecifications(bundle)` lists them. To accept a new identifier, e.g.
+of a newer XRechnung version, the bundle names it in its `scenarios.xml`; Paniolo itself needs no
+change. The identifiers of the configured bundle take precedence over those of the packaged older
+releases.
+
 To use another rule release, for example during an XRechnung version change, pass the path
 of an extracted KoSIT bundle instead:
 `ValidationProfile.xrechnung(Path.of("/absolute/path/to/extracted/kosit-bundle"), syntax)`.
@@ -1369,8 +1402,10 @@ A release is published to Maven Central under group ID `io.github.nalukit` and t
 version in Git. Release version, tag, Maven artifacts, the versioned API reference
 `docs/api/<version>.md` and its runnable quickstart describe the same commit;
 [`scripts/release/check-release.sh`](scripts/release/check-release.sh) checks this before and
-after publishing; its header describes the static checks and the `--artifacts` check against
-Maven Central. `HEAD-SNAPSHOT` is the development build of the `dev` branch and is not supported
+after publishing; its header describes the static checks, the `--site` check of the website
+(maintained in [NaluKit/nalukit-web-site](https://github.com/NaluKit/nalukit-web-site)) and the
+`--artifacts` check against Maven Central. The CI build runs the static checks for every pull
+request against `main`. `HEAD-SNAPSHOT` is the development build of the `dev` branch and is not supported
 for production use. Changes per release, and those not yet released, are listed in
 [CHANGELOG.md](CHANGELOG.md).
 
@@ -1426,6 +1461,7 @@ UNECE.
 
 ### Logo
 
-The Paniolo logo and all variants in `docs/branding/` and `docs/site/assets/` were generated with
-AI image generation and then traced and edited for the project; see the
+The Paniolo logo and all variants in `docs/branding/` and in `src/content/paniolo/assets/` of the
+website repository [NaluKit/nalukit-web-site](https://github.com/NaluKit/nalukit-web-site) were
+generated with AI image generation and then traced and edited for the project; see the
 [branding README](docs/branding/README.md#origin-and-rights).

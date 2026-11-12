@@ -23,17 +23,32 @@ on:
       - dev
       - main
     paths-ignore:
+      - "CHANGELOG.md"
       - "CODE_OF_CONDUCT.md"
       - "README.md"
       - "SECURITY.md"
+      - "docs/**"
+  # Pull requests always run, also for documentation only: the release check below covers README,
+  # SECURITY.md, CHANGELOG.md and docs/, and required checks must report on every pull request.
   pull_request:
     branches:
       - dev
       - main
-    paths-ignore:
-      - "CODE_OF_CONDUCT.md"
-      - "README.md"
-      - "SECURITY.md"
+  # Weekly run on the default branch: finds new CVEs in unchanged dependencies and reports
+  # available dependency updates.
+  schedule:
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+
+# Jobs get write access only where they need it.
+permissions:
+  contents: read
+
+# One run per event and branch at a time. Outdated pull request runs are cancelled; push runs
+# are never cancelled, so a deploy that has started always finishes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   verify:
@@ -43,14 +58,16 @@ jobs:
       matrix:
         java: [ '21', '25' ]
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: ${{ matrix.java }}
           cache: maven
+      # The public invoice corpus (test-paniolo-invoice-corpus) is part of every build: it is the
+      # regression evidence for the validation results. Its fixtures are in the repository.
       - name: Verify with Maven
-        run: mvn verify -ntp
+        run: mvn verify -ntp -P invoice-corpus
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
@@ -59,14 +76,32 @@ jobs:
             **/target/surefire-reports/
             **/target/failsafe-reports/
 
+  # Static release check (scripts/release/check-release.sh) for pull requests against main, so an
+  # inconsistent release is found before the merge and not only in the deploy job.
+  release-check:
+    runs-on: ubuntu-26.04
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # tags and history for the tag and source commit checks
+          fetch-depth: 0
+      - name: Check release consistency
+        run: |
+          version=$(sed -n 's:.*<revision>\(.*\)</revision>.*:\1:p' pom.xml | head -n 1)
+          echo "Release version from pom.xml: $version"
+          scripts/release/check-release.sh "$version"
+
   # Builds sources and JavaDoc with the release profile, without signing or publishing anything,
-  # so problems with the release build show up before a merge and not only in the deploy jobs.
+  # so problems with the release build show up before a merge and not only in the deploy job.
   release-dry-run:
     runs-on: ubuntu-26.04
     needs: [ verify ]
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
@@ -74,13 +109,15 @@ jobs:
       - name: Package with release profile
         run: mvn verify -ntp -DskipTests -Dgpg.skip -P release
 
+  # Informational only, so it runs with the weekly build and not on every push.
   check-versions:
     runs-on: ubuntu-26.04
     needs: [ verify ]
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     timeout-minutes: 8
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
@@ -91,27 +128,26 @@ jobs:
   owasp:
     runs-on: ubuntu-26.04
     timeout-minutes: 8
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
     needs: [ verify ]
     services:
+      # Not pinned on purpose: the image carries the vulnerability database, and a pinned image
+      # would freeze it.
       owasp-db:
         image: nalusolutionsgmbh/owasp-maven-action:latest
         options: --entrypoint /bin/sh --name owasp-db --hostname owasp-db
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
           cache: maven
       - name: Copy owasp database from container to runner
-        run: docker cp $(docker ps -aqf "name=owasp-db"):/dependency-check/data ./dependency-checker-db/
+        run: docker cp "$(docker ps -aqf "name=owasp-db")":/dependency-check/data ./dependency-checker-db/
       - name: OWASP Check
+        # the plugin version comes from the pluginManagement of the parent POM
         run: |
-          mvn org.owasp:dependency-check-maven:12.1.6:aggregate \
+          mvn org.owasp:dependency-check-maven:aggregate -ntp \
           -DdataDirectory=./dependency-checker-db \
           -DfailBuildOnCVSS=7 \
           -Dodc.outputDirectory=reports \
@@ -120,78 +156,29 @@ jobs:
           -DsuppressionFiles=./owasp/owasp-suppressions.xml
       - name: Upload OWASP results
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: OWASP report
-          path: ${{github.workspace}}/**/reports/dependency-check-report.html
+          path: ${{ github.workspace }}/**/reports/dependency-check-report.html
 
-  maven-deploy-dev:
+  # Pushes to dev deploy HEAD-SNAPSHOT, pushes to main deploy the release version and create the
+  # GitHub release. The release is created only after both deploys succeeded, so a failed deploy
+  # leaves no tag behind and the run can simply be re-run.
+  maven-deploy:
     runs-on: ubuntu-26.04
     permissions:
       contents: write
       packages: write
+      # build provenance attestations of the release artifacts
+      id-token: write
+      attestations: write
     needs: [ verify, release-dry-run, owasp ]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '21'
-          cache: maven
-          server-id: central
-          server-username: MAVEN_USERNAME
-          server-password: MAVEN_PASSWORD
-      - name: Extract Maven project version
-        run: echo "version=$(mvn -q -Dexec.executable=echo -Dexec.args='${project.version}' --non-recursive exec:exec)" >> $GITHUB_OUTPUT
-        id: project
-      - name: Show extracted Maven project version
-        run: echo ${{ steps.project.outputs.version }}
-      - name: Check version
-        if: ${{ !endsWith(steps.project.outputs.version, '-SNAPSHOT') }}
-        uses: actions/github-script@v6
-        with:
-          script: |
-            core.setFailed('Version not valid for dev')
-      - id: install-secret-key
-        name: Install GPG secret key
-        run: |
-          # Install gpg secret key
-          cat <(echo -e "${{ secrets.OSSRH_GPG_KEY }}") | gpg --batch --import
-          # Verify gpg secret key
-          gpg --list-secret-keys --keyid-format LONG
-      - name: Deploy with Maven
-        env:
-          MAVEN_USERNAME: ${{ secrets.CENTRAL_TOKEN_USERNAME }}
-          MAVEN_PASSWORD: ${{ secrets.CENTRAL_TOKEN_PASSWORD }}
-          MAVEN_GPG_PASSPHRASE: ${{ secrets.OSSRH_GPG_SECRET_KEY_PASSWORD_NALUKIT_GITHUB_USER }}
-        run: mvn deploy -ntp -DskipTests -Drevision=HEAD-SNAPSHOT -P release
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '21'
-          cache: maven
-          server-id: github
-          server-username: GITHUB_USER
-          server-password: GITHUB_TOKEN
-      - name: Deploy paniolo-cli to GitHub Packages
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # the other modules were installed into the local repository by the Maven Central deploy above
-        run: mvn deploy -ntp -pl paniolo-cli -DskipTests -Drevision=HEAD-SNAPSHOT -Dgithub.packages.url=https://maven.pkg.github.com/${{ github.repository }}
-
-  maven-deploy-main:
-    runs-on: ubuntu-26.04
-    permissions:
-      contents: write
-      packages: write
-    needs: [ verify, release-dry-run, owasp ]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
@@ -200,53 +187,75 @@ jobs:
           server-username: MAVEN_USERNAME
           server-password: MAVEN_PASSWORD
       - name: Extract Maven project version
-        run: echo "version=$(mvn -q -Dexec.executable=echo -Dexec.args='${project.version}' --non-recursive exec:exec)" >> $GITHUB_OUTPUT
         id: project
-      - name: Show extracted Maven project version
-        run: echo ${{ steps.project.outputs.version }}
-      - name: Check version
-        if: ${{ endsWith(steps.project.outputs.version, '-SNAPSHOT') }}
-        uses: actions/github-script@v6
-        with:
-          script: |
-            core.setFailed('Version not valid for main')
-      - name: Check release consistency
-        run: scripts/release/check-release.sh ${{ steps.project.outputs.version }}
-      - name: Check if tag already exists
-        id: version-check
         run: |
-          echo $(git tag -l "${{ steps.project.outputs.version }}")
-          if [ $(git tag -l "${{ steps.project.outputs.version }}") ]; then
-            echo Version ${{ steps.project.outputs.version }} already exists!
-            echo "already-exists=true" >> "$GITHUB_OUTPUT"
+          version=$(mvn -q -Dexec.executable=echo -Dexec.args='${project.version}' --non-recursive exec:exec)
+          echo "Maven project version: $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Check version and determine deploy mode
+        id: mode
+        env:
+          VERSION: ${{ steps.project.outputs.version }}
+        run: |
+          if [[ "$GITHUB_REF" == refs/heads/main ]]; then
+            if [[ "$VERSION" == *-SNAPSHOT ]]; then
+              echo "::error::Version $VERSION is not valid for main"
+              exit 1
+            fi
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            echo "revision=$VERSION" >> "$GITHUB_OUTPUT"
           else
-            echo Version ${{ steps.project.outputs.version }} do not exists!
-            echo "already-exists=false" >> "$GITHUB_OUTPUT"
+            if [[ "$VERSION" != *-SNAPSHOT ]]; then
+              echo "::error::Version $VERSION is not valid for dev"
+              exit 1
+            fi
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "revision=HEAD-SNAPSHOT" >> "$GITHUB_OUTPUT"
           fi
-      - name: Test unique version
+      - name: Check release consistency
+        if: steps.mode.outputs.release == 'true'
+        env:
+          VERSION: ${{ steps.project.outputs.version }}
+        run: scripts/release/check-release.sh "$VERSION"
+      # Reproducible builds: the archives carry the commit time in UTC, so anyone can rebuild the
+      # released commit and compare the JARs byte for byte (see SECURITY.md).
+      - name: Determine build timestamp
+        id: timestamp
         run: |
-          echo Version '${{ steps.project.outputs.version }}' already exists! Do not release!
-          exit 1
-        if: ${{ steps.version-check.outputs.already-exists == 'true' }}
-      - name: Release
-        uses: softprops/action-gh-release@v2
-        with:
-          body: Release of version ${{ steps.project.outputs.version }}
-          tag_name: ${{ steps.project.outputs.version }}
-      - id: install-secret-key
-        name: Install GPG secret key
+          timestamp=$(TZ=UTC0 git log -1 --format=%cd --date=format-local:%Y-%m-%dT%H:%M:%SZ)
+          echo "Build timestamp: $timestamp"
+          echo "value=$timestamp" >> "$GITHUB_OUTPUT"
+      - name: Check that the tag does not exist yet
+        if: steps.mode.outputs.release == 'true'
+        env:
+          VERSION: ${{ steps.project.outputs.version }}
         run: |
-          # Install gpg secret key
-          cat <(echo -e "${{ secrets.OSSRH_GPG_KEY }}") | gpg --batch --import
-          # Verify gpg secret key
+          if git rev-parse -q --verify "refs/tags/$VERSION" > /dev/null; then
+            echo "::error::Version $VERSION already exists! Do not release!"
+            exit 1
+          fi
+          echo "Version $VERSION does not exist yet."
+      - name: Install GPG secret key
+        env:
+          OSSRH_GPG_KEY: ${{ secrets.OSSRH_GPG_KEY }}
+        run: |
+          echo -e "$OSSRH_GPG_KEY" | gpg --batch --import
           gpg --list-secret-keys --keyid-format LONG
-      - name: Deploy with Maven
+      - name: Deploy to Maven Central
         env:
           MAVEN_USERNAME: ${{ secrets.CENTRAL_TOKEN_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.CENTRAL_TOKEN_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.OSSRH_GPG_SECRET_KEY_PASSWORD_NALUKIT_GITHUB_USER }}
-        run: mvn deploy -ntp -DskipTests -Daether.checksums.algorithms=MD5 -Drevision=${{ steps.project.outputs.version }} -P release
-      - uses: actions/setup-java@v5
+          RELEASE: ${{ steps.mode.outputs.release }}
+          REVISION: ${{ steps.mode.outputs.revision }}
+          TIMESTAMP: ${{ steps.timestamp.outputs.value }}
+        run: |
+          args=(deploy -ntp -DskipTests -Drevision="$REVISION" -Dproject.build.outputTimestamp="$TIMESTAMP" -P release)
+          if [[ "$RELEASE" == true ]]; then
+            args+=(-Daether.checksums.algorithms=MD5)
+          fi
+          mvn "${args[@]}"
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
@@ -257,6 +266,40 @@ jobs:
       - name: Deploy paniolo-cli to GitHub Packages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REVISION: ${{ steps.mode.outputs.revision }}
+          TIMESTAMP: ${{ steps.timestamp.outputs.value }}
         # the other modules were installed into the local repository by the Maven Central deploy above
-        run: mvn deploy -ntp -pl paniolo-cli -DskipTests -Drevision=${{ steps.project.outputs.version }} -Dgithub.packages.url=https://maven.pkg.github.com/${{ github.repository }}
-
+        run: mvn deploy -ntp -pl paniolo-cli -DskipTests -Drevision="$REVISION" -Dproject.build.outputTimestamp="$TIMESTAMP" -Dgithub.packages.url="https://maven.pkg.github.com/$GITHUB_REPOSITORY"
+      # The evidence of the release: every published JAR with its SBOM, the SHA-256 checksums,
+      # the OWASP report of this run and the release notes from CHANGELOG.md.
+      - name: Collect release files
+        if: steps.mode.outputs.release == 'true'
+        env:
+          VERSION: ${{ steps.project.outputs.version }}
+        run: scripts/release/collect-release-files.sh "$VERSION" release-files
+      - uses: actions/download-artifact@v7
+        if: steps.mode.outputs.release == 'true'
+        with:
+          name: OWASP report
+          path: owasp-report
+      - name: Add the OWASP report
+        if: steps.mode.outputs.release == 'true'
+        env:
+          VERSION: ${{ steps.project.outputs.version }}
+        run: |
+          report=$(find owasp-report -name dependency-check-report.html | head -n 1)
+          cp "$report" "release-files/paniolo-$VERSION-dependency-check-report.html"
+      - name: Attest build provenance
+        if: steps.mode.outputs.release == 'true'
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: release-files/*.jar
+      - name: Create GitHub release
+        if: steps.mode.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.project.outputs.version }}
+        run: |
+          gh release create "$VERSION" --target "$GITHUB_SHA" --title "$VERSION" \
+            --notes-file release-files/RELEASE-NOTES.md \
+            release-files/*.jar release-files/*.json release-files/*.html release-files/SHA256SUMS

@@ -80,16 +80,20 @@ public final class XmlElement {
     return value;
   }
 
+  /**
+   * Parses a date; the location of the element is only computed for the error message, because it
+   * scans the siblings on every level and would make reading many lines quadratic.
+   */
   private static LocalDate parseDate(String text,
                                      DateTimeFormatter format,
-                                     String location) {
+                                     XmlElement at) {
     try {
       return text == null ?
              null :
              LocalDate.parse(text,
                              format);
     } catch (DateTimeParseException e) {
-      throw new IllegalArgumentException("Invalid date \"" + text + "\" at " + location,
+      throw new IllegalArgumentException("Invalid date \"" + text + "\" at " + at.location(),
                                          e);
     }
   }
@@ -159,10 +163,45 @@ public final class XmlElement {
    * @return the first element, or null
    */
   public XmlElement find(String path) {
-    var found = all(path);
-    return found.isEmpty() ?
-           null :
-           found.get(0);
+    return first(element,
+                 path.split("/"),
+                 0,
+                 false);
+  }
+
+  /**
+   * First element reached by the steps from {@code index} on, in the order of {@link #all(String)};
+   * stops at the first match instead of collecting all of them. A parent whose children do not
+   * complete the path is passed over for the next one.
+   */
+  private XmlElement first(Element parent,
+                           String[] steps,
+                           int index,
+                           boolean withText) {
+    String name = steps[index];
+    String prefix = name.contains(":") ?
+                    name.substring(0,
+                                   name.indexOf(':')) :
+                    "";
+    String namespace = namespaces.get(prefix);
+    String local     = name.substring(name.indexOf(':') + 1);
+    boolean last     = index == steps.length - 1;
+    for (Node node = parent.getFirstChild(); node != null; node = node.getNextSibling()) {
+      if (node instanceof Element child && local.equals(child.getLocalName()) && java.util.Objects.equals(namespace,
+                                                                                                          child.getNamespaceURI())) {
+        XmlElement found = last ?
+                           new XmlElement(child,
+                                          namespaces) :
+                           first(child,
+                                 steps,
+                                 index + 1,
+                                 withText);
+        if (found != null && (!last || !withText || found.text() != null)) {
+          return found;
+        }
+      }
+    }
+    return null;
   }
 
   /**
@@ -173,10 +212,10 @@ public final class XmlElement {
    * @return the first element with non-blank text, or null
    */
   public XmlElement findWithText(String path) {
-    return all(path).stream()
-                    .filter(found -> found.text() != null)
-                    .findFirst()
-                    .orElse(null);
+    return first(element,
+                 path.split("/"),
+                 0,
+                 true);
   }
 
   /**
@@ -289,7 +328,7 @@ public final class XmlElement {
            null :
            parseDate(found.text(),
                      DateTimeFormatter.ISO_LOCAL_DATE,
-                     found.location());
+                     found);
   }
 
   /**
@@ -300,17 +339,20 @@ public final class XmlElement {
    * @throws IllegalArgumentException if the format is not 102 or the text is not a date
    */
   public LocalDate basicDate(String path) {
-    var found = find(path);
-    if (found == null || found.text() == null) {
+    var    found = find(path);
+    String text  = found == null ?
+                   null :
+                   found.text();
+    if (text == null) {
       return null;
     }
     String format = found.attribute("format");
     if (format != null && !format.equals("102")) {
       throw new IllegalArgumentException("Unsupported date format " + format + " at " + found.location());
     }
-    return parseDate(found.text(),
+    return parseDate(text,
                      DateTimeFormatter.BASIC_ISO_DATE,
-                     found.location());
+                     found);
   }
 
   /**
@@ -322,8 +364,11 @@ public final class XmlElement {
    * @throws IllegalArgumentException if the format is not supported or the text does not match it
    */
   public LocalDate dateOfDateTime(String path) {
-    var found = find(path);
-    if (found == null || found.text() == null) {
+    var    found = find(path);
+    String text  = found == null ?
+                   null :
+                   found.text();
+    if (text == null) {
       return null;
     }
     String format = found.attribute("format");
@@ -335,7 +380,6 @@ public final class XmlElement {
                    case "204" -> 14;
                    default -> throw new IllegalArgumentException("Unsupported date format " + format + " at " + found.location());
                  };
-    String text = found.text();
     if (text.length() != length ||
         !text.chars()
              .allMatch(Character::isDigit)) {
@@ -344,7 +388,7 @@ public final class XmlElement {
     return parseDate(text.substring(0,
                                     8),
                      DateTimeFormatter.BASIC_ISO_DATE,
-                     found.location());
+                     found);
   }
 
   /**

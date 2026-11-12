@@ -19,6 +19,7 @@ package io.github.nalukit.paniolo.benchmark;
 
 import io.github.nalukit.paniolo.Paniolo;
 import io.github.nalukit.paniolo.config.FacturXProfile;
+import io.github.nalukit.paniolo.config.PdfAttachment;
 import io.github.nalukit.paniolo.model.Invoice;
 import io.github.nalukit.paniolo.validation.ValidationResult;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -34,11 +35,14 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Warm Factur-X paths (PDFBox): embedding, extracting, reading and validating hybrid invoices.
- * PDF/A conformance is not checked, because paniolo-pdfa is not on the class path.
+ * Warm Factur-X paths (PDFBox): embedding, extracting, reading and validating hybrid invoices of
+ * different size, with and without a large further attachment. PDF/A conformance is not checked:
+ * the setup fails if paniolo-pdfa is on the class path; {@link FacturXPdfaBenchmark} measures the
+ * full path including PDF/A.
  */
 @State(Scope.Benchmark)
 @BenchmarkMode(Mode.AverageTime)
@@ -51,13 +55,23 @@ public class FacturXBenchmark {
    * The number of invoice lines.
    */
   @Param({ "1",
-           "100" })
+           "100",
+           "1000" })
   int lines;
 
-  private Paniolo paniolo;
-  private Invoice invoice;
-  private byte[]  pdfA;
-  private byte[]  facturX;
+  /**
+   * The size in kilobytes of a further, incompressible attachment; 0 for none.
+   */
+  @Param({ "0",
+           "2048" })
+  int attachmentKb;
+
+  private Paniolo             paniolo;
+  private Paniolo             calculating;
+  private Invoice             invoice;
+  private byte[]              pdfA;
+  private List<PdfAttachment> attachments;
+  private byte[]              facturX;
 
   /**
    * Creates the benchmark state; called by JMH.
@@ -72,14 +86,28 @@ public class FacturXBenchmark {
    */
   @Setup(Level.Trial)
   public void setUp() {
-    paniolo = Paniolo.create();
-    invoice = BenchmarkData.invoice(lines);
-    pdfA    = BenchmarkData.pdfA2b();
-    facturX = paniolo.toFacturX(invoice,
-                                pdfA,
-                                FacturXProfile.XRECHNUNG);
-    BenchmarkData.requireValid(paniolo.validate(facturX),
-                               "Factur-X invoice with " + lines + " lines");
+    paniolo     = Paniolo.create();
+    calculating = Paniolo.builder()
+                         .calculationCheck(true)
+                         .build();
+    invoice     = BenchmarkData.invoice(lines);
+    pdfA        = BenchmarkData.pdfA2b();
+    attachments = attachmentKb == 0 ?
+                  List.of() :
+                  List.of(BenchmarkData.attachment(attachmentKb));
+    facturX     = paniolo.toFacturX(invoice,
+                                    pdfA,
+                                    FacturXProfile.XRECHNUNG,
+                                    attachments);
+    String what   = "Factur-X invoice with " + lines + " lines and " + attachmentKb + " KB attachment";
+    var    result = paniolo.validate(facturX);
+    BenchmarkData.requireValid(result,
+                               what);
+    BenchmarkData.requirePdfaChecked(result,
+                                     false,
+                                     what);
+    BenchmarkData.requireValid(calculating.validate(facturX),
+                               what + " with calculation check");
   }
 
   /**
@@ -91,7 +119,8 @@ public class FacturXBenchmark {
   public byte[] toFacturX() {
     return paniolo.toFacturX(invoice,
                              pdfA,
-                             FacturXProfile.XRECHNUNG);
+                             FacturXProfile.XRECHNUNG,
+                             attachments);
   }
 
   /**
@@ -122,5 +151,16 @@ public class FacturXBenchmark {
   @Benchmark
   public ValidationResult validate() {
     return paniolo.validate(facturX);
+  }
+
+  /**
+   * Validates the Factur-X document without PDF/A and checks the stated amounts of the embedded
+   * invoice against the calculated ones.
+   *
+   * @return the validation result
+   */
+  @Benchmark
+  public ValidationResult validateWithCalculationCheck() {
+    return calculating.validate(facturX);
   }
 }

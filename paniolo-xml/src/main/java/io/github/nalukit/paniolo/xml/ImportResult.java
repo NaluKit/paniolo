@@ -51,13 +51,44 @@ public final class ImportResult {
   public ImportResult(byte[] originalXml,
                       ReadMode mode,
                       ReadResult read) {
-    this.originalXml = Objects.requireNonNull(originalXml,
-                                              "originalXml")
-                              .clone();
+    this(read,
+         mode,
+         Objects.requireNonNull(originalXml,
+                                "originalXml")
+                .clone());
+  }
+
+  /**
+   * Takes over the original XML without copying it; the caller must hand over an array no one else
+   * holds.
+   */
+  private ImportResult(ReadResult read,
+                       ReadMode mode,
+                       byte[] ownedXml) {
+    this.originalXml = ownedXml;
     this.mode        = Objects.requireNonNull(mode,
                                               "mode");
     this.read        = Objects.requireNonNull(read,
                                               "read");
+  }
+
+  /**
+   * Creates the result for {@link InvoiceXmlReader#importXml(byte[], ReadMode)}, which already
+   * copied the XML before reading it, so that the model and the kept bytes come from the same
+   * snapshot without a second copy.
+   *
+   * @param ownedXml the copy of the XML the invoice was read from; not shared with anyone else
+   * @param mode     the mode the XML was read in
+   * @param read     the invoice read from {@code ownedXml}
+   * @return the result keeping {@code ownedXml}
+   */
+  static ImportResult ofOwnedCopy(byte[] ownedXml,
+                                  ReadMode mode,
+                                  ReadResult read) {
+    return new ImportResult(read,
+                            mode,
+                            Objects.requireNonNull(ownedXml,
+                                                   "ownedXml"));
   }
 
   /**
