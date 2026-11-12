@@ -919,6 +919,7 @@ public final class CiiInvoiceReader
                                             context.text("ram:GuidelineSpecifiedDocumentContextParameter/ram:ID"));
     // Only EXTENDED states exemption reasons of lines, allowances, and charges (BT-X-96, BT-X-97);
     // elsewhere such an element is no business term and the breakdown applies without report.
+    readContext.negativePrices(processControl.isExtended());
     var exemptions = processControl.isExtended() ?
                      readContext :
                      null;

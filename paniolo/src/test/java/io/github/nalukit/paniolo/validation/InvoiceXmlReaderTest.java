@@ -491,9 +491,15 @@ class InvoiceXmlReaderTest {
                  higher.netUnitPrice());
     assertNull(higher.grossPrice());
     assertNull(higher.priceDiscount());
-    // A negative price is up to the invoice: only EXTENDED allows it (BR-27, see NegativePriceTest).
-    var negative = new ReadContext(ReadMode.LENIENT).netAmount(line,
-                                                               new BigDecimal("-5.00"));
+    // A negative price only where the profile allows it (EXTENDED, no BR-27); elsewhere the stated
+    // amount stays the difference.
+    assertThrows(IllegalArgumentException.class,
+                 () -> new ReadContext(ReadMode.LENIENT).netAmount(line,
+                                                                   new BigDecimal("-5.00")));
+    var extendedContext = new ReadContext(ReadMode.LENIENT);
+    extendedContext.negativePrices(true);
+    var negative = extendedContext.netAmount(line,
+                                             new BigDecimal("-5.00"));
     assertEquals(new BigDecimal("-1.25"),
                  negative.netUnitPrice());
     assertEquals(new BigDecimal("13.25"),

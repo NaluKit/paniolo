@@ -253,7 +253,7 @@ class NegativePriceTest {
     assertThrows(IllegalArgumentException.class,
                  () -> PANIOLO.read(stated,
                                     ReadMode.STRICT));
-    // The same document outside EXTENDED cannot take a negative price.
+    // The same document outside EXTENDED cannot take a negative price (BR-27).
     String en16931 = stated.replace(ProcessControl.facturXExtended()
                                                   .specificationId(),
                                     ProcessControl.en16931()
@@ -261,8 +261,9 @@ class NegativePriceTest {
     var error = assertThrows(IllegalArgumentException.class,
                              () -> PANIOLO.read(en16931,
                                                 ReadMode.LENIENT));
-    assertNotNull(error.getMessage());
-    assertEquals(NET_RULE,
-                 error.getMessage());
+    // The message names the stated amount, not the price that would follow from it.
+    assertTrue(error.getMessage()
+                    .startsWith("Line 2: stated net amount -300.00 differs from quantity x net price"),
+               error::getMessage);
   }
 }

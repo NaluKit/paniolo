@@ -42,6 +42,7 @@ public final class ReadContext {
   private final List<ReadWarning>        warnings   = new ArrayList<>();
   private final List<StatedAmounts.Line> lines      = new ArrayList<>();
   private final List<AmountDeviation>    deviations = new ArrayList<>();
+  private       boolean                  negativePrices;
 
   /**
    * Creates the state of one read.
@@ -51,6 +52,18 @@ public final class ReadContext {
   public ReadContext(ReadMode mode) {
     this.mode = Objects.requireNonNull(mode,
                                        "mode");
+  }
+
+  /**
+   * Whether the profile of the document allows a negative item net price, which only the Factur-X
+   * profiles EXTENDED and EXTENDED-CTC-FR do (no BR-27). If not, lenient reading does not recalculate
+   * a net price that comes out negative from a stated line amount, but keeps the message that the
+   * stated amount differs from quantity x net price. Not allowed by default.
+   *
+   * @param allowed true if the profile allows negative item net prices
+   */
+  public void negativePrices(boolean allowed) {
+    this.negativePrices = allowed;
   }
 
   /**
@@ -312,7 +325,10 @@ public final class ReadContext {
                                                 line.netUnitPrice()
                                                     .scale()),
                                        RoundingMode.HALF_UP);
-      // A negative price is checked by the invoice: only EXTENDED allows it (BR-27).
+      // Only EXTENDED allows a negative price (BR-27); elsewhere the stated amount is what differs.
+      if (price.signum() < 0 && !negativePrices) {
+        throw e;
+      }
       var builder = line.toBuilder()
                         .netUnitPrice(price);
       if (line.grossPrice() != null) {

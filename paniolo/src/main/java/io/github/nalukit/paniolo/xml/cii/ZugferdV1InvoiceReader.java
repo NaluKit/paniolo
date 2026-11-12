@@ -219,6 +219,7 @@ public final class ZugferdV1InvoiceReader
       this.specificationId = specificationId;
       this.extended        = ProcessControl.FACTURX_EXTENDED.equals(specificationId);
       this.context         = context;
+      context.negativePrices(extended);
     }
 
     private static PaymentTermsAdjustment adjustment(XmlElement terms,
