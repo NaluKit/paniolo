@@ -73,10 +73,6 @@ public final class PdfBoxFacturXSupport
   private static final System.Logger LOGGER        = System.getLogger(PdfBoxFacturXSupport.class.getName());
   private static final String        FX            = "urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#";
   /**
-   * XMP namespace of ZUGFeRD 1.0, whose PDFs embed {@code ZUGFeRD-invoice.xml}.
-   */
-  private static final String        ZF1           = "urn:ferd:pdfa:CrossIndustryDocument:invoice:1p0#";
-  /**
    * XMP namespace of Order-X documents and the name of the embedded order.
    */
   private static final String        OX            = "urn:factur-x:pdfa:CrossIndustryDocument:1p0#";
@@ -353,11 +349,81 @@ public final class PdfBoxFacturXSupport
     }
   }
 
-  private static String fxValue(Document xmp,
-                                String property) {
-    return value(xmp,
-                 FX,
-                 property);
+  /**
+   * The generations whose namespace carries at least one invoice property in the XMP metadata, as
+   * element or as attribute of rdf:Description, in the order of {@link HybridGeneration}.
+   * Properties with the same local names in other namespaces do not count.
+   */
+  private static List<HybridGeneration> declaredGenerations(Document xmp) {
+    if (xmp == null) {
+      return List.of();
+    }
+    return java.util.Arrays.stream(HybridGeneration.values())
+                           .filter(generation -> HybridGeneration.PROPERTIES.stream()
+                                                                            .anyMatch(property -> value(xmp,
+                                                                                                        generation.namespace(),
+                                                                                                        property) != null))
+                           .toList();
+  }
+
+  /**
+   * Chooses the generation of the XMP metadata and the embedded invoice file; container check and
+   * extraction both use it.
+   *
+   * <ul>
+   *   <li>The generation is the one whose namespace carries the invoice properties. If several do,
+   *       the first whose {@code DocumentFileName} names an embedded file of its own wins, otherwise
+   *       the first in the order Factur-X, ZUGFeRD 2.0, ZUGFeRD 1.0; the check reports
+   *       {@code FX-XMP-GENERATIONS}.</li>
+   *   <li>Without any invoice property the only declared extension schema, or else the exact file
+   *       name, selects the generation whose missing properties are reported.</li>
+   *   <li>The file is the one {@code DocumentFileName} of that generation names, otherwise the first
+   *       in the order of {@link #INVOICE_NAMES}.</li>
+   * </ul>
+   */
+  private static Selection select(Document xmp,
+                                  Map<String, PDComplexFileSpecification> files) {
+    List<HybridGeneration> declared = declaredGenerations(xmp);
+    String first = files.keySet()
+                        .iterator()
+                        .next();
+    HybridGeneration generation;
+    if (declared.size() == 1) {
+      generation = declared.get(0);
+    } else if (declared.size() > 1) {
+      generation = declared.stream()
+                           .filter(candidate -> {
+                             String named = value(xmp,
+                                                  candidate.namespace(),
+                                                  "DocumentFileName");
+                             return files.containsKey(named) && candidate.fileNames()
+                                                                         .contains(named);
+                           })
+                           .findFirst()
+                           .orElse(declared.get(0));
+    } else {
+      List<HybridGeneration> schemas = xmp == null || xmp.getDocumentElement() == null ?
+                                       List.of() :
+                                       java.util.Arrays.stream(HybridGeneration.values())
+                                                       .filter(candidate -> hasExtensionSchema(xmp,
+                                                                                               candidate.namespace()))
+                                                       .toList();
+      generation = schemas.size() == 1 ?
+                   schemas.get(0) :
+                   HybridGeneration.ofFileName(first);
+    }
+    String named = xmp == null ?
+                   null :
+                   value(xmp,
+                         generation.namespace(),
+                         "DocumentFileName");
+    String name = named != null && files.containsKey(named) ?
+                  named :
+                  first;
+    return new Selection(generation,
+                         declared,
+                         name,
+                         files.get(name));
   }
 
   /**
@@ -617,38 +683,112 @@ public final class PdfBoxFacturXSupport
     }
   }
 
-  private static void checkProfile(List<io.github.nalukit.paniolo.validation.ValidationMessage> findings,
-                                   Document xmp,
-                                   String level,
-                                   String name,
-                                   PDComplexFileSpecification file)
-      throws IOException {
-    boolean xrechnung = "XRECHNUNG".equals(level);
-    String expected = xrechnung ?
-                      "xrechnung.xml" :
-                      "factur-x.xml";
-    if (!expected.equals(name) && !"zugferd-invoice.xml".equals(name)) {
+  /**
+   * The embedded file name: Factur-X {@code xrechnung.xml} for XRECHNUNG, {@code factur-x.xml} (or
+   * {@code zugferd-invoice.xml}) otherwise; ZUGFeRD 2.0 {@code zugferd-invoice.xml}; ZUGFeRD 1.0
+   * {@code ZUGFeRD-invoice.xml}. Names are compared case-sensitively.
+   */
+  private static void checkFileName(List<io.github.nalukit.paniolo.validation.ValidationMessage> findings,
+                                    HybridGeneration generation,
+                                    FacturXProfile profile,
+                                    String name) {
+    if (generation == HybridGeneration.FACTUR_X) {
+      if (profile == null) {
+        return;
+      }
+      String expected = profile == FacturXProfile.XRECHNUNG ?
+                        "xrechnung.xml" :
+                        "factur-x.xml";
+      if (!expected.equals(name) && !"zugferd-invoice.xml".equals(name)) {
+        finding(findings,
+                "FX-FILE-NAME",
+                io.github.nalukit.paniolo.validation.Severity.ERROR,
+                "Profile " + profile.getConformanceLevel() + " requires the embedded file name " + expected + ", but it is " + name,
+                "/Root/Names/EmbeddedFiles");
+      }
+    } else if (!generation.fileNames()
+                          .contains(name)) {
       finding(findings,
               "FX-FILE-NAME",
               io.github.nalukit.paniolo.validation.Severity.ERROR,
-              "Profile " + level + " requires the embedded file name " + expected + ", but it is " + name,
+              generation.title() + " requires the embedded file name " + generation.fileNames()
+                                                                                   .get(0) + ", but it is " + name,
               "/Root/Names/EmbeddedFiles");
     }
-    String version = fxValue(xmp,
-                             "Version");
+  }
+
+  /**
+   * The {@code Version} property, separately for each generation:
+   *
+   * <ul>
+   *   <li>Factur-X: 1.0, for XRECHNUNG the XRechnung version; another value is a warning, checked
+   *       only for a known conformance level.</li>
+   *   <li>ZUGFeRD 2.0: 2p0. 1.0, the Factur-X value some ZUGFeRD 2.0 tools wrote, is a warning for
+   *       compatibility; any other value is an error.</li>
+   *   <li>ZUGFeRD 1.0: 1.0; another value is a warning.</li>
+   * </ul>
+   *
+   * A missing version is an error.
+   */
+  private static void checkVersion(List<io.github.nalukit.paniolo.validation.ValidationMessage> findings,
+                                   Document xmp,
+                                   HybridGeneration generation,
+                                   FacturXProfile profile) {
+    if (generation == HybridGeneration.FACTUR_X && profile == null) {
+      return;
+    }
+    String property = generation.prefix() + ":Version";
+    String version = value(xmp,
+                           generation.namespace(),
+                           "Version");
     if (version == null) {
       finding(findings,
               "FX-VERSION",
               io.github.nalukit.paniolo.validation.Severity.ERROR,
-              "fx:Version is missing",
-              "XMP fx:Version");
-    } else if (!xrechnung && !"1.0".equals(version)) {
+              property + " is missing",
+              "XMP " + property);
+    } else if (generation == HybridGeneration.FACTUR_X) {
+      if (profile != FacturXProfile.XRECHNUNG && !generation.version()
+                                                            .equals(version)) {
+        finding(findings,
+                "FX-VERSION",
+                io.github.nalukit.paniolo.validation.Severity.WARNING,
+                property + " of Factur-X profiles is 1.0, but is " + version,
+                "XMP " + property);
+      }
+    } else if (generation == HybridGeneration.ZUGFERD_2) {
+      if ("1.0".equals(version)) {
+        finding(findings,
+                "FX-VERSION",
+                io.github.nalukit.paniolo.validation.Severity.WARNING,
+                property + " of ZUGFeRD 2.0 is 2p0, but is 1.0, the value of Factur-X; accepted for compatibility with ZUGFeRD 2.0 producers that wrote it",
+                "XMP " + property);
+      } else if (!generation.version()
+                            .equals(version)) {
+        finding(findings,
+                "FX-VERSION",
+                io.github.nalukit.paniolo.validation.Severity.ERROR,
+                property + " of ZUGFeRD 2.0 must be 2p0, but is " + version,
+                "XMP " + property);
+      }
+    } else if (!generation.version()
+                          .equals(version)) {
       finding(findings,
               "FX-VERSION",
               io.github.nalukit.paniolo.validation.Severity.WARNING,
-              "fx:Version of Factur-X profiles is 1.0, but is " + version,
-              "XMP fx:Version");
+              property + " of ZUGFeRD 1.0 is 1.0, but is " + version,
+              "XMP " + property);
     }
+  }
+
+  /**
+   * Relationship and specification identifier of a Factur-X or ZUGFeRD 2.0 profile.
+   */
+  private static void checkProfile(List<io.github.nalukit.paniolo.validation.ValidationMessage> findings,
+                                   HybridGeneration generation,
+                                   String level,
+                                   Document invoice,
+                                   PDComplexFileSpecification file) {
     // Germany requires Alternative, except Data for the profiles MINIMUM and BASIC WL.
     String relationship = file.getCOSObject()
                               .getNameAsString(RELATIONSHIP);
@@ -662,21 +802,44 @@ public final class PdfBoxFacturXSupport
               "For profile " + level + " Germany requires AFRelationship " + german + ", the document uses " + relationship,
               "/Root/AF/AFRelationship");
     }
-    String guideline = guideline(read(file));
+    if (embeddedFile(file) == null) {
+      // Reported as FX-NO-CONTENT.
+      return;
+    }
+    String guideline = guideline(invoice);
     // Also accepts the ZUGFeRD 2.0 identifiers and every XRechnung version.
-    boolean matches = FacturXProfile.ofConformanceLevel(level) == FacturXProfile.ofSpecificationId(guideline);
+    boolean matches = generation.profile(level) == FacturXProfile.ofSpecificationId(guideline);
     if (!matches) {
       finding(findings,
               "FX-GUIDELINE",
               io.github.nalukit.paniolo.validation.Severity.ERROR,
-              "fx:ConformanceLevel " + level + " does not match the specification identifier (BT-24) " + guideline + " of the embedded invoice",
+              generation.prefix() + ":ConformanceLevel " + level + " does not match the specification identifier (BT-24) " + guideline + " of the embedded invoice",
               "/rsm:CrossIndustryInvoice/rsm:ExchangedDocumentContext/ram:GuidelineSpecifiedDocumentContextParameter/ram:ID");
     }
   }
 
-  private static boolean hasExtensionSchema(Document xmp) {
-    return hasExtensionSchema(xmp,
-                              FX);
+  /**
+   * The root element of the embedded XML belongs to the generation: CII {@code CrossIndustryInvoice}
+   * for Factur-X and ZUGFeRD 2.0, {@code CrossIndustryDocument} for ZUGFeRD 1.0. XML that cannot be
+   * parsed is left to the validation of the invoice XML.
+   */
+  private static void checkRoot(List<io.github.nalukit.paniolo.validation.ValidationMessage> findings,
+                                HybridGeneration generation,
+                                String name,
+                                Document invoice) {
+    if (invoice == null || invoice.getDocumentElement() == null) {
+      return;
+    }
+    Element root = invoice.getDocumentElement();
+    if (!generation.rootName()
+                   .equals(root.getLocalName()) || !generation.rootNamespace()
+                                                              .equals(root.getNamespaceURI())) {
+      finding(findings,
+              "FX-XML-ROOT",
+              io.github.nalukit.paniolo.validation.Severity.ERROR,
+              "The XMP metadata declare " + generation.title() + ", which embeds {" + generation.rootNamespace() + "}" + generation.rootName() + ", but " + name + " is {" + root.getNamespaceURI() + "}" + root.getLocalName(),
+              "/Root/Names/EmbeddedFiles/" + name);
+    }
   }
 
   private static boolean hasExtensionSchema(Document xmp,
@@ -694,54 +857,26 @@ public final class PdfBoxFacturXSupport
   }
 
   /**
-   * The XMP metadata of a ZUGFeRD 1.0 PDF: its own namespace and the conformance levels BASIC,
-   * COMFORT, and EXTENDED; the Factur-X profile checks do not apply.
+   * The embedded XML as namespace-aware DOM, or null if it has no content or cannot be parsed.
    */
-  private static void checkZugferd1Xmp(List<io.github.nalukit.paniolo.validation.ValidationMessage> findings,
-                                       Document xmp,
-                                       String name) {
-    if (!"INVOICE".equals(value(xmp,
-                                ZF1,
-                                "DocumentType"))) {
-      finding(findings,
-              "FX-DOCUMENT-TYPE",
-              io.github.nalukit.paniolo.validation.Severity.ERROR,
-              "zf:DocumentType must be INVOICE, but is " + value(xmp,
-                                                                  ZF1,
-                                                                  "DocumentType"),
-              "XMP zf:DocumentType");
+  private static Document parseInvoice(PDComplexFileSpecification file)
+      throws IOException {
+    if (embeddedFile(file) == null) {
+      return null;
     }
-    String declared = value(xmp,
-                            ZF1,
-                            "DocumentFileName");
-    if (!name.equals(declared)) {
-      finding(findings,
-              "FX-DOCUMENT-FILE-NAME",
-              io.github.nalukit.paniolo.validation.Severity.ERROR,
-              "zf:DocumentFileName must name the embedded file " + name + ", but is " + declared,
-              "XMP zf:DocumentFileName");
+    byte[] xml = read(file);
+    try {
+      return XmlDocuments.parse(new ByteArrayInputStream(xml));
+    } catch (IOException | SAXException e) {
+      return null;
     }
-    String level = value(xmp,
-                         ZF1,
-                         "ConformanceLevel");
-    if (level == null || !java.util.Set.of("BASIC",
-                                           "COMFORT",
-                                           "EXTENDED")
-                                       .contains(level)) {
-      finding(findings,
-              "FX-CONFORMANCE-LEVEL",
-              io.github.nalukit.paniolo.validation.Severity.ERROR,
-              "zf:ConformanceLevel must be BASIC, COMFORT or EXTENDED, but is " + level,
-              "XMP zf:ConformanceLevel");
-    }
-    if (xmp.getDocumentElement() == null || !hasExtensionSchema(xmp,
-                                                                ZF1)) {
-      finding(findings,
-              "FX-EXTENSION-SCHEMA",
-              io.github.nalukit.paniolo.validation.Severity.ERROR,
-              "The XMP metadata must declare the ZUGFeRD 1.0 namespace " + ZF1 + " in a PDF/A extension schema",
-              "XMP pdfaExtension:schemas");
-    }
+  }
+
+  private static String levels(HybridGeneration generation) {
+    List<String> levels = generation.levels();
+    return String.join(", ",
+                       levels.subList(0,
+                                      levels.size() - 1)) + " or " + levels.get(levels.size() - 1);
   }
 
   /**
@@ -749,22 +884,31 @@ public final class PdfBoxFacturXSupport
    */
   private static String guideline(byte[] xml) {
     try {
-      var document = XmlDocuments.parse(new ByteArrayInputStream(xml));
-      var ids = document.getElementsByTagNameNS("urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100",
-                                                "GuidelineSpecifiedDocumentContextParameter");
-      if (ids.getLength() == 0) {
-        return null;
-      }
-      var id = ((Element) ids.item(0)).getElementsByTagNameNS("urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100",
-                                                              "ID");
-      return id.getLength() == 0 ?
-             null :
-             id.item(0)
-               .getTextContent()
-               .strip();
+      return guideline(XmlDocuments.parse(new ByteArrayInputStream(xml)));
     } catch (IOException | SAXException e) {
       return null;
     }
+  }
+
+  /**
+   * BT-24 of a parsed CII invoice, or null.
+   */
+  private static String guideline(Document document) {
+    if (document == null) {
+      return null;
+    }
+    var ids = document.getElementsByTagNameNS("urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100",
+                                              "GuidelineSpecifiedDocumentContextParameter");
+    if (ids.getLength() == 0) {
+      return null;
+    }
+    var id = ((Element) ids.item(0)).getElementsByTagNameNS("urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100",
+                                                            "ID");
+    return id.getLength() == 0 ?
+           null :
+           id.item(0)
+             .getTextContent()
+             .strip();
   }
 
   private static void finding(List<io.github.nalukit.paniolo.validation.ValidationMessage> findings,
@@ -1102,24 +1246,23 @@ public final class PdfBoxFacturXSupport
     try (PDDocument document = load(pdf)) {
       PDDocumentCatalog catalog = document.getDocumentCatalog();
       Document          xmp     = parseXmp(catalog.getMetadata());
-      String declared = xmp == null ?
-                        null :
-                        fxValue(xmp,
-                                "DocumentFileName");
-      var files = invoiceFiles(catalog);
+      var               files   = invoiceFiles(catalog);
       if (files.isEmpty()) {
         throw new IllegalArgumentException("The PDF contains no Factur-X / ZUGFeRD invoice XML");
       }
-      String name = declared != null && files.containsKey(declared) ?
-                    declared :
-                    files.keySet()
-                         .iterator()
-                         .next();
-      byte[] xml = read(files.get(name));
+      // The same generation and file as the container check.
+      Selection selection = select(xmp,
+                                   files);
+      String name = selection.name();
+      byte[] xml = read(selection.file());
+      // Only a level of the namespace the XMP actually uses counts, never one of another generation.
       FacturXProfile profile = xmp == null ?
                                null :
-                               FacturXProfile.ofConformanceLevel(fxValue(xmp,
-                                                                         "ConformanceLevel"));
+                               selection.generation()
+                                        .profile(value(xmp,
+                                                       selection.generation()
+                                                                .namespace(),
+                                                       "ConformanceLevel"));
       if (profile == null) {
         profile = FacturXProfile.ofFileName(name);
       }
@@ -1166,18 +1309,16 @@ public final class PdfBoxFacturXSupport
                 "Only one invoice XML may be embedded, found " + files.keySet(),
                 "/Root/Names/EmbeddedFiles");
       }
-      String name = files.keySet()
-                         .iterator()
-                         .next();
-      var file = files.get(name);
+      Document  xmp       = parseXmp(catalog.getMetadata());
+      Selection selection = select(xmp,
+                                   files);
       checkFile(findings,
                 catalog,
-                name,
-                file);
+                selection.name(),
+                selection.file());
       checkXmp(findings,
-               catalog,
-               name,
-               file);
+               xmp,
+               selection);
     } catch (IllegalArgumentException e) {
       finding(findings,
               "FX-NOT-PDF",
@@ -1191,12 +1332,14 @@ public final class PdfBoxFacturXSupport
     return List.copyOf(findings);
   }
 
+  /**
+   * The XMP metadata against the generation they declare (see {@link #select}): document type,
+   * file name, conformance level, version, extension schema, and the embedded XML.
+   */
   private void checkXmp(List<io.github.nalukit.paniolo.validation.ValidationMessage> findings,
-                        PDDocumentCatalog catalog,
-                        String name,
-                        PDComplexFileSpecification file)
+                        Document xmp,
+                        Selection selection)
       throws IOException {
-    Document xmp = parseXmp(catalog.getMetadata());
     if (xmp == null) {
       finding(findings,
               "FX-XMP",
@@ -1217,53 +1360,96 @@ public final class PdfBoxFacturXSupport
                     "part"),
               "XMP pdfaid:part");
     }
-    if ("ZUGFeRD-invoice.xml".equalsIgnoreCase(name)) {
-      checkZugferd1Xmp(findings,
-                       xmp,
-                       name);
-      return;
+    HybridGeneration generation = selection.generation();
+    String           namespace  = generation.namespace();
+    String           prefix     = generation.prefix();
+    String           name       = selection.name();
+    if (selection.declared()
+                 .size() > 1) {
+      finding(findings,
+              "FX-XMP-GENERATIONS",
+              io.github.nalukit.paniolo.validation.Severity.ERROR,
+              "The XMP metadata describe the invoice in the namespaces of several generations (" +
+              selection.declared()
+                       .stream()
+                       .map(declared -> declared.title() + " " + declared.namespace())
+                       .collect(java.util.stream.Collectors.joining(", ")) +
+              "); only one is allowed, checked as " +
+              generation.title(),
+              "XMP");
     }
-    if (!"INVOICE".equals(fxValue(xmp,
-                                  "DocumentType"))) {
+    String type = value(xmp,
+                        namespace,
+                        "DocumentType");
+    if (!"INVOICE".equals(type)) {
       finding(findings,
               "FX-DOCUMENT-TYPE",
               io.github.nalukit.paniolo.validation.Severity.ERROR,
-              "fx:DocumentType must be INVOICE, but is " +
-              fxValue(xmp,
-                      "DocumentType"),
-              "XMP fx:DocumentType");
+              prefix + ":DocumentType (" + generation.title() + ") must be INVOICE, but is " + type,
+              "XMP " + prefix + ":DocumentType");
     }
-    String declared = fxValue(xmp,
-                              "DocumentFileName");
+    String declared = value(xmp,
+                            namespace,
+                            "DocumentFileName");
     if (!name.equals(declared)) {
       finding(findings,
               "FX-DOCUMENT-FILE-NAME",
               io.github.nalukit.paniolo.validation.Severity.ERROR,
-              "fx:DocumentFileName must name the embedded file " + name + ", but is " + declared,
-              "XMP fx:DocumentFileName");
+              prefix + ":DocumentFileName (" + generation.title() + ") must name the embedded file " + name + ", but is " + declared,
+              "XMP " + prefix + ":DocumentFileName");
     }
-    String level = fxValue(xmp,
-                           "ConformanceLevel");
-    if (FacturXProfile.ofConformanceLevel(level) == null) {
+    String level = value(xmp,
+                         namespace,
+                         "ConformanceLevel");
+    // Factur-X accepted its levels in any case before; ZUGFeRD 1.0 and 2.0 take them exactly.
+    boolean known = generation == HybridGeneration.FACTUR_X ?
+                    FacturXProfile.ofConformanceLevel(level) != null :
+                    generation.hasLevel(level);
+    FacturXProfile profile = known ?
+                             generation.profile(level) :
+                             null;
+    if (!known) {
       finding(findings,
               "FX-CONFORMANCE-LEVEL",
               io.github.nalukit.paniolo.validation.Severity.ERROR,
-              "fx:ConformanceLevel must be MINIMUM, BASIC WL, BASIC, EN 16931, EXTENDED, EXTENDED-CTC-FR or XRECHNUNG, but is " + level,
-              "XMP fx:ConformanceLevel");
-    } else {
-      checkProfile(findings,
-                   xmp,
-                   level,
-                   name,
-                   file);
+              prefix + ":ConformanceLevel (" + generation.title() + ") must be " + levels(generation) + ", but is " + level,
+              "XMP " + prefix + ":ConformanceLevel");
     }
-    if (xmp.getDocumentElement() == null || !hasExtensionSchema(xmp)) {
+    checkFileName(findings,
+                  generation,
+                  profile,
+                  name);
+    checkVersion(findings,
+                 xmp,
+                 generation,
+                 profile);
+    Document invoice = parseInvoice(selection.file());
+    if (known && generation != HybridGeneration.ZUGFERD_1) {
+      checkProfile(findings,
+                   generation,
+                   level,
+                   invoice,
+                   selection.file());
+    }
+    checkRoot(findings,
+              generation,
+              name,
+              invoice);
+    if (xmp.getDocumentElement() == null || !hasExtensionSchema(xmp,
+                                                                namespace)) {
       finding(findings,
               "FX-EXTENSION-SCHEMA",
               io.github.nalukit.paniolo.validation.Severity.ERROR,
-              "The XMP metadata must declare the Factur-X namespace " + FX + " in a PDF/A extension schema",
+              "The XMP metadata must declare the " + generation.title() + " namespace " + namespace + " in a PDF/A extension schema",
               "XMP pdfaExtension:schemas");
     }
+  }
+
+  /**
+   * The generation of the XMP metadata, all generations whose namespace carries invoice properties,
+   * and the embedded invoice file that is checked or extracted.
+   */
+  private record Selection(HybridGeneration generation, List<HybridGeneration> declared, String name, PDComplexFileSpecification file) {
   }
 
   /**

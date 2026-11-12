@@ -134,7 +134,8 @@ List<PdfAttachment> attachments = paniolo.attachments(facturX);   // all files e
 
 The reader looks for `factur-x.xml`, `xrechnung.xml`, and `zugferd-invoice.xml` (ZUGFeRD 2.0)
 in the `/AF` array and the `EmbeddedFiles` name tree, preferring the name declared in
-`fx:DocumentFileName`. The profile comes from `fx:ConformanceLevel`, otherwise from the file
+`DocumentFileName` of the XMP generation (see [XMP metadata generations](#xmp-metadata-generations)).
+The profile comes from `ConformanceLevel` of that generation, otherwise from the file
 name `xrechnung.xml` or the specification identifier (BT-24) of the invoice, including the
 ZUGFeRD 2.0 identifiers such as `urn:zugferd.de:2p0:basic`. ZUGFeRD 1.0 (`ZUGFeRD-invoice.xml`) is
 read and can be migrated, see below. Embedded XML
@@ -498,6 +499,37 @@ The tests validate against the packaged rules, or against the release named by
 PANIOLO_FACTURX_RULES=/path/to/factur-x-package mvn -pl paniolo-facturx -am verify
 ```
 
+## XMP metadata generations
+
+Reading and the container check recognize three generations of hybrid invoice metadata. The
+generation is the one whose XMP namespace carries the invoice properties `DocumentType`,
+`DocumentFileName`, `Version`, and `ConformanceLevel`, as elements or as attributes of
+`rdf:Description`; prefixes such as `fx` or `zf` do not matter.
+
+| Generation  | XMP namespace                                           | Embedded file                                                     | `Version`                                          | `ConformanceLevel`                                                  | XML root                     |
+|-------------|---------------------------------------------------------|-------------------------------------------------------------------|----------------------------------------------------|---------------------------------------------------------------------|------------------------------|
+| Factur-X    | `urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#`  | `factur-x.xml`, `xrechnung.xml` for XRECHNUNG (`zugferd-invoice.xml` tolerated) | `1.0`, for XRECHNUNG the XRechnung version; else warning | MINIMUM, BASIC WL, BASIC, EN 16931, EXTENDED, EXTENDED-CTC-FR, XRECHNUNG | CII `CrossIndustryInvoice`   |
+| ZUGFeRD 2.0 | `urn:zugferd:pdfa:CrossIndustryDocument:invoice:2p0#`   | `zugferd-invoice.xml`                                             | `2p0`; `1.0` warning (compatibility), other error  | MINIMUM, BASIC WL, BASIC, EN 16931, EXTENDED                        | CII `CrossIndustryInvoice`   |
+| ZUGFeRD 1.0 | `urn:ferd:pdfa:CrossIndustryDocument:invoice:1p0#`      | `ZUGFeRD-invoice.xml`                                             | `1.0`; else warning                                | BASIC, COMFORT, EXTENDED                                            | `CrossIndustryDocument` (1p0) |
+
+- Only these namespaces are accepted. Properties with the same local names in another namespace
+  are ignored, so the document lacks them.
+- File names and levels are compared exactly (Factur-X levels in any case, as before). The file
+  name never decides the generation: ZUGFeRD 2.0 metadata with `ZUGFeRD-invoice.xml` stay
+  ZUGFeRD 2.0 and get `FX-FILE-NAME`. Only an XMP packet without any invoice property is checked
+  against the generation of its only extension schema or, failing that, of its file name; it is
+  rejected for the missing properties either way.
+- Properties of several generations in one XMP packet are the error `FX-XMP-GENERATIONS`; the
+  generation whose `DocumentFileName` names an embedded file of its own is checked and extracted,
+  otherwise the first in the order Factur-X, ZUGFeRD 2.0, ZUGFeRD 1.0.
+- The version rule of ZUGFeRD 2.0: the metadata specification states `2p0` (also in the legacy
+  section of Factur-X 1.07.2 / ZUGFeRD 2.3.2, 6.3.2). Some ZUGFeRD 2.0 tools wrote `1.0`, the
+  Factur-X value, e.g. the Mustang test file `attributeBasedXMP_zugferd_2p0_EN16931_Einfach.pdf`;
+  it is accepted with the warning `FX-VERSION`, so such a document stays valid but shows the
+  deviation. Any other value is an error.
+- The profile of the embedded invoice is only taken from the level of the detected generation;
+  ZUGFeRD 1.0 levels never become Factur-X profiles.
+
 ## Container checks
 
 `PdfBoxFacturXSupport.checkContainer(pdf)`, used by `Paniolo.validate(pdf)`, reports findings in
@@ -511,10 +543,12 @@ stage `HYBRID`:
 | `FX-AF-RELATIONSHIP`                                 | error           | `AFRelationship` is Alternative, Data or Source                                        |
 | `FX-AF-RELATIONSHIP-DE`                              | warning         | Germany: Alternative (Data for MINIMUM and BASIC WL)                                   |
 | `FX-MIME-TYPE`, `FX-MOD-DATE`                        | error, warning  | `text/xml` and `Params/ModDate`                                                        |
-| `FX-XMP`, `FX-PDFA-PART`, `FX-EXTENSION-SCHEMA`      | error           | XMP present, `pdfaid:part` 3, extension schema for the `fx` namespace                  |
+| `FX-XMP`, `FX-PDFA-PART`, `FX-EXTENSION-SCHEMA`      | error           | XMP present, `pdfaid:part` 3, extension schema for the namespace of the generation     |
+| `FX-XMP-GENERATIONS`                                 | error           | the invoice properties use the namespace of one generation only                        |
 | `FX-DOCUMENT-TYPE`, `FX-DOCUMENT-FILE-NAME`          | error           | `INVOICE` and the embedded file name                                                   |
-| `FX-CONFORMANCE-LEVEL`, `FX-FILE-NAME`, `FX-VERSION` | error / warning | known level, `factur-x.xml` / `xrechnung.xml`, `fx:Version`                            |
-| `FX-GUIDELINE`                                       | error           | the level matches BT-24 of the embedded invoice                                        |
+| `FX-CONFORMANCE-LEVEL`, `FX-FILE-NAME`, `FX-VERSION` | error / warning | level, file name, and version of the generation, see the table above                   |
+| `FX-GUIDELINE`                                       | error           | the level matches BT-24 of the embedded invoice (Factur-X, ZUGFeRD 2.0)                |
+| `FX-XML-ROOT`                                        | error           | the root element of the embedded XML belongs to the generation                         |
 | `FX-ENCRYPTED`                                       | error           | no encryption                                                                          |
 | `FX-PRODUCER`                                        | information     | producing software (`PdfBoxFacturXSupport.producer`), added by `Paniolo.validate(pdf)` |
 

@@ -49,6 +49,23 @@ reference in `docs/api/<version>.md`.
 
 ### Fixed
 
+- Factur-X / ZUGFeRD PDFs: ZUGFeRD 2.0 metadata (XMP namespace
+  `urn:zugferd:pdfa:CrossIndustryDocument:invoice:2p0#`, `zugferd-invoice.xml`) are recognized.
+  Before, the file name `zugferd-invoice.xml` was compared without case with the ZUGFeRD 1.0 name
+  `ZUGFeRD-invoice.xml`, and the ZUGFeRD 1.0 properties were reported missing (`FX-DOCUMENT-TYPE`,
+  `FX-DOCUMENT-FILE-NAME`, `FX-CONFORMANCE-LEVEL`, `FX-EXTENSION-SCHEMA`), e.g. for the Mustang
+  test file `attributeBasedXMP_zugferd_2p0_EN16931_Einfach.pdf`. Container check and extraction
+  now share one mapping of the generations Factur-X, ZUGFeRD 2.0, and ZUGFeRD 1.0 to namespace,
+  file name, version, levels, and XML root; the generation follows from the namespace of the XMP
+  properties, never from the file name or the prefix, and unknown namespaces are not accepted.
+  ZUGFeRD 2.0 states `Version` `2p0`; `1.0`, which some ZUGFeRD 2.0 tools wrote, gives the warning
+  `FX-VERSION`, other values an error. New errors: `FX-XMP-GENERATIONS` for properties of several
+  generations in one XMP packet, `FX-XML-ROOT` for an embedded XML of another generation (e.g.
+  ZUGFeRD 1.0 `CrossIndustryDocument` with Factur-X metadata). ZUGFeRD 1.0 metadata now also get
+  the checks `FX-FILE-NAME` (exactly `ZUGFeRD-invoice.xml`) and `FX-VERSION` (`1.0`, otherwise a
+  warning). The profile XRECHNUNG still requires `xrechnung.xml`. See
+  `paniolo-facturx/README.md#xmp-metadata-generations`.
+
 - Validation: a document whose specification identifier (BT-24) states XRechnung, but that no
   supported XRechnung version and scenario accepts for its document type, is invalid with the new
   error `XR-SPECIFICATION-UNSUPPORTED` (location BT-24; the message names the identifier, the
