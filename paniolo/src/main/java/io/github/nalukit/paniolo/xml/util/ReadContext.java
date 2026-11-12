@@ -237,8 +237,24 @@ public final class ReadContext {
    */
   public void lost(String code,
                    String message) {
+    lost(code,
+         null,
+         message);
+  }
+
+  /**
+   * Reports a value of a line of the document that the model does not keep, or that it takes from
+   * somewhere else.
+   *
+   * @param code    the warning code, e.g. {@link ReadWarning#TAX_CATEGORY}
+   * @param lineId  the line it belongs to, or null for the document level
+   * @param message the value and what happened to it
+   */
+  public void lost(String code,
+                   String lineId,
+                   String message) {
     warnings.add(new ReadWarning(code,
-                                 null,
+                                 lineId,
                                  message));
   }
 

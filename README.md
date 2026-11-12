@@ -802,7 +802,8 @@ result.warnings().forEach(w -> log(w.code(), w.lineId(), w.message()));
 | `READ-OTHER-TAX`      | A tax of another type than VAT, e.g. the insurance tax `AAM` of Factur-X EXTENDED   | The tax is not read and never taken for VAT; the calculated totals lack it, and `NORMALIZED` export is refused (see below)                                                |
 | `READ-TAX-EXEMPTION`  | EXTENDED: a line, allowance, or charge states another VAT exemption reason or code than its VAT breakdown, or a further breakdown repeats category and rate with another reason | The model keeps one breakdown per category and rate (per sub-invoice for French multi-vendor invoices); the text of the first breakdown is kept and the amounts are merged |
 
-Three warnings report values the model does not keep or interpret, without changing an amount.
+Four warnings report values the model does not keep or interpret, or takes from somewhere else,
+without changing an amount.
 They are given in **both** modes, so `isExact()` can be `false` after a strict read as well:
 
 | Warning code                 | Reported value                                                                                                     |
@@ -810,6 +811,7 @@ They are given in **both** modes, so `isExact()` can be `false` after a strict r
 | `READ-CASH-DISCOUNT`         | A payment terms line (BT-20) that starts like an XRechnung cash discount but cannot be read as one; kept as text  |
 | `READ-IDENTIFIER`            | A further identifier of a business term the model keeps once, e.g. the global ID of the deliver-to location (BT-71) |
 | `READ-SPECIFICATION-VERSION` | A document of EN 16931:2026 (e.g. XRechnung 4.0), read with the business terms of EN 16931:2017                     |
+| `READ-TAX-CATEGORY`          | ZUGFeRD 1.0: no VAT category code where the model needs one. A rate above zero is the standard rate (S); a line, allowance, charge, or logistics service charge without VAT block belongs to the only VAT breakdown. A rate of zero or several breakdowns are rejected with the location, no category is guessed |
 
 Outside EXTENDED, an exemption reason of a line is no business term (EN 16931 states it in the VAT
 breakdown only); the breakdown applies without warning, as in the KoSIT case `01.21a`.

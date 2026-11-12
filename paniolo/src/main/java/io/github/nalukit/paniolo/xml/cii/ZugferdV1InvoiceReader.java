@@ -49,6 +49,7 @@ import io.github.nalukit.paniolo.model.extended.PaymentTermsAdjustment;
 import io.github.nalukit.paniolo.xml.InvoiceXmlReader;
 import io.github.nalukit.paniolo.xml.ReadMode;
 import io.github.nalukit.paniolo.xml.ReadResult;
+import io.github.nalukit.paniolo.xml.ReadWarning;
 import io.github.nalukit.paniolo.xml.util.InvoiceConsistency;
 import io.github.nalukit.paniolo.xml.util.ReadContext;
 import io.github.nalukit.paniolo.xml.util.StatedVatAmounts;
@@ -394,12 +395,17 @@ public final class ZugferdV1InvoiceReader
 
       var breakdowns = new ArrayList<TaxCategory>();
       var statedVat  = new StatedVatAmounts();
-      for (var tax : CiiInvoiceReader.vatTaxes(settlement.children("ram:ApplicableTradeTax"),
-                                               null,
-                                               "header",
-                                               context)) {
-        breakdowns.add(tax(tax));
-        statedVat.add(tax(tax),
+      var headerTaxes = CiiInvoiceReader.vatTaxes(settlement.children("ram:ApplicableTradeTax"),
+                                                  null,
+                                                  "header",
+                                                  context);
+      for (int index = 0; index < headerTaxes.size(); index++) {
+        var tax      = headerTaxes.get(index);
+        var category = category(tax,
+                                "VAT breakdown " + (index + 1),
+                                null);
+        breakdowns.add(category);
+        statedVat.add(category,
                       tax.decimal("ram:CalculatedAmount"));
       }
       // Only EXTENDED keeps exemption reasons of lines, allowances, and charges (BT-X-96, BT-X-97).
@@ -413,11 +419,20 @@ public final class ZugferdV1InvoiceReader
         builder.invoicePeriod(new InvoicePeriod(period.basicDate("ram:StartDateTime/udt:DateTimeString"),
                                                 period.basicDate("ram:EndDateTime/udt:DateTimeString")));
       }
+      int adjustmentNumber = 0;
       for (var adjustment : settlement.children("ram:SpecifiedTradeAllowanceCharge")) {
         boolean charge = Boolean.parseBoolean(adjustment.text("ram:ChargeIndicator/udt:Indicator"));
         String  reason = adjustment.text("ram:Reason");
         String code = reasonCode(charge,
                                  adjustment.text("ram:ReasonCode"));
+        adjustmentNumber++;
+        var adjustmentTax = taxOf(adjustment.find("ram:CategoryTradeTax"),
+                                  adjustment,
+                                  "Document " + (charge ?
+                                                 "charge " :
+                                                 "allowance ") + adjustmentNumber,
+                                  null,
+                                  categories);
         builder.addAdjustment(new DocumentAdjustment(charge,
                                                      adjustment.decimal("ram:ActualAmount"),
                                                      adjustment.decimal("ram:BasisAmount"),
@@ -432,7 +447,7 @@ public final class ZugferdV1InvoiceReader
                                                       "Allowance") :
                                                      reason,
                                                      code,
-                                                     InvoiceConsistency.complete(tax(adjustment.find("ram:CategoryTradeTax")),
+                                                     InvoiceConsistency.complete(adjustmentTax,
                                                                                  categories,
                                                                                  null,
                                                                                  "Document " + (charge ?
@@ -441,8 +456,14 @@ public final class ZugferdV1InvoiceReader
                                                                                  exemptions)));
       }
       var extendedInformation = ExtendedInformation.create();
+      int serviceNumber = 0;
       for (var service : settlement.children("ram:SpecifiedLogisticsServiceCharge")) {
-        var tax = InvoiceConsistency.complete(tax(service.find("ram:AppliedTradeTax")),
+        serviceNumber++;
+        var tax = InvoiceConsistency.complete(taxOf(service.find("ram:AppliedTradeTax"),
+                                                    service,
+                                                    "Logistics service charge " + serviceNumber,
+                                                    null,
+                                                    categories),
                                               categories,
                                               null,
                                               "Logistics service charge",
@@ -575,6 +596,83 @@ public final class ZugferdV1InvoiceReader
     }
 
     /**
+     * The VAT category of a block. ZUGFeRD 1.0 does not require a category code: a rate above zero is
+     * the standard rate (S), the only EN 16931 category with a rate besides the special regimes L and
+     * M that ZUGFeRD 1.0 does not know. A rate of zero does not tell the category (Z, E, AE, K, G, O),
+     * so none is guessed.
+     *
+     * @param block  the VAT block
+     * @param what   what the block belongs to, for messages
+     * @param lineId the line, or null for the document level
+     * @return the category
+     * @throws IllegalArgumentException if the block states no category and the rate does not tell it
+     */
+    private TaxCategory category(XmlElement block,
+                                 String what,
+                                 String lineId) {
+      if (block.text("ram:CategoryCode") != null) {
+        return tax(block);
+      }
+      BigDecimal rate = block.decimal("ram:ApplicablePercent");
+      if (rate == null || rate.signum() <= 0) {
+        throw new IllegalArgumentException(what + " states no VAT category code, and " + (rate == null ?
+                                                                                           "no rate" :
+                                                                                           "the rate " + rate.toPlainString() + " %") + " does not tell it (" + block.location() +
+                                           "); the category is not guessed");
+      }
+      context.lost(ReadWarning.TAX_CATEGORY,
+                   lineId,
+                   what + " states no VAT category code; the rate " + rate.toPlainString() + " % is the standard rate (S)");
+      return new TaxCategory(DutyTaxFeeCategory.S,
+                             rate,
+                             block.text("ram:ExemptionReason"),
+                             null);
+    }
+
+    /**
+     * The VAT category of a line, allowance, charge, or logistics service charge: that of its VAT
+     * block, or, without a block, that of the only VAT breakdown of the document.
+     *
+     * @param block      the VAT block of the element, or null
+     * @param owner      the element, for the location in messages
+     * @param what       what the element is, for messages
+     * @param lineId     the line, or null for the document level
+     * @param categories the categories of the VAT breakdowns of the document
+     * @return the category
+     * @throws IllegalArgumentException if there is no block and the document has not exactly one VAT
+     *                                  breakdown
+     */
+    private TaxCategory taxOf(XmlElement block,
+                              XmlElement owner,
+                              String what,
+                              String lineId,
+                              Map<String, TaxCategory> categories) {
+      if (block != null) {
+        return category(block,
+                        what,
+                        lineId);
+      }
+      var distinct = new java.util.TreeMap<String, TaxCategory>();
+      for (var category : categories.values()) {
+        distinct.put(category.code()
+                             .getCode() + " " + category.rate(),
+                     category);
+      }
+      if (distinct.size() != 1) {
+        throw new IllegalArgumentException(what + " states no VAT block (" + owner.location() + ") and the document has " + (distinct.isEmpty() ?
+                                                                                                                              "no VAT breakdown" :
+                                                                                                                              distinct.size() + " VAT breakdowns (" + String.join(", ",
+                                                                                                                                                                                  distinct.keySet()) + ")") +
+                                           "; the model needs its VAT category, which is not guessed");
+      }
+      var only = distinct.firstEntry();
+      context.lost(ReadWarning.TAX_CATEGORY,
+                   lineId,
+                   what + " states no VAT block; the only VAT breakdown of the document (" + only.getKey() + ") applies");
+      return only.getValue();
+    }
+
+    /**
      * Returns the first VAT block of a line and reports blocks of other tax types.
      */
     private XmlElement lineTax(XmlElement settlement,
@@ -620,8 +718,12 @@ public final class ZugferdV1InvoiceReader
                                .unitCode(XmlElement.code(quantity.attribute("unitCode"),
                                                          UnitCode::of,
                                                          "unit code"))
-                               .tax(InvoiceConsistency.complete(tax(lineTax(settlement,
-                                                                            lineId)),
+                               .tax(InvoiceConsistency.complete(taxOf(lineTax(settlement,
+                                                                              lineId),
+                                                                      item,
+                                                                      "Line " + lineId,
+                                                                      lineId,
+                                                                      categories),
                                                                 categories,
                                                                 lineId,
                                                                 "Line " + lineId,
@@ -649,7 +751,7 @@ public final class ZugferdV1InvoiceReader
         BigDecimal discount = BigDecimal.ZERO;
         for (var allowance : gross.children("ram:AppliedTradeAllowanceCharge")) {
           if (Boolean.parseBoolean(allowance.text("ram:ChargeIndicator/udt:Indicator"))) {
-            throw new IllegalArgumentException("ZUGFeRD 1.0 charges on the gross price cannot be migrated");
+            throw new IllegalArgumentException("Line " + lineId + ": ZUGFeRD 1.0 charges on the gross price cannot be migrated (" + allowance.location() + ")");
           }
           discount = discount.add(allowance.decimal("ram:ActualAmount"));
         }

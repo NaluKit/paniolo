@@ -63,6 +63,15 @@ reference in `docs/api/<version>.md`.
 
 ### Fixed
 
+- ZUGFeRD 1.0 documents whose VAT blocks state less than the model needs are read or rejected with
+  a message that names the location, instead of failing with `NullPointerException: tax category
+  code` and `NullPointerException: tax` (Mustang issue #938). ZUGFeRD 1.0 does not require the VAT
+  category code of a block, nor a VAT block at a line, allowance, charge, or logistics service
+  charge. What the document leaves no doubt about is taken and reported as `READ-TAX-CATEGORY` in
+  both modes: a rate above zero is the standard rate (S), and an element without VAT block belongs
+  to the only VAT breakdown of the document. A rate of zero, no rate, or several breakdowns to
+  choose from are rejected with the location; no category is guessed. Charges on the gross price
+  stay a separate restriction of the migration: their message now names the line and the element.
 - XML white space inside the Base64 text of an embedded attachment is accepted anywhere, also
   between the padding characters as in `MQ= =` (Mustang issue #792): the MIME decoder rejected that
   document, valid in the official XRechnung validation, with `Input byte array has wrong 4-byte

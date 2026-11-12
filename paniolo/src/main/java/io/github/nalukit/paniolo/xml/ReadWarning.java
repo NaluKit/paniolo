@@ -86,6 +86,14 @@ public record ReadWarning(String code, String lineId, String message) {
    */
   public static final String OTHER_TAX      = "READ-OTHER-TAX";
   /**
+   * A ZUGFeRD 1.0 document states no VAT category code where the model needs one, and the document
+   * leaves no doubt about it: a VAT block with a rate above zero is the standard rate (S), and a line,
+   * allowance, charge, or logistics service charge without a VAT block belongs to the only VAT
+   * breakdown of the document. The message names the element and the category taken. A VAT block with
+   * rate zero, or several breakdowns to choose from, is not guessed but rejected with the location.
+   */
+  public static final String TAX_CATEGORY   = "READ-TAX-CATEGORY";
+  /**
    * In a Factur-X EXTENDED document, a line, allowance, or charge states another VAT exemption reason
    * or code (BT-X-96, BT-X-97) than the VAT breakdown (BG-23) of its category and rate, or a further
    * breakdown repeats category and rate with another exemption reason. The model keeps one breakdown
