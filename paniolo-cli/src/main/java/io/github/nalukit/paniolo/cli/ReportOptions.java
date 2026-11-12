@@ -70,7 +70,7 @@ final class ReportOptions {
   FileSelection selection;
 
   @Option(names = { "-f",
-                    "--format" }, defaultValue = "text", description = "Output format: ${COMPLETION-CANDIDATES} (default: ${DEFAULT-VALUE}). " + "json writes one object per line; xml writes the Paniolo validation report, pdf renders it as PDF/A (needs paniolo-pdf-layout); both accept one document only.")
+                    "--format" }, defaultValue = "text", description = "Output format: ${COMPLETION-CANDIDATES} (default: ${DEFAULT-VALUE}). " + "json writes one object per line; xml writes the Paniolo validation report, pdf renders it as PDF/A; both accept one document only.")
   Format format;
 
   @Option(names = { "-l",

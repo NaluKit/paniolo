@@ -79,5 +79,6 @@
   "supportingDocuments": [],
   "paidAmount": 0.00,
   "cashDiscounts": [],
-  "thirdPartyPayments": []
+  "thirdPartyPayments": [],
+  "vatAmounts": []
 }

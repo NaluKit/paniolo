@@ -70,7 +70,7 @@ Please do **not** open a public issue for a vulnerability.
 
 Please include:
 
-- the affected Paniolo version or commit and the module (for example `paniolo-xml-cii`),
+- the affected Paniolo version or commit and the module (for example `paniolo-facturx`),
 - a description of the impact and, if possible, a minimal proof of concept,
 - whether attached documents contain confidential data. Please anonymize invoices where possible.
 

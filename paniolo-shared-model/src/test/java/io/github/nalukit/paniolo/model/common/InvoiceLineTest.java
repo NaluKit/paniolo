@@ -70,9 +70,11 @@ class InvoiceLineTest {
     assertThrows(IllegalArgumentException.class,
                  () -> line().priceDiscount(BigDecimal.ONE)
                              .build());
-    assertThrows(IllegalArgumentException.class,
-                 () -> line().grossPrice(new BigDecimal("-1"))
-                             .build());
+    // BR-27 and BR-28 depend on the profile; the invoice checks them (see InvoiceTest).
+    assertEquals(new BigDecimal("-1"),
+                 line().grossPrice(new BigDecimal("-1"))
+                       .build()
+                       .grossPrice());
     assertThrows(IllegalArgumentException.class,
                  () -> line().standardItemId("4012345678901",
                                              null)

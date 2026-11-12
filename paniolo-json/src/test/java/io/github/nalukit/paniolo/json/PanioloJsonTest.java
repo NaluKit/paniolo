@@ -49,6 +49,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -260,11 +261,18 @@ class PanioloJsonTest {
                unknownProperty::getMessage);
     var model = assertThrows(IllegalArgumentException.class,
                              () -> JSON.read(json.replace("\"postalCode\":\"10115\",",
-                                                          ""),
+                                                          "\"postalCode\":\" \","),
                                              Invoice.class));
     assertTrue(model.getMessage()
-                    .contains("Address"),
+                    .contains("postalCode must not be blank (Address)"),
                model::getMessage);
+    // A missing post code is allowed; EN 16931 requires the country of an address only.
+    assertNull(JSON.read(json.replace("\"postalCode\":\"10115\",",
+                                      ""),
+                         Invoice.class)
+                   .seller()
+                   .address()
+                   .postalCode());
     assertThrows(IllegalArgumentException.class,
                  () -> JSON.read("{",
                                  Invoice.class));

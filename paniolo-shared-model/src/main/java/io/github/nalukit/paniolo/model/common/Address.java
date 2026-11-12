@@ -23,14 +23,17 @@ import io.github.nalukit.paniolo.model.common.value.Country;
 import java.util.Objects;
 
 /**
- * Postal address (BG-5 / BG-8 / BG-12 / BG-15). Street, city, and post code are required, except
- * for an address with the country only, which the Factur-X profile MINIMUM uses for the seller.
+ * Postal address (BG-5 / BG-8 / BG-12 / BG-15). EN 16931 requires the country only (BR-09, BR-11,
+ * BR-20, BR-57); what a profile requires beyond it, e.g. city and post code of seller and buyer
+ * in XRechnung (BR-DE-3, BR-DE-4, BR-DE-8, BR-DE-9), is checked by validation. A value that is
+ * set must not be blank. The Factur-X profile MINIMUM uses an address with the country only for
+ * the seller.
  *
- * @param street             address line 1 (BT-35 / BT-50 / BT-64 / BT-75); required except for a country-only address
+ * @param street             address line 1 (BT-35 / BT-50 / BT-64 / BT-75), or null
  * @param additionalStreet   address line 2 (BT-36 / BT-51 / BT-65 / BT-76), or null
  * @param additionalLine     address line 3 (BT-162 / BT-163 / BT-164 / BT-165), or null
- * @param city               city (BT-37 / BT-52 / BT-66 / BT-77); required except for a country-only address
- * @param postalCode         post code (BT-38 / BT-53 / BT-67 / BT-78); required except for a country-only address
+ * @param city               city (BT-37 / BT-52 / BT-66 / BT-77), or null
+ * @param postalCode         post code (BT-38 / BT-53 / BT-67 / BT-78), or null
  * @param countrySubdivision country subdivision (BT-39 / BT-54 / BT-68 / BT-79), or null
  * @param country            country code (BT-40 / BT-55 / BT-69 / BT-80); required
  */
@@ -42,16 +45,29 @@ public record Address(String street, String additionalStreet, String additionalL
    * @throws IllegalArgumentException if a value violates the checks of the model
    */
   public Address {
-    if (street != null || additionalStreet != null || additionalLine != null || city != null || postalCode != null || countrySubdivision != null) {
-      ModelChecks.required(street,
-                           "street");
-      ModelChecks.required(city,
-                           "city");
-      ModelChecks.required(postalCode,
-                           "postalCode");
-    }
+    // No value is invented for a missing one, and a blank one is none.
+    notBlank(street,
+             "street");
+    notBlank(additionalStreet,
+             "additionalStreet");
+    notBlank(additionalLine,
+             "additionalLine");
+    notBlank(city,
+             "city");
+    notBlank(postalCode,
+             "postalCode");
+    notBlank(countrySubdivision,
+             "countrySubdivision");
     Objects.requireNonNull(country,
                            "country");
+  }
+
+  private static void notBlank(String value,
+                               String name) {
+    if (value != null) {
+      ModelChecks.required(value,
+                           name);
+    }
   }
 
   /**
@@ -61,7 +77,7 @@ public record Address(String street, String additionalStreet, String additionalL
    * @param city       city (BT-37 / BT-52)
    * @param postalCode post code (BT-38 / BT-53)
    * @param country    country (BT-40 / BT-55)
-   * @throws IllegalArgumentException if street, city, or post code is blank
+   * @throws IllegalArgumentException if street, city, or post code is set but blank
    * @throws NullPointerException     if the country is null
    */
   public Address(String street,
@@ -109,7 +125,7 @@ public record Address(String street, String additionalStreet, String additionalL
    * @return true if only the country is set
    */
   public boolean isCountryOnly() {
-    return street == null;
+    return street == null && additionalStreet == null && additionalLine == null && city == null && postalCode == null && countrySubdivision == null;
   }
 
 

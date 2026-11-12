@@ -4,7 +4,7 @@
 line for validating, reading, writing, and converting invoices, orders, and despatch advices
 in shell scripts, CI pipelines, or cron jobs without writing Java. It includes the optional PDF, JSON, and visualization modules
 ([`paniolo-facturx`](../paniolo-facturx/README.md), [`paniolo-pdfa`](../paniolo-pdfa/README.md),
-[`paniolo-json`](../paniolo-json/README.md), [`paniolo-pdf-layout`](../paniolo-pdf-layout/README.md),
+[`paniolo-json`](../paniolo-json/README.md),
 [`paniolo-visualizer`](../paniolo-visualizer/README.md)) and is based on [picocli](https://picocli.info)
 (Apache License 2.0). It requires Java 21.
 
@@ -54,7 +54,7 @@ GitHub token with the `read:packages` scope in a `<server>` entry with the id of
 | `to-facturx FILE --pdf PDF --profile PROFILE [--attach FILE]...`                                                                                                | `toFacturX(invoice, pdfA, profile, attachments)`                                           |
 | `to-facturx FILE --profile PROFILE [layout options]`                                                                                                            | `toFacturX(invoice, profile, layout, attachments)`: renders the page                       |
 | `embed-xml XML --pdf PDF --profile PROFILE [--attach FILE]...`                                                                                                  | `embedXml(pdfA, xml, profile, attachments)`: XML byte for byte, findings on stderr, exit 1 if invalid |
-| `to-pdf FILE [--lang de\|en\|fr] [--logo FILE [--logo-position LEFT\|RIGHT]] [--no-sender-address] [--font FILE [--bold-font FILE]] [--accent RGB] [--footer TEXT] [--watermark TEXT]` | `toPdf(invoice, layout)` of [`paniolo-pdf-layout`](../paniolo-pdf-layout/README.md)        |
+| `to-pdf FILE [--lang de\|en\|fr] [--logo FILE [--logo-position LEFT\|RIGHT]] [--no-sender-address] [--font FILE [--bold-font FILE]] [--accent RGB] [--footer TEXT] [--watermark TEXT]` | `toPdf(invoice, layout)` of [`paniolo-facturx`](../paniolo-facturx/docs/pdf-layout.md)        |
 | `extract-xml PDF`                                                                                                                                               | `extractXml(pdf)`                                                                          |
 | `attachments PDF [--extract DIR]`                                                                                                                               | `attachments(pdf)`                                                                         |
 | `producer PDF`                                                                                                                                                  | `producer(pdf)`                                                                            |
@@ -129,9 +129,9 @@ result per file. `--format` selects the output:
   `WARNING`).
 - `json`: one JSON object per file and line (JSON Lines) with `file`, `profile`, `valid`, the
   counts per severity, `durationMillis`, and `messages`; easy to process with `jq`.
-- `xml`: the [Paniolo validation report](../paniolo-validation/README.md) of `ValidationResult.toXml()`;
+- `xml`: the [Paniolo validation report](../paniolo/docs/validation.md) of `ValidationResult.toXml()`;
   one file only.
-- `pdf`: the same report rendered as PDF/A-3b with `toReportPdf` (needs `paniolo-pdf-layout`, part
+- `pdf`: the same report rendered as PDF/A-3b with `toReportPdf` (needs `paniolo-facturx`, part
   of the CLI); one file only, `--lang de|en|fr` (default `de`). Write it with `-o report.pdf`.
 
 `--quiet` prints nothing, so only the exit code counts.

@@ -22,7 +22,7 @@ import java.util.Locale;
 import java.util.Objects;
 
 /**
- * Settings of the visual PDF/A document that {@code paniolo-pdf-layout} renders from an invoice,
+ * Settings of the visual PDF/A document that {@code paniolo-facturx} renders from an invoice,
  * order, or despatch advice, e.g. for {@code Paniolo#toPdf(Invoice, PdfLayout)} and
  * {@code Paniolo#toFacturX(Invoice, FacturXProfile, PdfLayout, List)}. Immutable; the byte arrays
  * are copied defensively.

@@ -60,6 +60,13 @@ The view has these tabs:
   that belong to a line are marked there and link to it.
 - **XML**: the formatted source, to copy or download.
 
+EXTENDED codes that qualify another value are shown with their label and code: the document
+language (LanguageID), the subject and content code of document and line notes (a note may state
+its content code instead of its text), the account type of accounting references (code list 52),
+the line status code next to the kind of line, and the code of the date the VAT of a line becomes due. The PDF of `paniolo-facturx` leaves these codes
+out, as it is laid out for the recipient in the chosen language; only a note stated by its content
+code alone shows that code there.
+
 Code lists are shown with their names (document types, payment means, VAT categories, units, note
 subjects, identifier schemes; countries and currencies with `Intl.DisplayNames`). Amounts are
 formatted exactly as written in the document, with the locale of the viewer. Labels exist in German,
@@ -176,7 +183,7 @@ The page contains the script and the Base64 encoded document and opens offline.
   `paniolo validate -f xml`) and pass the report.
 - No PDF rendering of the visualization (Mustang uses Apache FOP for that); print to PDF with the
   browser, or render an archivable PDF/A on the server with
-  [`paniolo-pdf-layout`](../paniolo-pdf-layout/README.md).
+  [`paniolo-facturx`](../paniolo-facturx/docs/pdf-layout.md).
 - Requires a current browser: ES modules, custom elements, `DecompressionStream` (PDF), container
   queries; Chrome/Edge 105+, Firefox 113+, Safari 16.4+.
 
@@ -197,7 +204,7 @@ JavaScript instead:
 | Factur-X PDF                      | extract the XML first      | read directly, incl. attachments and PDF preview |
 | Languages                         | de, en, fr                 | de, en, fr                                       |
 | Validation result                 | separate log visualization | tab in the same view, findings linked to lines   |
-| PDF output                        | yes (FOP)                  | browser print; PDF/A-3 with `paniolo-pdf-layout` |
+| PDF output                        | yes (FOP)                  | browser print; PDF/A-3 with `paniolo-facturx`    |
 | Dark mode, responsive, embeddable | no                         | yes                                              |
 
 ## Demo

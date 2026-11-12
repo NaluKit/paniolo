@@ -26,10 +26,12 @@ import java.util.regex.Pattern;
  * Invoice note (BG-1) with an optional UNTDID 4451 subject code (BT-21). The code is kept as text,
  * because EN 16931 permits several hundred codes; {@link TextSubjectQualifier} covers the common
  * ones and is accepted by the builder. Whether a code is permitted is checked by validation.
- * The content code belongs to the Factur-X profile EXTENDED.
+ * The content code belongs to the Factur-X profile EXTENDED, where a note states its text, its
+ * content code, or both (BR-FXEXT-01, BR-FXEXT-02); every other profile requires the text, which
+ * the invoice checks.
  *
  * @param subjectCode UNTDID 4451 subject code (BT-21), or null
- * @param text        invoice note text (BT-22); must not be blank
+ * @param text        invoice note text (BT-22), or null for a note with a content code only
  * @param contentCode content code for Factur-X EXTENDED, or null
  */
 public record InvoiceNote(String subjectCode, String text, String contentCode) {
@@ -46,11 +48,14 @@ public record InvoiceNote(String subjectCode, String text, String contentCode) {
              .matches()) {
       throw new IllegalArgumentException("Note subject code must be a UNTDID 4451 code: " + subjectCode);
     }
-    ModelChecks.required(text,
-                         "note");
     if (contentCode != null) {
       ModelChecks.required(contentCode,
                            "note content code");
+    }
+    // A content code may stand for the text (BR-FXEXT-01, BR-FXEXT-02).
+    if (contentCode == null || text != null) {
+      ModelChecks.required(text,
+                           "note");
     }
   }
 

@@ -34,7 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Checks generated Order-X documents and the official examples against the official Order-X schema
- * and Schematron packaged in paniolo-facturx-rules, or against the rules named by
+ * and Schematron packaged in paniolo-rules, or against the rules named by
  * {@code PANIOLO_ORDERX_RULES}.
  */
 class OfficialOrderXRulesTest {

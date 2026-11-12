@@ -103,6 +103,13 @@ public record InvoiceTotals(BigDecimal lineTotal, BigDecimal allowanceTotal, Big
    * @return the totals
    */
   public static InvoiceTotals calculate(Invoice invoice) {
+    for (var vatAmount : invoice.vatAmounts()) {
+      if (!hasAmounts(invoice,
+                      vatAmount.tax())) {
+        throw new IllegalArgumentException("Stated VAT amount " + vatAmount.amount()
+                                                                           .toPlainString() + " of category " + describe(vatAmount.tax()) + " has no line, allowance, or charge of that category");
+      }
+    }
     Map<TaxCategory, BigDecimal> bases      = new LinkedHashMap<>();
     BigDecimal                   lines      = BigDecimal.ZERO;
     BigDecimal                   allowances = BigDecimal.ZERO;
@@ -169,6 +176,19 @@ public record InvoiceTotals(BigDecimal lineTotal, BigDecimal allowanceTotal, Big
                           ModelChecks.money(entry.getValue()
                                                  .multiply(category.rate())
                                                  .movePointLeft(2));
+      BigDecimal stated = stated(invoice,
+                                 category);
+      if (stated != null) {
+        BigDecimal tolerance = roundingTolerance(invoice,
+                                                 category);
+        if (stated.subtract(amount)
+                  .abs()
+                  .compareTo(tolerance) > 0) {
+          throw new IllegalArgumentException("Stated VAT amount " + stated.toPlainString() + " of category " + describe(category) + " differs from " + amount.toPlainString() +
+                                             " by more than the rounding of its amounts, " + tolerance.toPlainString() + " (0.01 per line, allowance, and charge)");
+        }
+        amount = stated;
+      }
       breakdowns.add(new VatBreakdown(category,
                                       ModelChecks.money(entry.getValue()),
                                       amount));
@@ -203,5 +223,62 @@ public record InvoiceTotals(BigDecimal lineTotal, BigDecimal allowanceTotal, Big
                              rounding,
                              payable,
                              breakdowns);
+  }
+
+  /**
+   * The rounding tolerance of a stated VAT category tax amount (see {@link VatAmount}): 0.01 per
+   * counting invoice line, document allowance, document charge, and EXTENDED logistics service
+   * charge of the category, as BR-FXEXT-S-09 allows.
+   *
+   * @param invoice  the invoice
+   * @param category the VAT category of the breakdown
+   * @return the tolerance, zero if the category has no amounts
+   */
+  public static BigDecimal roundingTolerance(Invoice invoice,
+                                             TaxCategory category) {
+    long count = invoice.lines()
+                        .stream()
+                        .filter(line -> line.extended() == null || line.extended()
+                                                                       .counts())
+                        .filter(line -> category.equals(line.tax()))
+                        .count() + invoice.adjustments()
+                                          .stream()
+                                          .filter(adjustment -> category.equals(adjustment.tax()))
+                                          .count();
+    if (invoice.extended() != null) {
+      count += invoice.extended()
+                      .logisticsServiceCharges()
+                      .stream()
+                      .filter(service -> category.equals(service.tax()))
+                      .count();
+    }
+    return new BigDecimal("0.01").multiply(BigDecimal.valueOf(count));
+  }
+
+  private static boolean hasAmounts(Invoice invoice,
+                                    TaxCategory category) {
+    return roundingTolerance(invoice,
+                             category).signum() > 0;
+  }
+
+  private static BigDecimal stated(Invoice invoice,
+                                   TaxCategory category) {
+    return invoice.vatAmounts()
+                  .stream()
+                  .filter(vatAmount -> vatAmount.tax()
+                                                .equals(category))
+                  .map(VatAmount::amount)
+                  .findFirst()
+                  .orElse(null);
+  }
+
+  private static String describe(TaxCategory category) {
+    return category.code()
+                   .getCode() + " " + (category.rate() == null ?
+                                       "-" :
+                                       category.rate()
+                                               .toPlainString() + " %") + (category.exemptionReason() == null ?
+                                                                           "" :
+                                                                           " (" + category.exemptionReason() + ")");
   }
 }

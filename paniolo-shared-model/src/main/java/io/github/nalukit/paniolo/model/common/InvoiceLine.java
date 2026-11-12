@@ -90,9 +90,10 @@ public record InvoiceLine(String id, String name, BigDecimal quantity, UnitCode 
                          "line id");
     ModelChecks.required(name,
                          "item name");
-    // BR-27: the item net price shall not be negative. A line with sub-lines of the XRechnung
-    // extension may omit it, as BR-26 applies to invoice lines only: its amount is that of its
-    // sub-lines. EXTENDED subtotal and information lines, which do not count, may omit it as well.
+    // BR-26: the item net price is required. A line with sub-lines of the XRechnung extension may
+    // omit it, as BR-26 applies to invoice lines only: its amount is that of its sub-lines. EXTENDED
+    // subtotal and information lines, which do not count, may omit it as well. Its sign depends on
+    // the profile (BR-27), which the invoice checks.
     boolean structural = extended != null && extended.subtype() != null && !extended.subtype()
                                                                                    .counts();
     // Such a line without price may omit the quantity too, as the sub-invoice (GROUP) lines of a
@@ -103,9 +104,8 @@ public record InvoiceLine(String id, String name, BigDecimal quantity, UnitCode 
       Objects.requireNonNull(quantity,
                              "quantity");
     }
-    if (netUnitPrice != null || !structural && (subLines == null || subLines.isEmpty())) {
-      ModelChecks.nonNegative(netUnitPrice,
-                              "netUnitPrice");
+    if (netUnitPrice == null && !structural && (subLines == null || subLines.isEmpty())) {
+      throw new NullPointerException("netUnitPrice");
     }
     if (ModelChecks.nonNegative(priceBaseQuantity,
                                 "priceBaseQuantity")
@@ -149,14 +149,11 @@ public record InvoiceLine(String id, String name, BigDecimal quantity, UnitCode 
                                      .isEmpty() && buyerAccountingReference == null) {
       throw new IllegalArgumentException("Line " + id + ": further accounting accounts require the line accounting reference (BT-133)");
     }
-    if (extended != null && (extended.noteContentCode() != null || extended.noteSubjectCode() != null) && note == null) {
-      throw new IllegalArgumentException("Line " + id + ": note codes require a line note (BT-127)");
+    // EXTENDED states a line note by its text, its content code, or both (BR-FXEXT-01).
+    if (extended != null && extended.noteSubjectCode() != null && note == null && extended.noteContentCode() == null) {
+      throw new IllegalArgumentException("Line " + id + ": a note subject code requires a line note (BT-127) or a note content code");
     }
-    if (grossPrice != null) {
-      // BR-28: the item gross price shall not be negative.
-      ModelChecks.nonNegative(grossPrice,
-                              "grossPrice");
-    }
+    // BR-28 (gross price not negative) depends on the profile as well; the invoice checks it.
     // A zero discount carries no information; UBL needs an amount whenever a gross price is given.
     if (priceDiscount != null && priceDiscount.signum() == 0) {
       priceDiscount = null;

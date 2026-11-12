@@ -62,11 +62,6 @@
     </dependency>
     <dependency>
       <groupId>io.github.nalukit</groupId>
-      <artifactId>paniolo-pdf-layout</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>io.github.nalukit</groupId>
       <artifactId>paniolo-visualizer</artifactId>
       <version>${project.version}</version>
     </dependency>

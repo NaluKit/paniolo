@@ -65,7 +65,7 @@ complete XRechnung example (business-rule validation is separate):
 - Loading invokes the record constructors, not the builders. Builder defaults are not applied:
   required values such as `typeCode`, `currencyCode`, `processControl`, and `paidAmount` must be
   supplied explicitly. Missing lists are empty as described above.
-- Loading runs the checks of the model, like the builders: an incomplete address or inconsistent
+- Loading runs the checks of the model, like the builders: a blank address value or inconsistent
   stated totals is rejected with the message of the model, e.g.
   `postalCode must not be blank (Address)`.
 - Unknown properties, unknown codes, malformed JSON, and trailing content raise an

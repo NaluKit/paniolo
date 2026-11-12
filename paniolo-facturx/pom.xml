@@ -12,7 +12,9 @@
   <artifactId>paniolo-facturx</artifactId>
 
   <name>paniolo-facturx</name>
-  <description>Factur-X / ZUGFeRD support for Paniolo: embeds and extracts CII invoices in PDF/A-3</description>
+  <description>PDF support for Paniolo: embeds and extracts invoices, orders, and despatch advices in PDF/A-3
+    (Factur-X / ZUGFeRD, Order-X), and renders their visual PDF/A-3 pages (Apache PDFBox)
+  </description>
 
   <dependencies>
     <dependency>

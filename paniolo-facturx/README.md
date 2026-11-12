@@ -14,12 +14,12 @@ without it keep a PDF-free class path.
 | ZUGFeRD 1.0 PDFs                                                  | `read(pdf)`, `migrateZugferd1`                                                  |
 | Order-X PDFs (`order-x.xml`)                                      | `toOrderXPdf`, `readOrder(pdf)`, `validateOrder(pdf)`                           |
 | PDF delivery notes (`cida.xml`)                                   | `toDespatchAdvicePdf`, `readDespatchAdvice(pdf)`, `validateDespatchAdvice(pdf)` |
+| Rendered PDF/A-3b pages ([PDF layout](docs/pdf-layout.md))        | `toPdf`, `toReportPdf`, `toFacturX(invoice, profile)`, `toOrderXPdf(order)`     |
 
 The visual part comes from you as a PDF/A-1, -2, or -3 document; Paniolo adds the XML, the
-association, and the XMP metadata. Without a PDF of your own,
-[`paniolo-pdf-layout`](../paniolo-pdf-layout/README.md) renders the pages from the model and uses
-this module to embed the XML (`toFacturX(invoice, profile)`, `toOrderXPdf(order)`,
-`toDespatchAdvicePdf(advice)`).
+association, and the XMP metadata. Without a PDF of your own, this module renders the pages from
+the model and embeds the XML in one step (`toFacturX(invoice, profile)`, `toOrderXPdf(order)`,
+`toDespatchAdvicePdf(advice)`); see [PDF layout](docs/pdf-layout.md).
 
 ## Dependency
 
@@ -134,7 +134,8 @@ List<PdfAttachment> attachments = paniolo.attachments(facturX);   // all files e
 
 The reader looks for `factur-x.xml`, `xrechnung.xml`, and `zugferd-invoice.xml` (ZUGFeRD 2.0)
 in the `/AF` array and the `EmbeddedFiles` name tree, preferring the name declared in
-`fx:DocumentFileName`. The profile comes from `fx:ConformanceLevel`, otherwise from the file
+`DocumentFileName` of the XMP generation (see [XMP metadata generations](#xmp-metadata-generations)).
+The profile comes from `ConformanceLevel` of that generation, otherwise from the file
 name `xrechnung.xml` or the specification identifier (BT-24) of the invoice, including the
 ZUGFeRD 2.0 identifiers such as `urn:zugferd.de:2p0:basic`. ZUGFeRD 1.0 (`ZUGFeRD-invoice.xml`) is
 read and can be migrated, see below. Embedded XML
@@ -171,11 +172,11 @@ byte[] extended = paniolo.migrateZugferd1(zugferd1Xml, FacturXProfile.EXTENDED);
 - Rejected: direct debits (ZUGFeRD 1.0 carries no mandate reference), charges on the gross price,
   and totals that do not match the content.
 - ZUGFeRD 1.0 itself is validated against its schema and Schematron (packaged in
-  `paniolo-facturx-rules`), XML and PDF alike. The result carries the warning `FX-ZUGFERD-1`,
+  `paniolo-rules`), XML and PDF alike. The result carries the warning `FX-ZUGFERD-1`,
   because ZUGFeRD 1.0 does not meet EN 16931; elements the Schematron reports as not used are
   information. Validate the migrated document to check it as Factur-X.
 
-The reader is `ZugferdV1InvoiceReader` in `paniolo-xml-cii`.
+The reader is `ZugferdV1InvoiceReader` in [`paniolo`](../paniolo/docs/cii.md).
 
 ## Order-X
 
@@ -251,7 +252,7 @@ var result = paniolo.validateOrder(pdf);           // PDF/A and XML
   A PDF carries either an invoice, an order, or a delivery note.
 - `validateOrder` checks the XML against the official Order-X 1.0 rules of FNFE-MPE and FeRD (2021-04-13, Apache License 2.0
   according to their terms of use), packaged in
-  `paniolo-facturx-rules`. The release package holds the Schematron and a stylesheet compiled with
+  `paniolo-rules`. The release package holds the Schematron and a stylesheet compiled with
   oXygen that reports with `xsl:message`; Paniolo packs the official XSDs and Schematrons and the
   Schematron compiled to SVRL by `scripts/package-orderx-rules.sh`. All 24 XML examples of the
   release (BASIC and COMFORT) and their PDFs pass. `Paniolo.builder().orderXRules(path)` uses
@@ -265,7 +266,7 @@ var result = paniolo.validateOrder(pdf);           // PDF/A and XML
 ## Delivery note (CIDA)
 
 A despatch advice (`DespatchAdvice` in `io.github.nalukit.paniolo.model.despatch`, see
-[despatch advice](../paniolo-xml-ubl/README.md#despatch-advice)) can also be written as UN/CEFACT
+[despatch advice](../paniolo/docs/ubl.md#despatch-advice)) can also be written as UN/CEFACT
 Cross Industry Despatch Advice (CIDA, `SCRDMCCBDACIDAMessageStructure`) and embedded into PDF/A-3
 as `cida.xml`, the digital delivery note that the Mustang project calls Deliver-X:
 
@@ -424,7 +425,7 @@ ValidationResult result = paniolo.validate(xml);   // "EXTENDED-CTC-FR with BR-F
   If seller and buyer have French addresses, the French rules BR-FR (flux 2) are checked too, for
   example the billing framework BT-23 (`BR-FR-08`); otherwise the result carries the information
   `BR-FR-NOT-APPLICABLE`. Both rule sets (FNFE-MPE France_RFE 1.4.0.04, Apache 2.0) are packaged in
-  `paniolo-facturx-rules`; `Paniolo.builder().extendedCtcFrRules(path)` uses another release.
+  `paniolo-rules`; `Paniolo.builder().extendedCtcFrRules(path)` uses another release.
 - As in EXTENDED, subtotal (`GROUP`) and information lines may leave out the VAT category and the
   net price.
 - **Multi-vendor invoices** (billing framework BT-23 `S8`, `B8`, `M8`, `S9`, `B9`, or `M9`,
@@ -474,7 +475,7 @@ to a profile, also for ZUGFeRD 2.0 and all XRechnung versions.
 ## Factur-X profile rules
 
 Every Factur-X profile is checked against the official Factur-X schema and Schematron. They are
-packaged in [`paniolo-facturx-rules`](../paniolo-facturx-rules/README.md), which `paniolo` brings
+packaged in [`paniolo-rules`](../paniolo-rules/README.md), which `paniolo` brings
 along: the FeRD release ZUGFeRD 2.5.2 / Factur-X 1.09.2, whose technical artifacts FeRD publishes
 under the Apache License 2.0
 ([Terms of use](https://www.ferd-net.de/ueber-uns/ressourcen-1/veroeffentlichungen/haftungsausschluss-und-nutzungsrechte)).
@@ -490,13 +491,44 @@ the XML stage; profile XRECHNUNG and unknown profiles use EN 16931 and XRechnung
 against another release, download it from FeRD or FNFE-MPE ([factur-x](https://fnfe-mpe.org/factur-x/factur-x_en/)), extract it,
 and configure the directory
 with `Paniolo.builder().facturXRules(path)`; the expected file names are described
-in [paniolo-validation](../paniolo-validation/README.md#validate-against-factur-x--zugferd-profile-rules).
+in the [validation of `paniolo`](../paniolo/docs/validation.md#validate-against-factur-x--zugferd-profile-rules).
 The tests validate against the packaged rules, or against the release named by
 `PANIOLO_FACTURX_RULES`:
 
 ```sh
 PANIOLO_FACTURX_RULES=/path/to/factur-x-package mvn -pl paniolo-facturx -am verify
 ```
+
+## XMP metadata generations
+
+Reading and the container check recognize three generations of hybrid invoice metadata. The
+generation is the one whose XMP namespace carries the invoice properties `DocumentType`,
+`DocumentFileName`, `Version`, and `ConformanceLevel`, as elements or as attributes of
+`rdf:Description`; prefixes such as `fx` or `zf` do not matter.
+
+| Generation  | XMP namespace                                           | Embedded file                                                     | `Version`                                          | `ConformanceLevel`                                                  | XML root                     |
+|-------------|---------------------------------------------------------|-------------------------------------------------------------------|----------------------------------------------------|---------------------------------------------------------------------|------------------------------|
+| Factur-X    | `urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#`  | `factur-x.xml`, `xrechnung.xml` for XRECHNUNG (`zugferd-invoice.xml` tolerated) | `1.0`, for XRECHNUNG the XRechnung version; else warning | MINIMUM, BASIC WL, BASIC, EN 16931, EXTENDED, EXTENDED-CTC-FR, XRECHNUNG | CII `CrossIndustryInvoice`   |
+| ZUGFeRD 2.0 | `urn:zugferd:pdfa:CrossIndustryDocument:invoice:2p0#`   | `zugferd-invoice.xml`                                             | `2p0`; `1.0` warning (compatibility), other error  | MINIMUM, BASIC WL, BASIC, EN 16931, EXTENDED                        | CII `CrossIndustryInvoice`   |
+| ZUGFeRD 1.0 | `urn:ferd:pdfa:CrossIndustryDocument:invoice:1p0#`      | `ZUGFeRD-invoice.xml`                                             | `1.0`; else warning                                | BASIC, COMFORT, EXTENDED                                            | `CrossIndustryDocument` (1p0) |
+
+- Only these namespaces are accepted. Properties with the same local names in another namespace
+  are ignored, so the document lacks them.
+- File names and levels are compared exactly (Factur-X levels in any case, as before). The file
+  name never decides the generation: ZUGFeRD 2.0 metadata with `ZUGFeRD-invoice.xml` stay
+  ZUGFeRD 2.0 and get `FX-FILE-NAME`. Only an XMP packet without any invoice property is checked
+  against the generation of its only extension schema or, failing that, of its file name; it is
+  rejected for the missing properties either way.
+- Properties of several generations in one XMP packet are the error `FX-XMP-GENERATIONS`; the
+  generation whose `DocumentFileName` names an embedded file of its own is checked and extracted,
+  otherwise the first in the order Factur-X, ZUGFeRD 2.0, ZUGFeRD 1.0.
+- The version rule of ZUGFeRD 2.0: the metadata specification states `2p0` (also in the legacy
+  section of Factur-X 1.07.2 / ZUGFeRD 2.3.2, 6.3.2). Some ZUGFeRD 2.0 tools wrote `1.0`, the
+  Factur-X value, e.g. the Mustang test file `attributeBasedXMP_zugferd_2p0_EN16931_Einfach.pdf`;
+  it is accepted with the warning `FX-VERSION`, so such a document stays valid but shows the
+  deviation. Any other value is an error.
+- The profile of the embedded invoice is only taken from the level of the detected generation;
+  ZUGFeRD 1.0 levels never become Factur-X profiles.
 
 ## Container checks
 
@@ -511,10 +543,12 @@ stage `HYBRID`:
 | `FX-AF-RELATIONSHIP`                                 | error           | `AFRelationship` is Alternative, Data or Source                                        |
 | `FX-AF-RELATIONSHIP-DE`                              | warning         | Germany: Alternative (Data for MINIMUM and BASIC WL)                                   |
 | `FX-MIME-TYPE`, `FX-MOD-DATE`                        | error, warning  | `text/xml` and `Params/ModDate`                                                        |
-| `FX-XMP`, `FX-PDFA-PART`, `FX-EXTENSION-SCHEMA`      | error           | XMP present, `pdfaid:part` 3, extension schema for the `fx` namespace                  |
+| `FX-XMP`, `FX-PDFA-PART`, `FX-EXTENSION-SCHEMA`      | error           | XMP present, `pdfaid:part` 3, extension schema for the namespace of the generation     |
+| `FX-XMP-GENERATIONS`                                 | error           | the invoice properties use the namespace of one generation only                        |
 | `FX-DOCUMENT-TYPE`, `FX-DOCUMENT-FILE-NAME`          | error           | `INVOICE` and the embedded file name                                                   |
-| `FX-CONFORMANCE-LEVEL`, `FX-FILE-NAME`, `FX-VERSION` | error / warning | known level, `factur-x.xml` / `xrechnung.xml`, `fx:Version`                            |
-| `FX-GUIDELINE`                                       | error           | the level matches BT-24 of the embedded invoice                                        |
+| `FX-CONFORMANCE-LEVEL`, `FX-FILE-NAME`, `FX-VERSION` | error / warning | level, file name, and version of the generation, see the table above                   |
+| `FX-GUIDELINE`                                       | error           | the level matches BT-24 of the embedded invoice (Factur-X, ZUGFeRD 2.0)                |
+| `FX-XML-ROOT`                                        | error           | the root element of the embedded XML belongs to the generation                         |
 | `FX-ENCRYPTED`                                       | error           | no encryption                                                                          |
 | `FX-PRODUCER`                                        | information     | producing software (`PdfBoxFacturXSupport.producer`), added by `Paniolo.validate(pdf)` |
 
@@ -526,12 +560,12 @@ stage `HYBRID`:
 - The writer enforces the BASIC restrictions itself; the official Factur-X rules check all
   profiles in validation, see [Factur-X profile rules](#factur-x-profile-rules).
 - A visual invoice from the caller must be PDF/A-1, -2, or -3; Paniolo does not convert arbitrary
-  PDFs to PDF/A. To have the pages rendered instead, add
-  [`paniolo-pdf-layout`](../paniolo-pdf-layout/README.md).
+  PDFs to PDF/A. To have the pages rendered instead, use the
+  [PDF layout](docs/pdf-layout.md).
 - Factur-X is based on CII D22B; Paniolo writes CII D16B, a compatible subset. Some EXTENDED
   content (several preceding invoices, the invoice reference of advance payments) is valid only
   against the Factur-X schemas, which Paniolo uses for validation; profile XRECHNUNG is validated
-  with the D16B schema and EN 16931 / XRechnung Schematron from `paniolo-xrechnung-rules`.
+  with the D16B schema and EN 16931 / XRechnung Schematron from `paniolo-rules`.
 
 ## Build and tests
 
@@ -546,6 +580,8 @@ cover profile mismatches, non-PDF/A, encrypted, and already converted input. Fur
 the container checks, the profile detection, MINIMUM and BASIC WL, the EXTENDED information,
 attachments, producer detection, the ZUGFeRD 1.0 migration with samples written for Paniolo,
 Order-X documents and PDFs, PDF delivery notes, and the JSON round trip of all test documents.
+The layout tests render invoices, orders, delivery notes, and validation reports in German,
+English, and French and check every page with veraPDF for PDF/A-3b conformance.
 
 Tests against the official Factur-X rules use the packaged release, or the extracted package
 named by `PANIOLO_FACTURX_RULES`; tests against the official Order-X rules, including the official

@@ -28,16 +28,10 @@
   <modules>
     <module>paniolo-shared-model</module>
     <module>paniolo-json</module>
-    <module>paniolo-xml</module>
-    <module>paniolo-xml-ubl</module>
-    <module>paniolo-xml-cii</module>
-    <module>paniolo-xrechnung-rules</module>
-    <module>paniolo-facturx-rules</module>
-    <module>paniolo-validation</module>
+    <module>paniolo-rules</module>
     <module>paniolo</module>
     <module>paniolo-facturx</module>
     <module>paniolo-pdfa</module>
-    <module>paniolo-pdf-layout</module>
     <module>paniolo-visualizer</module>
     <module>paniolo-cli</module>
     <module>paniolo-mustang</module>

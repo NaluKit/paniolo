@@ -181,15 +181,13 @@ import java.util.function.Supplier;
  * <p>The facade itself has no PDF dependency. PDF features are discovered at runtime with
  * {@link ServiceLoader}; add the modules you need to the classpath:
  * <ul>
- *   <li>{@code io.github.nalukit:paniolo-facturx} &ndash; required by every method that reads, writes or
- *       inspects a PDF (Factur-X / ZUGFeRD, Order-X PDF, PDF delivery note). Without it these methods
- *       throw an {@link IllegalStateException} naming the missing dependency.</li>
- *   <li>{@code io.github.nalukit:paniolo-pdf-layout} &ndash; renders the visual PDF/A document of
- *       invoices, orders, and despatch advices for the {@code toPdf} methods,
- *       {@link #toFacturX(Invoice, FacturXProfile, PdfLayout, List)},
+ *   <li>{@code io.github.nalukit:paniolo-facturx} &ndash; required by every method that reads, writes,
+ *       inspects, or renders a PDF (Factur-X / ZUGFeRD, Order-X PDF, PDF delivery note); also renders
+ *       the visual PDF/A document of invoices, orders, and despatch advices for the {@code toPdf}
+ *       methods, {@link #toFacturX(Invoice, FacturXProfile, PdfLayout, List)},
  *       {@link #toOrderXPdf(Order, PdfLayout, List)}, and
- *       {@link #toDespatchAdvicePdf(DespatchAdvice, PdfLayout, List)}; brings
- *       {@code paniolo-facturx}.</li>
+ *       {@link #toDespatchAdvicePdf(DespatchAdvice, PdfLayout, List)}. Without it these methods
+ *       throw an {@link IllegalStateException} naming the missing dependency.</li>
  *   <li>{@code io.github.nalukit:paniolo-pdfa} &ndash; optional; adds the PDF/A conformance check
  *       (ISO 19005) to the validation of PDFs. Without it the result carries the information
  *       {@code PDFA-NOT-CHECKED}.</li>
@@ -198,11 +196,10 @@ import java.util.function.Supplier;
  * <h2>Rules</h2>
  *
  * <p>The official KoSIT XRechnung validator configuration (which also contains the EN 16931 rules and
- * the UBL / CII schemas) is packaged in {@code paniolo-xrechnung-rules} and used by default.
- * Official Factur-X / ZUGFeRD, ZUGFeRD 1.0, French EXTENDED-CTC-FR and Order-X rules are packaged
- * in {@code paniolo-facturx-rules}. Alternative rule bundles can be configured with the
- * {@link Builder}. Peppol BIS Despatch Advice rules are not packaged and must be supplied through
- * {@link Builder#despatchAdviceRules(Path)}.
+ * the UBL / CII schemas) is packaged in {@code paniolo-rules} and used by default, together
+ * with the official Factur-X / ZUGFeRD, ZUGFeRD 1.0, French EXTENDED-CTC-FR and Order-X rules.
+ * Alternative rule bundles can be configured with the {@link Builder}. Peppol BIS Despatch Advice
+ * rules are not packaged and must be supplied through {@link Builder#despatchAdviceRules(Path)}.
  *
  * <h2>Optional checks</h2>
  *
@@ -378,7 +375,7 @@ public final class Paniolo
   }
 
   private static PdfLayoutSupport pdfLayout() {
-    return PdfLayoutHolder.SUPPORT.orElseThrow(() -> new IllegalStateException("Rendering a PDF requires the dependency io.github.nalukit:paniolo-pdf-layout"));
+    return PdfLayoutHolder.SUPPORT.orElseThrow(() -> new IllegalStateException("Rendering a PDF requires the dependency io.github.nalukit:paniolo-facturx"));
   }
 
   private static FacturXSupport facturX() {
@@ -427,8 +424,8 @@ public final class Paniolo
 
   /**
    * Creates an instance with the default configuration: validation against the official KoSIT
-   * XRechnung rules (current and older versions) packaged in {@code paniolo-xrechnung-rules} and the
-   * official Factur-X / ZUGFeRD rules (incl. ZUGFeRD 1.0) packaged in {@code paniolo-facturx-rules},
+   * XRechnung rules (current and older versions) and the official Factur-X / ZUGFeRD rules (incl.
+   * ZUGFeRD 1.0), both packaged in {@code paniolo-rules},
    * no Order-X or Peppol Despatch Advice rules.
    *
    * <p>This is the right choice for most applications. Creating the instance is cheap; the packaged
@@ -1798,7 +1795,7 @@ public final class Paniolo
    * }</pre>
    *
    * <p>CII is checked against the official Factur-X schema and Schematron of the profile: those
-   * packaged in {@code paniolo-facturx-rules} (FeRD release ZUGFeRD 2.5.2 / Factur-X 1.09.2), or the
+   * packaged in {@code paniolo-rules} (FeRD release ZUGFeRD 2.5.2 / Factur-X 1.09.2), or the
    * release configured with {@link Builder#facturXRules(Path)}. Profile XRECHNUNG is always checked
    * against EN 16931 and XRechnung.
    *
@@ -2118,11 +2115,11 @@ public final class Paniolo
 
   /**
    * Renders an invoice as visual PDF/A-3b document with the default layout (German labels).
-   * Requires {@code paniolo-pdf-layout}.
+   * Requires {@code paniolo-facturx}.
    *
    * @param invoice the invoice; must not be {@code null}
    * @return the PDF/A-3b document, without embedded XML
-   * @throws IllegalStateException if {@code paniolo-pdf-layout} is missing
+   * @throws IllegalStateException if {@code paniolo-facturx} is missing
    * @see #toPdf(Invoice, PdfLayout)
    */
   public byte[] toPdf(Invoice invoice) {
@@ -2138,7 +2135,7 @@ public final class Paniolo
    * @param fileName name of the validated file, or {@code null}
    * @param document the validated content, for its size and SHA-256, or {@code null}
    * @return the PDF/A-3b report
-   * @throws IllegalStateException if {@code paniolo-pdf-layout} is missing
+   * @throws IllegalStateException if {@code paniolo-facturx} is missing
    */
   public byte[] toReportPdf(ValidationResult result,
                             String fileName,
@@ -2151,7 +2148,7 @@ public final class Paniolo
 
   /**
    * Renders a validation report as PDF/A-3b document, e.g. for archiving or for departments that
-   * work with documents rather than XML. Requires {@code paniolo-pdf-layout}.
+   * work with documents rather than XML. Requires {@code paniolo-facturx}.
    *
    * <pre>{@code
    * byte[] received = Files.readAllBytes(path);
@@ -2175,7 +2172,7 @@ public final class Paniolo
    * @param layout   language, fonts, accent color and footer; logo and sender address are not used
    * @return the PDF/A-3b report
    * @throws IllegalArgumentException if a font of the layout cannot be read
-   * @throws IllegalStateException    if {@code paniolo-pdf-layout} is missing
+   * @throws IllegalStateException    if {@code paniolo-facturx} is missing
    */
   public byte[] toReportPdf(ValidationResult result,
                             String fileName,
@@ -2239,7 +2236,7 @@ public final class Paniolo
    * Renders an invoice as visual PDF/A-3b document: letterhead with seller and logo, recipient,
    * document data, lines with sub-lines and line allowances and charges, document allowances and
    * charges, totals with the VAT breakdown, payment details, notes, and the seller's legal details
-   * in the footer of every page. Requires {@code paniolo-pdf-layout}.
+   * in the footer of every page. Requires {@code paniolo-facturx}.
    *
    * <p>EXTENDED content (Factur-X EXTENDED and EXTENDED-CTC-FR) is shown as well: the document
    * status of a test or copy, further references, delivery terms and parties, line details such as
@@ -2258,7 +2255,7 @@ public final class Paniolo
    * @param layout  language, logo, fonts, and colors; must not be {@code null}
    * @return the PDF/A-3b document
    * @throws IllegalArgumentException if the logo or a font of the layout cannot be read
-   * @throws IllegalStateException    if {@code paniolo-pdf-layout} is missing
+   * @throws IllegalStateException    if {@code paniolo-facturx} is missing
    */
   public byte[] toPdf(Invoice invoice,
                       PdfLayout layout) {
@@ -2275,7 +2272,7 @@ public final class Paniolo
 
   /**
    * Creates a Factur-X / ZUGFeRD hybrid invoice whose visual part Paniolo renders itself, with the
-   * default layout and without further attachments. Requires {@code paniolo-pdf-layout}.
+   * default layout and without further attachments. Requires {@code paniolo-facturx}.
    *
    * <pre>{@code
    * byte[] facturX = paniolo.toFacturX(invoice, FacturXProfile.EN16931);
@@ -2286,7 +2283,7 @@ public final class Paniolo
    * @return the Factur-X PDF/A-3 document
    * @throws IllegalArgumentException if the specification identifier does not match the profile or
    *                                  the invoice content does not fit the profile
-   * @throws IllegalStateException    if {@code paniolo-pdf-layout} is missing
+   * @throws IllegalStateException    if {@code paniolo-facturx} is missing
    * @see #toFacturX(Invoice, FacturXProfile, PdfLayout, List)
    */
   public byte[] toFacturX(Invoice invoice,
@@ -2300,8 +2297,7 @@ public final class Paniolo
   /**
    * Creates a Factur-X / ZUGFeRD hybrid invoice whose visual part Paniolo renders with
    * {@link #toPdf(Invoice, PdfLayout)}, and embeds the CII XML and further files like
-   * {@link #toFacturX(Invoice, byte[], FacturXProfile, List)}. Requires {@code paniolo-pdf-layout},
-   * which brings {@code paniolo-facturx}.
+   * {@link #toFacturX(Invoice, byte[], FacturXProfile, List)}. Requires {@code paniolo-facturx}.
    *
    * <pre>{@code
    * byte[] facturX = paniolo.toFacturX(invoice,
@@ -2318,8 +2314,7 @@ public final class Paniolo
    * @throws IllegalArgumentException if the specification identifier does not match the profile, the
    *                                  invoice content does not fit the profile, an attachment name is
    *                                  used twice, or the layout has a watermark
-   * @throws IllegalStateException    if {@code paniolo-pdf-layout} or {@code paniolo-facturx} is
-   *                                  missing
+   * @throws IllegalStateException    if {@code paniolo-facturx} is missing
    */
   public byte[] toFacturX(Invoice invoice,
                           FacturXProfile profile,
@@ -2571,11 +2566,11 @@ public final class Paniolo
 
   /**
    * Renders an order, order change, or order response as visual PDF/A-3b document with the
-   * default layout (German labels), without embedded XML. Requires {@code paniolo-pdf-layout}.
+   * default layout (German labels), without embedded XML. Requires {@code paniolo-facturx}.
    *
    * @param order the order; must not be {@code null}
    * @return the PDF/A-3b document
-   * @throws IllegalStateException if {@code paniolo-pdf-layout} is missing
+   * @throws IllegalStateException if {@code paniolo-facturx} is missing
    * @see #toPdf(Order, PdfLayout)
    */
   public byte[] toPdf(Order order) {
@@ -2587,13 +2582,13 @@ public final class Paniolo
    * Renders an order, order change, or order response as visual PDF/A-3b document: the buyer's
    * letterhead for orders and changes, the seller's for responses; requested delivery, lines with
    * the ordered and, in a response, the confirmed quantity and the line status; totals; delivery
-   * parties; delivery and payment terms. Requires {@code paniolo-pdf-layout}.
+   * parties; delivery and payment terms. Requires {@code paniolo-facturx}.
    *
    * @param order  the order; must not be {@code null}
    * @param layout language, logo, fonts, and colors; must not be {@code null}
    * @return the PDF/A-3b document, without embedded XML
    * @throws IllegalArgumentException if the logo or a font of the layout cannot be read
-   * @throws IllegalStateException    if {@code paniolo-pdf-layout} is missing
+   * @throws IllegalStateException    if {@code paniolo-facturx} is missing
    */
   public byte[] toPdf(Order order,
                       PdfLayout layout) {
@@ -2610,7 +2605,7 @@ public final class Paniolo
 
   /**
    * Creates an Order-X PDF/A-3 whose visual part Paniolo renders itself, with the default layout.
-   * Requires {@code paniolo-pdf-layout}.
+   * Requires {@code paniolo-facturx}.
    *
    * <pre>{@code
    * byte[] pdf = paniolo.toOrderXPdf(order);
@@ -2618,7 +2613,7 @@ public final class Paniolo
    *
    * @param order the order; must not be {@code null}
    * @return the Order-X PDF/A-3 document
-   * @throws IllegalStateException if {@code paniolo-pdf-layout} is missing
+   * @throws IllegalStateException if {@code paniolo-facturx} is missing
    * @see #toOrderXPdf(Order, PdfLayout, List)
    */
   public byte[] toOrderXPdf(Order order) {
@@ -2630,7 +2625,7 @@ public final class Paniolo
   /**
    * Creates an Order-X PDF/A-3 whose visual part Paniolo renders with
    * {@link #toPdf(Order, PdfLayout)}, and embeds the Order-X XML and further files like
-   * {@link #toOrderXPdf(Order, byte[], List)}. Requires {@code paniolo-pdf-layout}.
+   * {@link #toOrderXPdf(Order, byte[], List)}. Requires {@code paniolo-facturx}.
    *
    * @param order       the order; must not be {@code null}
    * @param layout      language, logo, fonts, and colors; must not be {@code null}
@@ -2638,7 +2633,7 @@ public final class Paniolo
    * @return the Order-X PDF/A-3 document
    * @throws IllegalArgumentException if the order content does not fit its profile, an attachment
    *                                  name is used twice, or the layout has a watermark
-   * @throws IllegalStateException    if {@code paniolo-pdf-layout} is missing
+   * @throws IllegalStateException    if {@code paniolo-facturx} is missing
    */
   public byte[] toOrderXPdf(Order order,
                             PdfLayout layout,
@@ -2752,7 +2747,7 @@ public final class Paniolo
    * combined.
    *
    * <p>The rules are the Order-X 1.0 rules of FNFE-MPE and FeRD packaged in
-   * {@code paniolo-facturx-rules}, or the release configured with {@link Builder#orderXRules(Path)}.
+   * {@code paniolo-rules}, or the release configured with {@link Builder#orderXRules(Path)}.
    *
    * @param xmlOrPdf the Order-X XML or PDF; must not be {@code null}
    * @return the findings; never {@code null}
@@ -2938,11 +2933,11 @@ public final class Paniolo
 
   /**
    * Renders a despatch advice as delivery note with the default layout (German labels), a visual
-   * PDF/A-3b document without embedded XML. Requires {@code paniolo-pdf-layout}.
+   * PDF/A-3b document without embedded XML. Requires {@code paniolo-facturx}.
    *
    * @param advice the despatch advice; must not be {@code null}
    * @return the PDF/A-3b document
-   * @throws IllegalStateException if {@code paniolo-pdf-layout} is missing
+   * @throws IllegalStateException if {@code paniolo-facturx} is missing
    * @see #toPdf(DespatchAdvice, PdfLayout)
    */
   public byte[] toPdf(DespatchAdvice advice) {
@@ -2955,13 +2950,13 @@ public final class Paniolo
    * party's letterhead, the delivery customer in the window, despatch and delivery dates, order
    * and shipment numbers, lines with delivered and outstanding quantities, batches and serial
    * numbers, shipment details, and a receipt confirmation to sign. Requires
-   * {@code paniolo-pdf-layout}.
+   * {@code paniolo-facturx}.
    *
    * @param advice the despatch advice; must not be {@code null}
    * @param layout language, logo, fonts, and colors; must not be {@code null}
    * @return the PDF/A-3b document, without embedded XML
    * @throws IllegalArgumentException if the logo or a font of the layout cannot be read
-   * @throws IllegalStateException    if {@code paniolo-pdf-layout} is missing
+   * @throws IllegalStateException    if {@code paniolo-facturx} is missing
    */
   public byte[] toPdf(DespatchAdvice advice,
                       PdfLayout layout) {
@@ -2978,11 +2973,11 @@ public final class Paniolo
 
   /**
    * Creates a PDF/A-3 delivery note with the embedded CIDA XML whose visual part Paniolo renders
-   * itself, with the default layout. Requires {@code paniolo-pdf-layout}.
+   * itself, with the default layout. Requires {@code paniolo-facturx}.
    *
    * @param advice the despatch advice; must not be {@code null}
    * @return the PDF/A-3 delivery note
-   * @throws IllegalStateException if {@code paniolo-pdf-layout} is missing
+   * @throws IllegalStateException if {@code paniolo-facturx} is missing
    * @see #toDespatchAdvicePdf(DespatchAdvice, PdfLayout, List)
    */
   public byte[] toDespatchAdvicePdf(DespatchAdvice advice) {
@@ -2995,7 +2990,7 @@ public final class Paniolo
    * Creates a PDF/A-3 delivery note whose visual part Paniolo renders with
    * {@link #toPdf(DespatchAdvice, PdfLayout)}, and embeds the CIDA XML and further files like
    * {@link #toDespatchAdvicePdf(DespatchAdvice, byte[], List)}. Requires
-   * {@code paniolo-pdf-layout}.
+   * {@code paniolo-facturx}.
    *
    * @param advice      the despatch advice; must not be {@code null}
    * @param layout      language, logo, fonts, and colors; must not be {@code null}
@@ -3003,7 +2998,7 @@ public final class Paniolo
    * @return the PDF/A-3 delivery note
    * @throws IllegalArgumentException if the despatch advice has content CIDA cannot carry, an
    *                                  attachment name is used twice, or the layout has a watermark
-   * @throws IllegalStateException    if {@code paniolo-pdf-layout} is missing
+   * @throws IllegalStateException    if {@code paniolo-facturx} is missing
    */
   public byte[] toDespatchAdvicePdf(DespatchAdvice advice,
                                     PdfLayout layout,
@@ -3942,7 +3937,7 @@ public final class Paniolo
 
     /**
      * Uses an extracted KoSIT XRechnung validator configuration instead of the rules packaged in
-     * {@code paniolo-xrechnung-rules}.
+     * {@code paniolo-rules}.
      *
      * <p>Typical use cases: validating against a newer KoSIT release before Paniolo ships it, or
      * against an older one during an XRechnung version change.
@@ -3983,7 +3978,7 @@ public final class Paniolo
 
     /**
      * Uses an extracted Factur-X / ZUGFeRD release instead of the rules packaged in
-     * {@code paniolo-facturx-rules} (ZUGFeRD 2.5.2 / Factur-X 1.09.2).
+     * {@code paniolo-rules} (ZUGFeRD 2.5.2 / Factur-X 1.09.2).
      *
      * <p>Typical use cases: validating against a newer release before Paniolo ships it, or against an
      * older one during a version change. Download the package from FeRD or FNFE-MPE, extract it, and
@@ -4015,7 +4010,7 @@ public final class Paniolo
 
     /**
      * Uses other CII rules of the French profile EXTENDED-CTC-FR instead of those packaged in
-     * {@code paniolo-facturx-rules} (FNFE-MPE France_RFE 1.4.0.04).
+     * {@code paniolo-rules} (FNFE-MPE France_RFE 1.4.0.04).
      *
      * <p>Download a release of <a href="https://github.com/fnfempe/France_RFE">France_RFE</a> and
      * pass its root directory or its folder {@code FNFE_RFE_INVOICE/CII/EXTENDED-CTC-FR}; see
@@ -4043,7 +4038,7 @@ public final class Paniolo
 
     /**
      * Uses another Order-X release in {@link Paniolo#validateOrder(byte[])} instead of the Order-X 1.0
-     * rules packaged in {@code paniolo-facturx-rules}.
+     * rules packaged in {@code paniolo-rules}.
      *
      * <p>The directory needs per profile the XSDs and the Schematron compiled to SVRL; see
      * {@link ValidationProfile#orderX(Path, String)} for the expected file names. The

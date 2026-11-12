@@ -12,7 +12,7 @@
 *.ear
 *.zip
 # Packaged official rules, stored in the module because they have no stable download URL
-!paniolo-facturx-rules/src/main/resources/io/github/nalukit/paniolo/rules/facturx/*.zip
+!paniolo-rules/src/main/resources/io/github/nalukit/paniolo/rules/facturx/*.zip
 *.tar.gz
 *.rar
 

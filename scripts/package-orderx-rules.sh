@@ -17,7 +17,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-# Packages the official Order-X rules for paniolo-facturx-rules.
+# Packages the official Order-X rules for paniolo-rules.
 #
 # The Order-X release package of FNFE-MPE and FeRD holds the Schematron of each profile and a
 # stylesheet compiled with oXygen, which reports with xsl:message instead of SVRL. Paniolo needs
@@ -34,7 +34,7 @@ repository=${MAVEN_REPOSITORY:-$HOME/.m2/repository}
 resolver=$(ls -d "$repository"/org/xmlresolver/xmlresolver/* | sort -V | tail -1)
 classpath="$repository/net/sf/saxon/Saxon-HE/$saxon_version/Saxon-HE-$saxon_version.jar:$resolver/xmlresolver-$(basename "$resolver").jar:$resolver/xmlresolver-$(basename "$resolver")-data.jar"
 iso="$project_dir/scripts/iso-schematron"
-archive="$project_dir/paniolo-facturx-rules/src/main/resources/io/github/nalukit/paniolo/rules/facturx/order-x-1.0-2021-04-13.zip"
+archive="$project_dir/paniolo-rules/src/main/resources/io/github/nalukit/paniolo/rules/facturx/order-x-1.0-2021-04-13.zip"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
@@ -55,7 +55,7 @@ for level in Basic Comfort Extended; do
 done
 cp "$package_dir/Nutzungsrechte.txt" "$package_dir/Disclaimer.txt" "$work/package/"
 mkdir -p "$work/package/licenses"
-cp "$project_dir/paniolo-facturx-rules/src/main/resources/META-INF/licenses/MIT-ISO-Schematron.txt" "$work/package/licenses/"
+cp "$project_dir/paniolo-rules/src/main/resources/META-INF/licenses/MIT-ISO-Schematron.txt" "$work/package/licenses/"
 
 python3 -I - "$work/package" "$archive" <<'EOF'
 import hashlib, sys, zipfile
@@ -79,4 +79,4 @@ with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as zip
     add("SHA256SUMS", "\n".join(sums) + "\n")
 EOF
 shasum -a 256 "$archive"
-printf 'Update orderx.sha256 in paniolo-facturx-rules/pom.xml with the checksum above.\n'
+printf 'Update orderx.sha256 in paniolo-rules/pom.xml with the checksum above.\n'

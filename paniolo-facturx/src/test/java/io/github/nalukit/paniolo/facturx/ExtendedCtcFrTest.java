@@ -417,7 +417,7 @@ class ExtendedCtcFrTest {
                                 .lines(lines);
     var error = assertThrows(IllegalArgumentException.class,
                              single::build);
-    assertEquals("The itemSeller requires a postal address with street, city, and post code",
+    assertEquals("The itemSeller requires a postal address with more than the country, e.g. city and post code",
                  error.getMessage());
     var nameless = FacturXInvoices.invoice(FacturXProfile.EXTENDED_CTC_FR,
                                            InvoiceTypeCode.CODE_380)

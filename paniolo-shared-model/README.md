@@ -84,7 +84,7 @@ accepted only in an EXTENDED-CTC-FR invoice.
 Defaults are EUR, document type `380`, and XRechnung 3 process identifiers. `InvoiceTypeCode`
 holds the 62 document types permitted by EN 16931 with their UN/CEFACT names; `isCreditNote()`
 marks the credit note types (e.g. `381`). The model performs structural checks; XML business-rule
-validation is provided by [paniolo-validation](../paniolo-validation/README.md).
+validation is provided by the [validation of `paniolo`](../paniolo/docs/validation.md).
 
 ## Thread safety
 

@@ -647,8 +647,11 @@ function ciiLine(l, index) {
         index,
         id: txt(lineDocument, 'LineID'),
         parentId: txt(lineDocument, 'ParentLineID'),
-        status: txt(lineDocument, 'LineStatusReasonCode') || txt(lineDocument, 'LineStatusCode'),
+        status: txt(lineDocument, 'LineStatusReasonCode'),
+        statusCode: txt(lineDocument, 'LineStatusCode'),
         note: texts(lineDocument, 'IncludedNote/Content').join('\n'),
+        noteSubject: txt(lineDocument, 'IncludedNote/SubjectCode'),
+        noteCode: txt(lineDocument, 'IncludedNote/ContentCode'),
         name: txt(product, 'Name'),
         description: txt(product, 'Description'),
         sellerId: txt(product, 'SellerAssignedID'),
@@ -722,10 +725,22 @@ function ciiLine(l, index) {
             .filter(d => !txt(d, 'TypeCode') || txt(d, 'TypeCode') === '130')
             .map(d => txt(d, 'IssuerAssignedID')),
         accountingCost: texts(settlement, 'ReceivableSpecifiedTradeAccountingAccount/ID').join(', ') || undefined,
+        accountingAccounts: ciiAccounts(settlement),
+        taxDueCode: txt(settlement, 'ApplicableTradeTax/DueDateTypeCode'),
         lineVat: txt(settlement, 'SpecifiedTradeSettlementLineMonetarySummation/TaxTotalAmount'),
         lineGross: txt(settlement, 'SpecifiedTradeSettlementLineMonetarySummation/GrandTotalAmount'),
         allowanceCharges: all(settlement, 'SpecifiedTradeAllowanceCharge').map(ciiAllowanceCharge)
     });
+}
+
+/**
+ * The accounting accounts of a CII settlement with their type code (EXTENDED), only if one states a
+ * type; otherwise the plain references (accountingCost) suffice.
+ */
+function ciiAccounts(settlement) {
+    const accounts = all(settlement, 'ReceivableSpecifiedTradeAccountingAccount')
+        .map(a => clean({id: txt(a, 'ID'), type: txt(a, 'TypeCode')}));
+    return accounts.some(a => a.type) ? accounts : undefined;
 }
 
 /** Nests the lines of CII EXTENDED with a ParentLineID below their parent. */
@@ -827,10 +842,16 @@ function mapCii(root, family) {
         dueDate: paymentTerms.main ? ciiDate(one(paymentTerms.main, 'DueDateDateTime')) : undefined,
         currency,
         taxCurrency: txt(settlement, 'TaxCurrencyCode'),
-        notes: all(doc, 'IncludedNote').flatMap(n => texts(n, 'Content').map(text => clean({
-            subject: txt(n, 'SubjectCode'),
-            text
-        }))),
+        language: txt(doc, 'LanguageID'),
+        // EXTENDED states a note by its text, its content code, or both (BR-FXEXT-01).
+        notes: all(doc, 'IncludedNote').flatMap(n => {
+            const contents = texts(n, 'Content');
+            return (contents.length ? contents : [undefined]).map((text, i) => clean({
+                subject: txt(n, 'SubjectCode'),
+                code: i === 0 ? txt(n, 'ContentCode') : undefined,
+                text
+            }));
+        }).filter(n => n.text || n.code),
         period: ciiPeriod(one(settlement, 'BillingSpecifiedPeriod')),
         seller: ciiParty(one(agreement, 'SellerTradeParty')),
         buyer: ciiParty(one(agreement, 'BuyerTradeParty')),
@@ -872,6 +893,7 @@ function mapCii(root, family) {
             tender: documents.filter(d => txt(d, 'TypeCode') === '50').map(d => txt(d, 'IssuerAssignedID'))[0],
             object: documents.filter(d => txt(d, 'TypeCode') === '130').map(d => txt(d, 'IssuerAssignedID'))[0],
             accountingCost: texts(settlement, 'ReceivableSpecifiedTradeAccountingAccount/ID').join(', ') || undefined,
+            accountingAccounts: ciiAccounts(settlement),
             precedingInvoices: all(settlement, 'InvoiceReferencedDocument').map(r => clean({
                 id: txt(r, 'IssuerAssignedID'),
                 date: ciiDate(one(r, 'FormattedIssueDateTime'))
@@ -1540,6 +1562,12 @@ const TEXTS = {
         expiry: 'Haltbar bis',
         status: 'Status',
         lineNote: 'Hinweis',
+        taxDueCode: 'Steuerfälligkeit (Code)',
+        noteSubject: 'Betreff des Hinweises',
+        noteCode: 'Hinweiscode',
+        lineStatusCode: 'Positionsstatus (Code)',
+        language: 'Sprache',
+        accountType: 'Kontoart',
         subLines: 'Unterpositionen',
         lineTotal: 'Summe Positionen',
         allowances: 'Nachlässe',
@@ -1698,6 +1726,9 @@ const TEXTS = {
         classification: 'Classification', origin: 'Country of origin', grossPrice: 'Gross price',
         priceDiscount: 'Price discount', perQuantity: 'per', batch: 'Batch', serial: 'Serial number',
         expiry: 'Best before', status: 'Status', lineNote: 'Note', subLines: 'Sub-lines',
+        taxDueCode: 'VAT due date (code)',
+        noteSubject: 'Note subject', noteCode: 'Note code', lineStatusCode: 'Line status (code)',
+        language: 'Language', accountType: 'Account type',
         lineTotal: 'Sum of lines', allowances: 'Allowances', charges: 'Charges', netTotal: 'Total without VAT',
         taxTotal: 'VAT', grossTotal: 'Total with VAT', prepaid: 'Paid amount', rounding: 'Rounding',
         vatOf: 'of', vatBreakdown: 'VAT breakdown', category: 'Category', rate: 'Rate',
@@ -1784,6 +1815,9 @@ const TEXTS = {
         classification: 'Classification', origin: "Pays d'origine", grossPrice: 'Prix brut',
         priceDiscount: 'Remise sur le prix', perQuantity: 'par', batch: 'Lot', serial: 'Numéro de série',
         expiry: 'À consommer avant', status: 'Statut', lineNote: 'Note', subLines: 'Sous-lignes',
+        taxDueCode: "Exigibilité de la TVA (code)",
+        noteSubject: 'Objet de la note', noteCode: 'Code de la note', lineStatusCode: 'Statut de ligne (code)',
+        language: 'Langue', accountType: 'Type de compte',
         lineTotal: 'Somme des lignes', allowances: 'Remises', charges: 'Frais', netTotal: 'Total HT',
         taxTotal: 'TVA', grossTotal: 'Total TTC', prepaid: 'Montant payé', rounding: 'Arrondi',
         vatOf: 'sur', vatBreakdown: 'Ventilation de la TVA', category: 'Catégorie', rate: 'Taux',
@@ -2047,6 +2081,22 @@ const UNITS = {
     }
 };
 
+// Factur-X EXTENDED code list 52, the type of an accounting account (BT-X-99, BT-X-290)
+const ACCOUNT_TYPES = {
+    de: {
+        '1': 'Finanzbuchhaltung', '2': 'Nebenbuchhaltung', '3': 'Budget', '4': 'Kostenrechnung',
+        '5': 'Forderungen', '6': 'Verbindlichkeiten', '7': 'Projektkostenrechnung'
+    },
+    en: {
+        '1': 'Financial', '2': 'Subsidiary', '3': 'Budget', '4': 'Cost accounting',
+        '5': 'Receivable', '6': 'Payable', '7': 'Job cost accounting'
+    },
+    fr: {
+        '1': 'Comptabilité générale', '2': 'Comptabilité auxiliaire', '3': 'Budget', '4': 'Comptabilité analytique',
+        '5': 'Créances', '6': 'Dettes', '7': 'Comptabilité de projet'
+    }
+};
+
 // UNTDID 4451, the subjects of notes in common use
 const NOTE_SUBJECTS = {
     de: {
@@ -2212,6 +2262,23 @@ class Formatter {
 
     noteSubject(code) {
         return code ? this.code(NOTE_SUBJECTS, code) : '';
+    }
+
+    accountType(code) {
+        return code ? this.code(ACCOUNT_TYPES, code) : '';
+    }
+
+    /** The language of an ISO 639-2 code (LanguageID), e.g. "deu" as "Deutsch". */
+    language(code) {
+        if (!code) {
+            return '';
+        }
+        try {
+            const name = new Intl.DisplayNames([this.lang], {type: 'language'}).of(code);
+            return name && name !== code ? name : code;
+        } catch (e) {
+            return code;
+        }
     }
 
     scheme(code) {
@@ -2507,6 +2574,7 @@ class Renderer {
                         [t.number, m.number],
                         [t.documentStatus, [m.testDocument ? t.testDocument : '', m.copy ? t.copyDocument : '']
                             .filter(Boolean).join(' · ')],
+                        [t.language, m.language ? html`${this.f.language(m.language)} <span class="muted">(${m.language})</span>` : ''],
                         [t.issueDate, this.f.date(m.issueDate)],
                         [t.period, [this.f.period(m.period), m.periodDescription].filter(Boolean).join(' · ')],
                         [t.effectiveDate, this.f.date(m.effectiveDate)],
@@ -2679,11 +2747,21 @@ class Renderer {
             <section class="card">
                 <h3>${this.t.notes}</h3>
                 ${notes.map(n => html`
-                    <div class="note">${n.subject ? html`
-                        <div class="muted small">${this.f.noteSubject(n.subject)} (${n.subject})</div>` : ''}
-                        <div class="pre">${n.text}</div>
+                    <div class="note">${n.subject || n.code ? html`
+                        <div class="muted small">${[n.subject ? `${this.f.noteSubject(n.subject)} (${n.subject})` : '',
+                            n.code ? `${this.t.noteCode} ${n.code}` : ''].filter(Boolean).join(' · ')}</div>` : ''}
+                        ${n.text ? html`<div class="pre">${n.text}</div>` : ''}
                     </div>`)}
             </section>`;
+    }
+
+    /** Accounting references, with the account type of EXTENDED (code list 52) where stated. */
+    accounts(accounts, plain) {
+        if (!accounts) {
+            return plain;
+        }
+        return accounts.map((a, i) => html`${i ? ', ' : ''}${a.id}${a.type ? html` <span class="muted">(${this.t.accountType}:
+            ${this.f.accountType(a.type)}, ${a.type})</span>` : ''}`);
     }
 
     // -- lines --------------------------------------------------------------------------------------
@@ -2808,6 +2886,8 @@ class Renderer {
         const f = this.f;
         const rows = [
             [t.lineNote, l.note ? html`<span class="pre">${l.note}</span>` : ''],
+            [t.noteSubject, l.noteSubject ? html`${f.noteSubject(l.noteSubject)} <span class="muted">(${l.noteSubject})</span>` : ''],
+            [t.noteCode, l.noteCode],
             [t.sellerItemId, l.sellerId],
             [t.buyerItemId, l.buyerId],
             [t.industryItemId, l.industryId],
@@ -2826,8 +2906,10 @@ class Renderer {
             [t.deliveryNote, l.deliveryNote],
             [t.despatchAdvice, l.despatchAdvice],
             [t.object, l.objectIds ? l.objectIds.join(', ') : l.objectId],
-            [t.accountingCost, l.accountingCost],
+            [t.accountingCost, this.accounts(l.accountingAccounts, l.accountingCost)],
             [t.status, l.status ? (t.subtypes[l.status] || l.status) : ''],
+            [t.lineStatusCode, l.statusCode],
+            [t.taxDueCode, l.taxDueCode],
             // EXTENDED product, delivery, and reference details
             [t.productId, l.productId],
             [t.model, l.model],
@@ -2889,7 +2971,7 @@ class Renderer {
             [t.invoiceIssuer, ref.invoiceIssuer],
             [t.tender, ref.tender],
             [t.object, ref.object],
-            [t.accountingCost, ref.accountingCost],
+            [t.accountingCost, this.accounts(ref.accountingAccounts, ref.accountingCost)],
             [t.precedingInvoices, (ref.precedingInvoices || []).map((p, i) => html`${i ? ', ' : ''}${p.id}${p.date ? html`
                 <span class="muted">(${this.f.date(p.date)})</span>` : ''}`)]
         ]);

@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 
 /**
  * The specification identifiers (BT-24) of every XRechnung version whose KoSIT release is packaged
- * in {@code paniolo-xrechnung-rules}, each with its scenario and the document types the scenario
+ * in {@code paniolo-rules}, each with its scenario and the document types the scenario
  * exists for. The identifiers are those of the {@code match} expressions in the
  * {@code scenarios.xml} of the release; a test keeps both in sync.
  *
