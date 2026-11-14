@@ -29,9 +29,14 @@ import java.io.StringReader;
 import java.io.UncheckedIOException;
 
 /**
- * Converts XML into a semantic invoice. Totals are recalculated from the model and compared with
- * the document; in {@link ReadMode#STRICT} a mismatch indicates content the model does not support
- * and is rejected, in {@link ReadMode#LENIENT} it is reported as a {@link ReadWarning}.
+ * Converts XML into a semantic invoice. The model calculates amounts from the invoice content
+ * and retains stated line and VAT amounts within its rounding tolerances. Remaining amount
+ * deviations are rejected in {@link ReadMode#STRICT} and reported in {@link ReadMode#LENIENT}.
+ * Values the model does not keep can produce {@link ReadWarning}s in either mode.
+ *
+ * <p>Reading applies the structural checks of the model; XML schema and business rule validation
+ * are separate operations. Use {@link #importXml(byte[], ReadMode)} to retain the original XML
+ * alongside the model, stated amounts, warnings, and deviations.
  */
 public interface InvoiceXmlReader {
   /**

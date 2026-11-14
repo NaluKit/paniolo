@@ -272,6 +272,38 @@ public final class ReadContext {
   }
 
   /**
+   * Returns the gross price (BT-148) of a line. A price discount (BT-147) without a gross price, as
+   * UBL allows it, is no value the model may keep alone: the stated price is the net price, so lenient
+   * reading derives the gross price as net price plus discount and reports it; strict reading rejects
+   * the line. Without net price nothing can be derived.
+   *
+   * @param lineId   the line, or null
+   * @param net      the net price (BT-146), or null
+   * @param gross    the stated gross price, or null
+   * @param discount the stated price discount, or null
+   * @return the gross price, or null if the line states neither
+   * @throws IllegalArgumentException if a discount without gross price cannot be completed
+   */
+  public BigDecimal grossPrice(String lineId,
+                               BigDecimal net,
+                               BigDecimal gross,
+                               BigDecimal discount) {
+    if (gross != null || discount == null || discount.signum() == 0) {
+      return gross;
+    }
+    if (mode == ReadMode.STRICT || net == null) {
+      throw new IllegalArgumentException("Line " + lineId + ": priceDiscount (BT-147) " + discount.toPlainString() + " requires grossPrice (BT-148); the document states a price discount without the gross price" + (net == null ?
+                                                                                                                                                                                                                       " and without a net price" :
+                                                                                                                                                                                                                       ", so it cannot be derived in strict reading"));
+    }
+    BigDecimal derived = net.add(discount);
+    warnings.add(new ReadWarning(ReadWarning.GROSS_PRICE,
+                                 lineId,
+                                 "Line " + lineId + ": price discount (BT-147) " + discount.toPlainString() + " without gross price (BT-148); gross price derived as net price " + net.toPlainString() + " + discount = " + derived.toPlainString()));
+    return derived;
+  }
+
+  /**
    * Keeps the stated line net amount (BT-131). If quantity x net price does not explain it, strict
    * reading rejects the line; lenient reading recalculates the net price from the stated amount and
    * the line allowances and charges, like the price of a line that states only its amount.
@@ -298,6 +330,10 @@ public final class ReadContext {
             line.id(),
             statedNetAmount,
             result.netAmount());
+    deviate("BT-129",
+            line.id(),
+            line.quantity(),
+            result.quantity());
     return result;
   }
 
@@ -309,6 +345,7 @@ public final class ReadContext {
       // A line without net price takes its amount from its sub-lines; there is no price to recalculate.
       if (mode == ReadMode.STRICT ||
           line.netUnitPrice() == null ||
+          line.quantity() == null ||
           line.quantity()
               .signum() == 0) {
         throw e;
@@ -327,7 +364,9 @@ public final class ReadContext {
                                        RoundingMode.HALF_UP);
       // Only EXTENDED allows a negative price (BR-27); elsewhere the stated amount is what differs.
       if (price.signum() < 0 && !negativePrices) {
-        throw e;
+        return negatedQuantity(line,
+                               stated,
+                               e);
       }
       var builder = line.toBuilder()
                         .netUnitPrice(price);
@@ -362,6 +401,42 @@ public final class ReadContext {
                                    "; net price recalculated as " +
                                    price.toPlainString()));
       return result;
+    }
+  }
+
+  /**
+   * A stated amount with the opposite sign of quantity x net price, e.g. a return stated with a
+   * positive quantity and price, would need a negative net price, which the profile forbids (BR-27).
+   * The sign belongs to the quantity then, as credit lines with a negative quantity show: the line
+   * keeps the price and takes the negated quantity if that explains the stated amount.
+   */
+  private InvoiceLine negatedQuantity(InvoiceLine line,
+                                      BigDecimal stated,
+                                      IllegalArgumentException original) {
+    try {
+      var result = line.toBuilder()
+                       .quantity(line.quantity()
+                                     .negate())
+                       .build()
+                       .withNetAmount(stated);
+      warnings.add(new ReadWarning(ReadWarning.LINE_QUANTITY,
+                                   line.id(),
+                                   "Line " +
+                                   line.id() +
+                                   ": stated net amount " +
+                                   stated.toPlainString() +
+                                   " has the opposite sign of quantity " +
+                                   line.quantity()
+                                       .toPlainString() +
+                                   " x net price " +
+                                   line.netUnitPrice()
+                                       .toPlainString() +
+                                   "; quantity (BT-129) read as " +
+                                   result.quantity()
+                                         .toPlainString()));
+      return result;
+    } catch (IllegalArgumentException ignored) {
+      throw original;
     }
   }
 

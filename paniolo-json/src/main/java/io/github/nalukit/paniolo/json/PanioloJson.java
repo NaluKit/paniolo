@@ -47,8 +47,10 @@ import java.util.Objects;
 /**
  * Stores invoices, orders, and despatch advices of the Paniolo model as JSON and loads them again,
  * e.g. for drafts, queues, or REST interfaces. The JSON mirrors the record components of the model;
- * loading runs the same checks as the builders, so an invalid document is rejected with the
- * message of the model. Calculated values such as totals are not stored.
+ * loading runs the same structural checks as the builders and rejects values that violate them
+ * with the message of the model. XML schema and business rule validation are separate operations.
+ * Calculated values such as totals are not stored; explicit stated amounts remain part of the
+ * model and are stored.
  *
  * <pre>{@code
  * PanioloJson json = PanioloJson.create();

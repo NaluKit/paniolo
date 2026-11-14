@@ -163,10 +163,11 @@ public record Invoice(String number, LocalDate issueDate, InvoiceTypeCode typeCo
       if (lines.isEmpty()) {
         throw new IllegalArgumentException("An invoice requires at least one line, or stated totals for the Factur-X profiles MINIMUM and BASIC WL");
       }
-      Party.requireAddress(seller,
-                           "seller");
-      Party.requireAddress(buyer,
-                           "buyer");
+      // EN 16931 requires the country of the address only; city and post code are a matter of the profile.
+      Party.requireCountryAddress(seller,
+                                  "seller");
+      Party.requireCountryAddress(buyer,
+                                  "buyer");
     } else if (!lines.isEmpty()) {
       throw new IllegalArgumentException("Stated totals are only allowed for an invoice without lines");
     } else if (seller.address() == null) {
@@ -174,9 +175,13 @@ public record Invoice(String number, LocalDate issueDate, InvoiceTypeCode typeCo
       throw new IllegalArgumentException("The seller requires a postal address (BG-5)");
     }
     var ids = new HashSet<String>();
+    var duplicates = new HashSet<String>();
     for (InvoiceLine line : lines) {
+      // EN 16931 does not require unique line identifiers (BT-126), and documents with repeated ones
+      // are valid; lines are kept by position. Only the EXTENDED line hierarchy refers to a line by
+      // its identifier, where a repeated one would be ambiguous.
       if (!ids.add(line.id())) {
-        throw new IllegalArgumentException("Duplicate invoice line id: " + line.id());
+        duplicates.add(line.id());
       }
       // BR-26: only sub-lines of the XRechnung extension and EXTENDED subtotal and information
       // lines may omit the item net price.
@@ -184,6 +189,17 @@ public record Invoice(String number, LocalDate issueDate, InvoiceTypeCode typeCo
                                          .counts()) {
         Objects.requireNonNull(line.netUnitPrice(),
                                "netUnitPrice");
+      }
+      // BR-23: the unit of the invoiced quantity; only its sub-lines of the XRechnung extension may omit it.
+      if (line.quantity() != null && line.unitCode() == null) {
+        throw new NullPointerException("Line " + line.id() + ": unitCode (BT-130)");
+      }
+    }
+    for (InvoiceLine line : lines) {
+      var lineExtension = line.extended();
+      if (!duplicates.isEmpty() && lineExtension != null && (lineExtension.parentLineId() != null || lineExtension.subtype() == LineSubtype.GROUP)) {
+        throw new IllegalArgumentException("Duplicate invoice line id: " + duplicates.iterator()
+                                                                                       .next() + "; the line hierarchy of the profile EXTENDED refers to lines by their identifier");
       }
     }
     checkLineHierarchy(lines,

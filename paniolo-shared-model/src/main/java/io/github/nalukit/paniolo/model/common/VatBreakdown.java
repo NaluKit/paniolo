@@ -20,7 +20,9 @@ package io.github.nalukit.paniolo.model.common;
 import java.math.BigDecimal;
 
 /**
- * Calculated VAT breakdown (BG-23).
+ * VAT breakdown (BG-23), calculated from invoice content or supplied as part of
+ * {@link DocumentTotals} for an invoice without lines. A calculated breakdown may use a
+ * {@link VatAmount} for its tax amount within the model's rounding tolerance.
  *
  * @param tax           VAT category and rate of this group
  * @param taxableAmount VAT category taxable amount (BT-116)

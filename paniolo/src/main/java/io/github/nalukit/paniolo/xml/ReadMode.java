@@ -18,12 +18,14 @@
 package io.github.nalukit.paniolo.xml;
 
 /**
- * How a reader treats amounts of a document that the model does not reproduce.
+ * How an invoice reader treats amounts the model does not reproduce. The mode does not select
+ * XML schema or business rule validation, which must be run separately.
  *
  * <p>Both modes reject a number that is not a decimal of the syntax, e.g. {@code 100,00},
  * {@code 1,238.00}, or {@code 2 HUR}: the message names the text and the location of the element
- * ({@code .../ram:IncludedSupplyChainTradeLineItem[2]/...}). No number is guessed; the original
- * document stays available for display or archiving. Surrounding whitespace is allowed.
+ * ({@code .../ram:IncludedSupplyChainTradeLineItem[2]/...}). Surrounding whitespace is allowed.
+ * Use {@link InvoiceXmlReader#importXml(byte[], ReadMode)} to keep the original invoice XML for
+ * display or archiving.
  */
 public enum ReadMode {
   /**

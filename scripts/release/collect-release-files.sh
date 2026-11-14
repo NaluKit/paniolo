@@ -38,6 +38,14 @@ VERSION=$1
 OUT=$2
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 
+# BEGIN relink_to_tag
+# Points relative repository links, with or without anchor, at the files of the release tag. Links
+# with a scheme (https:, mailto:), protocol-relative and root-relative links, and anchors stay as they are.
+relink_to_tag() {
+  sed -E "s#\]\(([^):#/][^):]*)\)#](https://github.com/NaluKit/paniolo/blob/$1/\1)#g"
+}
+# END relink_to_tag
+
 mkdir -p "$OUT"
 OUT=$(cd "$OUT" && pwd)
 
@@ -74,7 +82,7 @@ notes=$(awk -v version="$VERSION" '
   inside && /^## \[/ { exit }
   inside && /^\[[^]]+\]: / { next }
   inside { print }
-' "$ROOT/CHANGELOG.md" | sed -E "s#\]\(([^):#][^)]*)\)#](https://github.com/NaluKit/paniolo/blob/$VERSION/\1)#g")
+' "$ROOT/CHANGELOG.md" | relink_to_tag "$VERSION")
 if [[ -z ${notes//[[:space:]]/} ]]; then
   echo "CHANGELOG.md has no section '## [$VERSION] - <date>'" >&2
   exit 1

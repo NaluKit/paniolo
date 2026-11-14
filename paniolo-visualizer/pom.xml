@@ -16,6 +16,12 @@
     CII, Factur-X / ZUGFeRD PDFs, Order-X, and CIDA from bytes, with a Java helper for standalone HTML
   </description>
 
+  <properties>
+    <!-- The browser tests need a browser; they are compiled and run with -P browser-tests only. -->
+    <browser.test.exclude>**/browser/**</browser.test.exclude>
+    <playwright.version>1.58.0</playwright.version>
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
@@ -23,4 +29,60 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <testExcludes>
+            <testExclude>${browser.test.exclude}</testExclude>
+          </testExcludes>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
+  <profiles>
+    <!--
+      Runs the component in a real browser (Playwright for Java): the parser and the web component
+      load UBL, CII, and PDF documents, show lines, attachments, and the validation report, switch the
+      language, render untrusted text as text, and show errors.
+
+        mvn verify -P browser-tests -pl paniolo-visualizer
+        mvn verify -P browser-tests -pl paniolo-visualizer -Dpaniolo.browser.channel=chrome   # installed Chrome
+
+      Without the property the Chromium of Playwright is used; install it once with
+        mvn -P browser-tests -pl paniolo-visualizer exec:java -Dexec.mainClass=com.microsoft.playwright.CLI \
+            -Dexec.classpathScope=test -Dexec.args="install chromium"
+    -->
+    <profile>
+      <id>browser-tests</id>
+      <properties>
+        <browser.test.exclude>**/nothing-excluded/**</browser.test.exclude>
+      </properties>
+      <dependencies>
+        <dependency>
+          <groupId>com.microsoft.playwright</groupId>
+          <artifactId>playwright</artifactId>
+          <version>${playwright.version}</version>
+          <scope>test</scope>
+        </dependency>
+      </dependencies>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <configuration>
+              <systemPropertyVariables>
+                <paniolo.browser.channel>${paniolo.browser.channel}</paniolo.browser.channel>
+              </systemPropertyVariables>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

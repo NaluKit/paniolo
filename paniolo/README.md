@@ -19,7 +19,9 @@ What the facade covers:
 
 ## Dependency
 
-After installing Paniolo from the repository root with `mvn install`, add:
+For the published release, add the dependency below. After installing the current source from
+the repository root with `mvn install`, use `HEAD-SNAPSHOT` instead; see
+[installation and version scope](../README.md#installation).
 
 ```xml
 <dependency>
@@ -83,7 +85,8 @@ examples, in the Javadoc of [`Paniolo`](src/main/java/io/github/nalukit/paniolo/
 | `read`                                                                                                                                                                | Read UBL Invoice, UBL CreditNote, CII, ZUGFeRD 1.0, or a Factur-X PDF from `String`, `byte[]`, or `InputStream`; with `ReadMode.LENIENT` a `ReadResult` with warnings |
 | `importInvoice`, `export`                                                                                                                                             | Import a received invoice with original XML, stated amounts and deviations; export it explicitly as `ORIGINAL` or `NORMALIZED`                                        |
 | `validate`                                                                                                                                                            | Validate XML or a PDF with the rules detected from the content, an `Invoice` in a given syntax, or XML against an explicit document type or Factur-X profile          |
-| `detect`, `isPdf`                                                                                                                                                     | Document type `UBL_INVOICE`, `UBL_CREDIT_NOTE`, or `CII`; whether the content is a PDF                                                                                |
+| `detect`, `isPdf` | XML syntax (`UBL_INVOICE`, `UBL_CREDIT_NOTE`, `CII`); whether the content is a PDF |
+| `isEInvoice`, `probe` | Quick e-invoice recognition for XML or PDF; false or an empty optional for unsuitable content, MINIMUM, BASIC WL, or ZUGFeRD 1.0; does not validate |
 | `toFacturX`, `extractXml`, `attachments`, `producer`                                                                                                                  | Create a Factur-X / ZUGFeRD PDF from your PDF/A or with a rendered page, get its XML, further files, or producing software; needs `paniolo-facturx`                   |
 | `embedXml`                                                                                                                                                            | Embed existing CII XML byte for byte into your PDF/A and validate the result; needs `paniolo-facturx`                                                                 |
 | `toPdf`                                                                                                                                                               | Render the visual PDF/A-3b document of an invoice, order, or despatch advice without XML; needs `paniolo-facturx`                                                  |
@@ -118,6 +121,7 @@ Paniolo paniolo = Paniolo.builder()
 | `despatchAdviceRules` | `validateDespatchAdvice` checks the UBL schema only, information `PEPPOL-RULES-NOT-CHECKED` |
 | `calculationCheck`    | Official rules only; with it, amounts are recalculated (stage `CALCULATION`, warnings only) |
 | `ruleStatistics`      | `ValidationResult.statistics()` is null; with it, fired rules and PDF/A checks are counted |
+| `pdfaScriptCache` | `REUSE`: veraPDF's compiled rules stay cached per validating thread; `CLEAR_AFTER_CHECK` releases them after each check; see [`paniolo-pdfa`](../paniolo-pdfa/README.md#compiled-rules-per-thread) |
 | `unknownDocuments`    | `THROW`: undetectable documents raise `IllegalArgumentException`; `REPORT_INVALID` (Mustang compatible) returns an invalid result |
 
 ## Behavior
@@ -137,9 +141,11 @@ Paniolo paniolo = Paniolo.builder()
   finding instead, and with `unknownDocuments(UnknownDocumentHandling.REPORT_INVALID)` the
   detecting `validate` methods report every undetectable document as invalid.
 - **Profile fallback**: standalone XML with the plain EN 16931 identifier, Peppol identifiers,
-  or an unrecognized specification identifier uses the EN 16931 and XRechnung rules. This can
-  reject a general EN 16931 invoice that is not an XRechnung. For an EN 16931-only check, use
-  `InvoiceValidator` with `ValidationProfile.en16931(bundle, syntax)`.
+  or an unrecognized specification identifier uses the EN 16931 and XRechnung rules. Findings
+  of the XRechnung CIUS are lowered to information, with `XR-NOT-STATED` explaining the change;
+  Peppol rules retain their severity if the identifier states Peppol. Explicit
+  `validate(bytes, type)` and `InvoiceValidator` keep the rules unchanged. For an EN 16931-only
+  check, use `InvoiceValidator` with `ValidationProfile.en16931(bundle, syntax)`.
 - **Errors**: `null` arguments raise `NullPointerException`, unprocessable content
   `IllegalArgumentException` with the reason; business rule violations are findings in the
   `ValidationResult`, never exceptions.

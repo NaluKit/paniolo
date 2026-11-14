@@ -20,11 +20,14 @@ package io.github.nalukit.paniolo.xml;
 import java.util.Objects;
 
 /**
- * A deviation a reader accepted in {@link ReadMode#LENIENT}.
+ * A deviation or conversion reported while reading an invoice. Amount deviations accepted in
+ * {@link ReadMode#LENIENT} produce warnings; conversions and values the model does not keep can
+ * produce warnings in either mode, e.g. {@link #IDENTIFIER} or {@link #SPECIFICATION_VERSION}.
+ * These warnings describe the import and are separate from XML validation findings.
  *
- * @param code    rule identifier, e.g. {@link #LINE_NET_PRICE}
+ * @param code    warning identifier, e.g. {@link #LINE_NET_PRICE}
  * @param lineId  identifier of the affected line (BT-126), or null for the document level
- * @param message description with the stated and the resulting values
+ * @param message description of the deviation, conversion, or value not kept
  */
 public record ReadWarning(String code, String lineId, String message) {
   /**
@@ -101,6 +104,20 @@ public record ReadWarning(String code, String lineId, String message) {
    * (first) breakdown is kept. The message names the location, the stated and the kept value.
    */
   public static final String TAX_EXEMPTION  = "READ-TAX-EXEMPTION";
+
+  /**
+   * A line states a price discount (BT-147) but no gross price (BT-148). The net price is the one
+   * stated, so the gross price was derived as net price plus discount; the original document keeps
+   * its form, a normalized export states the derived gross price. The message names both values.
+   */
+  public static final String GROSS_PRICE    = "READ-GROSS-PRICE";
+  /**
+   * The stated line net amount (BT-131) has the opposite sign of quantity x net price, e.g. a returned
+   * quantity stated with a positive quantity and a positive price. Outside the profiles that allow a
+   * negative net price (BR-27) the quantity (BT-129) took the sign of the amount, so that quantity x
+   * net price explains it; the original document keeps its form. The message names both quantities.
+   */
+  public static final String LINE_QUANTITY  = "READ-LINE-QUANTITY";
 
   /**
    * Creates the warning.

@@ -143,11 +143,27 @@ class InvoiceLineTest {
                              .unitCode((UnitCode) null)
                              .extended(group)
                              .build());
-    assertThrows(NullPointerException.class,
-                 () -> line().unitCode((UnitCode) null)
-                             .netUnitPrice(null)
-                             .tax(null)
-                             .extended(group)
-                             .build());
+    // The unit is required for the lines of an invoice, which the invoice checks (BR-23); a
+    // sub-line of the XRechnung extension may state a quantity without it.
+    assertNull(line().unitCode((UnitCode) null)
+                     .build()
+                     .unitCode());
+  }
+
+  /**
+   * A line with sub-lines of the XRechnung extension states no quantity and unit; its amount is that
+   * of its sub-lines (BR-DEX-02).
+   */
+  @Test
+  void aLineWithSubLinesMayOmitQuantityAndUnit() {
+    var sub = line().id("1.1")
+                    .build();
+    var parent = line().quantity(null)
+                       .unitCode((UnitCode) null)
+                       .addSubLine(sub)
+                       .build();
+    assertNull(parent.quantity());
+    assertEquals(sub.netAmount(),
+                 parent.netAmount());
   }
 }

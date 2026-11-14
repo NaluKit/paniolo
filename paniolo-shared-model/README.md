@@ -7,7 +7,9 @@ dependencies.
 
 ## Dependency
 
-After installing Paniolo from the repository root with `mvn install`, add:
+For the published release, add the dependency below. After installing the current source from
+the repository root with `mvn install`, use `HEAD-SNAPSHOT` instead; see
+[installation and version scope](../README.md#installation).
 
 ```xml
 <dependency>
@@ -39,7 +41,8 @@ The main types are:
 | `AdditionalSupportingDocument`, `Attachment`                                    | Referenced or embedded supporting documents                                                                                                                                                       |
 | `ProcessControl`                                                                | Business process and specification identifiers                                                                                                                                                    |
 | `InvoiceTotals`, `VatBreakdown`                                                 | Calculated monetary totals and VAT breakdowns                                                                                                                                                     |
-| `DocumentTotals`                                                                | Stated totals and VAT breakdown of an invoice without lines (Factur-X MINIMUM and BASIC WL)                                                                                                       |
+| `DocumentTotals` | Stated totals and VAT breakdown of an invoice without lines (Factur-X MINIMUM and BASIC WL) |
+| `VatAmount` | Stated VAT category tax amount (BT-117) retained within the model's rounding tolerance |
 | `Order`, `OrderLine`, `OrderTotals` in `model.order`                            | Order-X orders, order changes, and order responses                                                                                                                                                |
 | `DespatchAdvice`, `DespatchLine`, `DespatchItemInstance` in `model.despatch`    | Despatch advices (delivery notes) after Peppol BIS Despatch Advice 3, written as UBL or CIDA                                                                                                      |
 | `ExtendedInformation`, `LineExtension`, `PartyExtension`, and `model.extended`  | Header and line information of the Factur-X profile EXTENDED: further parties, delivery terms, references, payment terms, logistics service charges, advance payments, sub-lines, product details, several allowances and charges on the gross price (`GrossPriceAdjustment`) |
@@ -66,20 +69,26 @@ prepayments, and for the profile EXTENDED logistics service charges; EXTENDED su
 information lines do not count. The VAT breakdown has one entry per category and rate; a French
 multi-vendor invoice (EXTENDED-CTC-FR, `ProcessControl.isFrenchMultiVendor()`) has one per
 sub-invoice, category, and rate (`TaxCategory.subInvoiceNumber()`). Lists are copied when an
-invoice is built.
+invoice is built. Permitted stated line amounts and `Invoice.vatAmounts()` can preserve amounts
+that differ from a recalculation within the documented rounding tolerances. EXTENDED financial
+adjustments and XRechnung third party payments change the amount due only.
 
 An invoice without lines, as in the Factur-X profiles MINIMUM and BASIC WL, sets
 `statedTotals(DocumentTotals)` instead; `totals()` then returns these amounts and derives the
-amount with VAT and the amount due. Seller and buyer always need a name. Invoices with lines,
-orders, and despatch advices require complete addresses (street, city, post code, country) for
-their parties, and so does the item seller of an EXTENDED line, except in a French multi-vendor
-invoice, which names it partially. Only MINIMUM uses an address with the country alone
-(`Address.ofCountry`) for the seller and a buyer without address.
+amount with VAT and the amount due. Seller and buyer always need a name. For invoices with
+lines, an address with the country alone (`Address.ofCountry`) is sufficient for the model;
+profile-specific requirements such as city and post code in XRechnung are checked by validation.
+A street is optional. Orders and despatch advices require party addresses with at least one field
+beyond the country, as does the item seller of an EXTENDED line. French multi-vendor invoices can
+name item sellers partially. MINIMUM also permits a buyer without an address.
 
 Regular lines need quantity, unit, net price, and VAT category. EXTENDED subtotal (`GROUP`) and
 information lines may leave out the VAT category and the net price, and without net price also
 quantity and unit. A payment card next to credit transfer accounts in one payment instruction is
-accepted only in an EXTENDED-CTC-FR invoice.
+accepted only in an EXTENDED-CTC-FR invoice. A credit transfer can also retain direct debit
+information; XRechnung restrictions on this combination are checked during XML validation.
+Repeated invoice line identifiers are accepted unless they would make the EXTENDED line
+hierarchy ambiguous.
 
 Defaults are EUR, document type `380`, and XRechnung 3 process identifiers. `InvoiceTypeCode`
 holds the 62 document types permitted by EN 16931 with their UN/CEFACT names; `isCreditNote()`

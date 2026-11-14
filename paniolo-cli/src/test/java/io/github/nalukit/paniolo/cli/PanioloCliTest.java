@@ -294,6 +294,173 @@ class PanioloCliTest {
   }
 
   @Test
+  void extractsAttachmentsWithoutOverwriting()
+      throws IOException {
+    Files.writeString(dir.resolve("proof.txt"),
+                      "first");
+    Path pdf = dir.resolve("one.pdf");
+    var created = run("to-facturx",
+                      invoiceJson.toString(),
+                      "--pdf",
+                      visualPdf.toString(),
+                      "--profile",
+                      "en16931",
+                      "--attach",
+                      dir.resolve("proof.txt").toString(),
+                      "-o",
+                      pdf.toString());
+    assertEquals(PanioloCli.EXIT_OK,
+                 created.exitCode(),
+                 created.err());
+
+    Path out = dir.resolve("out");
+    var extracted = run("attachments",
+                        pdf.toString(),
+                        "--extract",
+                        out.toString());
+    assertEquals(PanioloCli.EXIT_OK,
+                 extracted.exitCode(),
+                 extracted.err());
+    assertTrue(extracted.out()
+                        .startsWith("proof.txt\t"));
+    assertEquals("first",
+                 Files.readString(out.resolve("proof.txt")));
+
+    // A second run finds the file and changes nothing.
+    Files.writeString(out.resolve("proof.txt"),
+                      "mine");
+    var again = run("attachments",
+                    pdf.toString(),
+                    "--extract",
+                    out.toString());
+    assertEquals(PanioloCli.EXIT_ERROR,
+                 again.exitCode());
+    assertTrue(again.err()
+                    .contains("--overwrite"),
+               again.err());
+    assertEquals("mine",
+                 Files.readString(out.resolve("proof.txt")));
+
+    assertEquals(PanioloCli.EXIT_OK,
+                 run("attachments",
+                     pdf.toString(),
+                     "--extract",
+                     out.toString(),
+                     "--overwrite").exitCode());
+    assertEquals("first",
+                 Files.readString(out.resolve("proof.txt")));
+  }
+
+  @Test
+  void equalAttachmentNamesGetDistinctFiles()
+      throws IOException {
+    var io = new Io(new ByteArrayInputStream(new byte[0]),
+                    new PrintStream(new ByteArrayOutputStream()));
+    // PDFs of other producers may hold a/proof.txt and b/proof.txt, both read as proof.txt.
+    assertEquals(java.util.List.of("proof.txt",
+                                   "Proof-2.txt",
+                                   "PROOF-3.TXT",
+                                   "noext",
+                                   "NOEXT-2"),
+                 io.extractionNames(dir.resolve("none"),
+                                    java.util.List.of("proof.txt",
+                                                      "Proof.txt",
+                                                      "PROOF.TXT",
+                                                      "noext",
+                                                      "NOEXT"),
+                                    false));
+  }
+
+  @Test
+  void namesThatDifferOnlyInUnicodeFormOrCaseGetDistinctFiles() {
+    var io = new Io(new ByteArrayInputStream(new byte[0]),
+                    new PrintStream(new ByteArrayOutputStream()));
+    // NFC and NFD of the same name are one file on macOS; case folding combines with it
+    assertEquals(java.util.List.of("\u00e9.txt",
+                                   "e\u0301-2.txt",
+                                   "\u00c9-3.TXT",
+                                   "E\u0301-4.txt"),
+                 io.extractionNames(dir.resolve("none"),
+                                    java.util.List.of("\u00e9.txt",
+                                                      "e\u0301.txt",
+                                                      "\u00c9.TXT",
+                                                      "E\u0301.txt"),
+                                    true));
+  }
+
+  @Test
+  void multiCharacterAndFinalCaseFoldingsGetDistinctFiles() {
+    var io = new Io(new ByteArrayInputStream(new byte[0]),
+                    new PrintStream(new ByteArrayOutputStream()));
+    // a file system with full case folding keeps each pair in one file
+    assertEquals(java.util.List.of("\u00df.txt",
+                                   "ss-2.txt",
+                                   "SS-3.TXT",
+                                   "\u03a3.txt",
+                                   "\u03c2-2.txt",
+                                   "\u03c3-3.txt",
+                                   "\ufb01.txt",
+                                   "fi-2.txt"),
+                 io.extractionNames(dir.resolve("none"),
+                                    java.util.List.of("\u00df.txt",
+                                                      "ss.txt",
+                                                      "SS.TXT",
+                                                      "\u03a3.txt",
+                                                      "\u03c2.txt",
+                                                      "\u03c3.txt",
+                                                      "\ufb01.txt",
+                                                      "fi.txt"),
+                                    true));
+  }
+
+  @Test
+  void extractionNeverFollowsSymbolicLinks()
+      throws IOException {
+    Files.writeString(dir.resolve("note.txt"),
+                      "attached");
+    Path pdf = dir.resolve("note.pdf");
+    assertEquals(PanioloCli.EXIT_OK,
+                 run("to-facturx",
+                     invoiceJson.toString(),
+                     "--pdf",
+                     visualPdf.toString(),
+                     "--profile",
+                     "en16931",
+                     "--attach",
+                     dir.resolve("note.txt").toString(),
+                     "-o",
+                     pdf.toString()).exitCode());
+    Path target = dir.resolve("precious.txt");
+    Files.writeString(target,
+                      "keep");
+    Path out = dir.resolve("linked");
+    Files.createDirectories(out);
+    try {
+      Files.createSymbolicLink(out.resolve("note.txt"),
+                               target);
+    } catch (UnsupportedOperationException | IOException e) {
+      org.junit.jupiter.api.Assumptions.assumeTrue(false,
+                                                   "no symbolic links here");
+    }
+    for (String[] extra : new String[][] { {},
+                                           { "--overwrite" } }) {
+      var args = new java.util.ArrayList<>(java.util.List.of("attachments",
+                                                              pdf.toString(),
+                                                              "--extract",
+                                                              out.toString()));
+      args.addAll(java.util.List.of(extra));
+      var result = run(args.toArray(String[]::new));
+      assertEquals(PanioloCli.EXIT_ERROR,
+                   result.exitCode());
+      assertTrue(result.err()
+                       .contains("symbolic link"),
+                 result.err());
+      assertEquals("keep",
+                   Files.readString(target));
+    }
+  }
+
+  @Test
   void embedsExistingXmlUnchanged()
       throws IOException {
     Path xml = dir.resolve("received.xml");

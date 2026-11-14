@@ -92,8 +92,8 @@ releasing once per batch costs no measurable time.
 
 ## Dependencies and license
 
-veraPDF (`org.verapdf:validation-model`) adds about 10 MB of libraries, including Rhino, Jackson,
-and JAXB, which is why this module is optional. veraPDF is dual licensed under GPLv3+ and
+veraPDF (`org.verapdf:validation-model`) brings additional libraries, including Rhino and JAXB,
+which is why this module is optional. Jackson 2 Databind is excluded as described above. veraPDF is dual licensed under GPLv3+ and
 MPL-2.0; Paniolo uses it under the MPL-2.0 option, which is file-level copyleft and allows the use
 from Apache-2.0 licensed code. Its transitive dependencies include Rhino (MPL-2.0), the JAXB and
 JavaBeans Activation libraries (CDDL-1.1 or GPL-2.0 with Classpath Exception, used under CDDL-1.1;

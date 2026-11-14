@@ -22,6 +22,7 @@ import io.github.nalukit.paniolo.config.FacturXProfile;
 import io.github.nalukit.paniolo.config.PdfAttachment;
 import io.github.nalukit.paniolo.config.PdfLayout;
 import io.github.nalukit.paniolo.model.Invoice;
+import io.github.nalukit.paniolo.model.common.InvoiceLine;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.contentstream.PDFGraphicsStreamEngine;
@@ -46,6 +47,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -301,6 +303,38 @@ class PdfLayoutTest {
   @Nested
   @DisplayName("toPdf")
   class ToPdf {
+    @Test
+    @DisplayName("breaks a very long word without spaces completely and without quadratic effort")
+    void breaksLongWords() {
+      // 12000 characters: the rendering took minutes when every cut measured nearly the whole rest
+      String word = "Ab1-Cd2_".repeat(1500);
+      Invoice invoice = TestInvoices.simple("R-LONG")
+                                    .addLine(InvoiceLine.create()
+                                                        .id("3")
+                                                        .name(word)
+                                                        .quantity(BigDecimal.ONE)
+                                                        .unitCode("H87")
+                                                        .netUnitPrice(new BigDecimal("1.00"))
+                                                        .tax(TestInvoices.VAT_19)
+                                                        .build())
+                                    .build();
+      byte[] pdf = org.junit.jupiter.api.Assertions.assertTimeoutPreemptively(java.time.Duration.ofSeconds(60),
+                                                                              () -> render("long-word",
+                                                                                           invoice,
+                                                                                           PdfLayout.defaults()));
+      String text = text(pdf).replaceAll("\\s+",
+                                         "");
+      // the lines of the name stand between the cells of the row, so the whole word is counted, not read
+      assertEquals(1500,
+                   text.chars()
+                       .filter(c -> c == '_')
+                       .count(),
+                   "every piece of the word is there");
+      assertTrue(text.contains(word.substring(0,
+                                              40)),
+                 "the word starts in order");
+    }
+
     @Test
     @DisplayName("renders a PDF/A-3b document with the invoice data")
     void rendersPdfA3b()

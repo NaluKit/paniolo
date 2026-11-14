@@ -8,6 +8,27 @@ reference in `docs/api/<version>.md`.
 
 ### Added
 
+- `ImportFidelityTest` validates every normalized export of the corpus against the rules of its target
+  syntax; a self-check proves that it finds a repeated tax point date and a second VAT total.
+
+- `PdfAttachment.normalizeMimeType` turns the MIME type of a file of another producer into one the
+  record accepts.
+- The fidelity test of the corpus reads addresses, accounts, VAT, line names, and the SHA-256 of
+  every attachment independently with XPath and lists each expected difference with its type and
+  message in `fidelity-exceptions.tsv`.
+
+- Corpus tests of the fidelity of the import: `ImportFidelityTest` checks for every readable corpus
+  document that the original export is the received XML byte for byte, that independently read
+  values (number, party names, number of lines, payable amount, attachments) equal the model, and
+  that the normalized export in both syntaxes keeps parties, lines, VAT, payment data, notes,
+  attachments, and amounts; expected differences are listed with their reason. `PdfaCorpusTest`
+  checks the corpus PDFs with veraPDF in an additional Maven execution and compares the errors with
+  reviewed expectations. `ManifestSummaryTest` keeps the README numbers of the corpus in line with the
+  manifest.
+- Browser test of the visualizer: `ViewerBrowserTest` (Playwright, profile `browser-tests`, CI job
+  `visualizer-browser`) runs the parser and the web component with UBL, CII, and PDF documents,
+  sub-lines, attachments, validation report, language switch, untrusted text, and error display.
+
 - Release evidence for audits: every module is published with its SBOM in CycloneDX format
   (`<module>-<version>-cyclonedx.json`); the build is reproducible (fixed archive timestamp, set
   to the commit time of the release); the release JARs carry a GitHub build provenance
@@ -74,6 +95,127 @@ reference in `docs/api/<version>.md`.
   EXTENDED-CTC-FR, with the rule in the message.
 
 ### Fixed
+
+- `inventory` reads the specification identifier and the type code from their place in the document
+  (direct children of a UBL root in the basic components namespace; the context and document element
+  of CII, ZUGFeRD 1.0, Order-X, and CIDA), so extensions and nested documents with equal names no
+  longer replace them or change the profile count.
+- The specification identifier and the profile are read with the encoding of the document (byte
+  order mark, UTF-16, XML declaration), like its content: an XRechnung without buyer reference is no
+  longer reported as valid in UTF-16, and Order-X BASIC validates in UTF-16.
+- `inventory` recognizes Order-X (`PDF/ORDER_X`) and despatch advice (`PDF/CIDA`) PDFs and validates
+  Order-X PDFs; it counts a known format only for the full namespace and root name, so equal local
+  names in a foreign namespace are `UNKNOWN`.
+- `visualize --validate` chooses the validator by the root element of the XML or the main document of
+  the PDF instead of by words in the first bytes, so comments no longer redirect it and UTF-16 and
+  PDF documents reach the right validator. New: `Paniolo.extractOrderXml` and
+  `Paniolo.extractDespatchAdviceXml`.
+- The optional calculation check judges every line on its own: a line whose net price was
+  recalculated no longer hides the price finding (`PANIOLO-CALC-NET-PRICE`) of another line with the
+  same identifier, and the official counterpart is matched by the position of the line.
+- The PDF layout breaks a long word without spaces by doubling and halving the length instead of
+  measuring nearly the whole rest for every cut; a text of 12000 characters takes well under a
+  second, and the whole text stays in order.
+- A report of `load(input, {report})` that a newer report choice has replaced is not read any more
+  and can neither fail the document nor show an error; a network or HTTP failure of `report-src` is
+  an error of the report and ends with a correct report like any other report error.
+- `attachments --extract` also keeps names apart that a file system folds in more than one
+  character (`ß` and `ss`, `ς` and `σ`, ligatures); the comparison is the same on every system.
+- A file selection of the viewer (drop or file picker) counts from the selection, not from the end of
+  reading: an older, slower file no longer replaces a newer file, a document chosen by the API, or
+  `clear()`.
+- A correct report, or removing the report, ends the error view of a failed report and shows the
+  document again; an error of the document itself stays.
+- The viewer orders document requests by the choice of the document, not by the arrival of the
+  answer: a slower answer or failure of an older `src`, or one that arrives after `clear()`, is
+  ignored.
+- A validation report belongs to the document and the request it was started for; a document change,
+  `clear()`, removing the report, or a newer report request make a late answer or error ineffective.
+- The viewer loads `report-src` together with `src` when it is connected (also from complete markup),
+  in any order of arrival.
+- The XML download of the viewer is saved as UTF-8 and declares UTF-8, so a document read as
+  ISO-8859-1 or UTF-16 can be read again without damaged names. The saved text is the document as
+  shown, not the original bytes.
+- `attachments --extract` compares file names with their Unicode decomposition and without case, so
+  `é.txt` and `é.txt` (one file on macOS) get distinct names, also with `--overwrite`.
+- The visualizer refuses damaged UTF-8 and UTF-16 byte sequences with an `xml` error instead of
+  replacing them by U+FFFD; a genuine U+FFFD stays valid.
+- The visualizer resolves an indirect `/Length` of a PDF stream, wherever the integer object stands,
+  before it looks for `endstream`; the word inside XML text or a binary attachment no longer cuts the
+  content, and a stream without any end is reported with its object number.
+- The visualizer reads indicators (test, copy, charge) as `xs:boolean` (`true`, `false`, `1`, `0`), so
+  a numeric test or copy mark is no longer lost; another text is refused with `invalidBoolean`.
+- The visualizer finds the encryption of a PDF in its active trailer or cross-reference stream; the
+  text `/Encrypt` in a comment or an embedded document no longer rejects a PDF.
+- The visualizer refuses a CII line hierarchy that would lose a line (own parent, missing or ambiguous
+  parent, cycle) with the line named, instead of silently hiding lines.
+- Findings of UBL sub-lines mark and link to the sub-line itself (identity such as `1/2/1`), also with
+  repeated business line ids, not the top-level line.
+- The visualizer reads XML text that is already decoded without applying its encoding declaration
+  again, finds UTF-16 without a BOM by its first bytes, and refuses an unsupported declared encoding
+  instead of falling back to UTF-8; reports and XML inside PDFs follow the same rules.
+- The visualizer decodes PDF text strings without a Unicode mark as PDFDocEncoding, so file names with
+  the euro sign, bullet, or typographic quotes stay unchanged.
+- The release notes point only relative repository links at the release tag; links with a scheme
+  (`https:`, `mailto:`), protocol-relative links, and anchors stay unchanged
+  (`scripts/release/test-release-notes.sh`).
+
+- A name tree of embedded files that refers to itself or is deeper than 32 levels is refused with a
+  message instead of ending in a `StackOverflowError`: `attachments` throws an
+  `IllegalArgumentException`, `probe` answers empty, and `validate` reports the damaged container.
+- The visualizer shows dates that do not exist (30 February, hour 25) and years before 1000 as written
+  in the document instead of shifting them, reads the CII date-time format 204 with seconds, and keeps
+  every digit of amounts, prices, and quantities with more than 20 decimals or a very large integer part.
+- The calculation check lowers a finding to information only when the official finding names the same
+  line, allowance, or charge; before, any finding of the same rule did.
+
+- Boolean indicators of UBL, CII, Order-X, and ZUGFeRD 1.0 (charge indicator, test and copy
+  indicator) are read as `xs:boolean`: `true`, `false`, `1`, `0`; `1` no longer turns a charge into an
+  allowance. Any other text is rejected with the position of the element, also in lenient mode.
+- `Paniolo.probe` and `isEInvoice` ask the invoice file that the XMP metadata names first and then the
+  other candidates; with several invoice files an empty answer no longer contradicts extraction.
+
+- The normalized CII export writes the tax point date (BT-7) and its code (BT-8) once, in the first
+  VAT breakdown, so invoices with several VAT rates pass `CII-SR-461`.
+- With the same currency for invoice and VAT accounting (BT-6 equals BT-5) the normalized export of
+  both syntaxes omits the redundant BT-6 and keeps the one VAT total; before, UBL violated `BR-CO-15`
+  and CII `BR-53`. Amounts do not change, the original export is untouched.
+- The container check of a Factur-X PDF reports `FX-MULTIPLE-INVOICES` when two different file
+  specifications with the name of the invoice XML carry different content; the same specification
+  from `/AF` and the name tree still counts once.
+
+- Foreign PDF attachments with a MIME type that has parameters (`text/plain;charset=UTF-8`) are
+  listed with the type without parameters; an invalid type no longer stops the whole list.
+- Order-X dates with a time (UNTDID 2379 formats 203 and 204) are checked completely; an invalid
+  hour, minute, or second is rejected with the position of the field.
+
+- The normalized CII and UBL exports write card, debited account, and payer BIC only once and no empty
+  payer account block (UBL: no empty payer account in the mandate), so several credit transfer accounts of a payment with a mandate are read
+  again completely.
+- CII with the same currency for the invoice and the VAT accounting currency (BT-6 equal to
+  BT-5) is written with one VAT total and read into a complete state (BT-111 equals BT-110); the
+  export of such an invoice could not be read before.
+- `paniolo attachments --extract` no longer overwrites: attachments with the same file name get a
+  numeric suffix (`proof.txt`, `proof-2.txt`), existing files stop the command before anything is
+  written, and symbolic links are never followed. `--overwrite` replaces existing regular files;
+  the fifth column of the listing names the file written.
+- The deploy job of the CI waits for the browser test of the visualizer.
+
+- Reading valid documents of other senders that the model rejected: an address with the country only
+  (the invoice requires an address, not more than its country; city and post code stay with the
+  XRechnung validation); an empty optional delivery block of a CII document; a line with sub-lines of
+  the XRechnung extension without quantity, and a sub-line with a quantity without unit (the unit
+  stays required for the lines of an invoice, now with the line and the field in the message);
+  repeated line identifiers (lines are kept by position; only the EXTENDED line hierarchy needs
+  unique ones); a direct debit with only some of its three values (XRechnung still requires all
+  of them); a direct debit next to a credit transfer (excluded by BR-DE-23 only).
+- Lenient reading derives the gross price (BT-148) of a UBL line that states a price discount
+  (BT-147) without it, as net price plus discount, and reports `READ-GROSS-PRICE`; strict reading
+  rejects the line naming both terms. A stated line amount with the opposite sign of quantity x net
+  price outside the profiles that allow a negative net price is read with the negated quantity and
+  reported as `READ-LINE-QUANTITY`; an amount the negated quantity does not explain is rejected as
+  before. The unsupported VAT category `B` of the Italian split payment is rejected with a message
+  that names the supported categories.
 
 - ZUGFeRD 1.0 documents whose VAT blocks state less than the model needs are read or rejected with
   a message that names the location, instead of failing with `NullPointerException: tax category

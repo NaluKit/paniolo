@@ -522,7 +522,7 @@ public final class UblInvoiceReader
                            attribute.text("cbc:Value"));
     }
     for (var adjustment : line.children("cac:AllowanceCharge")) {
-      boolean charge = Boolean.parseBoolean(adjustment.text("cbc:ChargeIndicator"));
+      boolean charge = adjustment.booleanValue("cbc:ChargeIndicator");
       builder.addAdjustment(new LineAdjustment(charge,
                                                adjustment.decimal("cbc:Amount"),
                                                adjustment.decimal("cbc:BaseAmount"),
@@ -539,8 +539,12 @@ public final class UblInvoiceReader
     // UBL carries the gross price (BT-148) as base amount of the price discount (BT-147).
     var discount = line.find("cac:Price/cac:AllowanceCharge");
     if (discount != null) {
-      builder.grossPrice(discount.decimal("cbc:BaseAmount"))
-             .priceDiscount(discount.decimal("cbc:Amount"));
+      var amount = discount.decimal("cbc:Amount");
+      builder.grossPrice(context.grossPrice(line.text("cbc:ID"),
+                                            line.decimal("cac:Price/cbc:PriceAmount"),
+                                            discount.decimal("cbc:BaseAmount"),
+                                            amount))
+             .priceDiscount(amount);
     }
     // XRechnung extension: sub invoice lines (BG-DEX-01) with the structure of an invoice line.
     for (var subLine : line.children("cac:SubInvoiceLine")) {
@@ -669,7 +673,7 @@ public final class UblInvoiceReader
     }
     var categories = InvoiceConsistency.byCategoryAndRate(breakdowns);
     for (var adjustment : root.children("cac:AllowanceCharge")) {
-      boolean charge = Boolean.parseBoolean(adjustment.text("cbc:ChargeIndicator"));
+      boolean charge = adjustment.booleanValue("cbc:ChargeIndicator");
       builder.addAdjustment(new DocumentAdjustment(charge,
                                                    adjustment.decimal("cbc:Amount"),
                                                    adjustment.decimal("cbc:BaseAmount"),

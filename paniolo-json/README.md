@@ -61,8 +61,9 @@ complete XRechnung example (business-rule validation is separate):
   Components added to the model later, such as the payee identifier schemes
   (`identifierSchemeId`, `legalRegistrationSchemeId`), are therefore simply absent in older JSON
   and load as `null`.
-- Calculated values, such as totals and the VAT breakdown, are not stored; they are calculated
-  again from the loaded object.
+- Derived totals and VAT breakdowns are calculated again from the loaded object. Explicit
+  model components such as `statedTotals`, `statedNetAmount`, and `vatAmounts` are stored, including
+  a stated VAT breakdown for an invoice without lines.
 
 ## Behavior
 
@@ -71,7 +72,8 @@ complete XRechnung example (business-rule validation is separate):
   supplied explicitly. Missing lists are empty as described above.
 - Loading runs the checks of the model, like the builders: a blank address value or inconsistent
   stated totals is rejected with the message of the model, e.g.
-  `postalCode must not be blank (Address)`.
+  `postalCode must not be blank (Address)`. The model requires only the country for an invoice
+  address; city, post code, and other profile requirements are checked by XML validation.
 - Unknown properties, unknown codes, malformed JSON, and trailing content raise an
   `IllegalArgumentException` that names the property or position.
 - The JSON is a storage format of Paniolo, not a standard for electronic invoices: exchange
@@ -81,7 +83,9 @@ complete XRechnung example (business-rule validation is separate):
 
 ## Jackson version
 
-Paniolo uses Jackson 3 (`tools.jackson`) since 1.0.0; 1.0.0-rc01 used Jackson 2. The JSON format
+The current source uses Jackson 3 (`tools.jackson`); the published 1.0.0-rc01 uses Jackson 2.
+To use the Jackson 3 API described here, build the current source and depend on `HEAD-SNAPSHOT` as described
+in [installation](../README.md#installation). The JSON format
 is unchanged: JSON stored with 1.0.0-rc01 loads as before. Migrating from 1.0.0-rc01:
 
 - `PanioloJson.configure` takes and returns `tools.jackson.databind.json.JsonMapper.Builder`, and

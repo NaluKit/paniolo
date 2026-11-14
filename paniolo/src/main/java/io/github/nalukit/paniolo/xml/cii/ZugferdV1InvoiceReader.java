@@ -422,7 +422,7 @@ public final class ZugferdV1InvoiceReader
       }
       int adjustmentNumber = 0;
       for (var adjustment : settlement.children("ram:SpecifiedTradeAllowanceCharge")) {
-        boolean charge = Boolean.parseBoolean(adjustment.text("ram:ChargeIndicator/udt:Indicator"));
+        boolean charge = adjustment.booleanValue("ram:ChargeIndicator/udt:Indicator");
         String  reason = adjustment.text("ram:Reason");
         String code = reasonCode(charge,
                                  adjustment.text("ram:ReasonCode"));
@@ -751,7 +751,7 @@ public final class ZugferdV1InvoiceReader
       if (gross != null) {
         BigDecimal discount = BigDecimal.ZERO;
         for (var allowance : gross.children("ram:AppliedTradeAllowanceCharge")) {
-          if (Boolean.parseBoolean(allowance.text("ram:ChargeIndicator/udt:Indicator"))) {
+          if (allowance.booleanValue("ram:ChargeIndicator/udt:Indicator")) {
             throw new IllegalArgumentException("Line " + lineId + ": ZUGFeRD 1.0 charges on the gross price cannot be migrated (" + allowance.location() + ")");
           }
           discount = discount.add(allowance.decimal("ram:ActualAmount"));
@@ -797,7 +797,7 @@ public final class ZugferdV1InvoiceReader
                                            period.basicDate("ram:EndDateTime/udt:DateTimeString")));
         }
         for (var adjustment : settlement.children("ram:SpecifiedTradeAllowanceCharge")) {
-          boolean charge = Boolean.parseBoolean(adjustment.text("ram:ChargeIndicator/udt:Indicator"));
+          boolean charge = adjustment.booleanValue("ram:ChargeIndicator/udt:Indicator");
           String  reason = adjustment.text("ram:Reason");
           String code = reasonCode(charge,
                                    adjustment.text("ram:ReasonCode"));

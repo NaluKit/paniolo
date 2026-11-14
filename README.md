@@ -164,8 +164,9 @@ Not included:
   rule PEPPOL-EN16931-R120 requires). `ReadMode.LENIENT` reads such documents, for example a
   line amount that is a gross price including insurance tax, by recalculating the net price,
   and reports the deviation; see [reading an invoice](#reading-an-invoice).
-- XRechnung 1.0 and 1.1, for which no release is packaged; they are validated against the current
-  rules. Another KoSIT release can be configured.
+- XRechnung 1.0 and 1.1, for which no release is packaged. Their identifiers produce
+  `XR-SPECIFICATION-UNSUPPORTED`; the configured rules still run and report their findings.
+  A custom KoSIT bundle can supply additional identifiers through its `scenarios.xml`.
 - EN 16931:2026 and XRechnung 4.0, whose official validation artefacts are not published yet
   (KoSIT expects them in spring 2027). A document stating `urn:cen.eu:en16931:2026` in its
   specification identifier (BT-24) is not checked against the rules of EN 16931:2017; validation
@@ -213,6 +214,12 @@ versions. If an application cannot leave Java 11 or 17, run Paniolo in its own J
 The Maven group ID is `io.github.nalukit`. The current release is `1.0.0-rc01` on Maven Central. The
 development version `HEAD-SNAPSHOT` is built with `mvn install` from the repository root (see
 [building](#building-and-testing)).
+This README and the module READMEs describe the current source tree, including unreleased
+features. Dependency snippets use the published release `1.0.0-rc01`; its exact API is documented
+in the [versioned reference](docs/api/1.0.0-rc01.md). To use the current source after `mvn install`,
+use `HEAD-SNAPSHOT` consistently for all Paniolo dependencies, or set `-Drevision=<version>` when
+building and use that version throughout the application.
+
 Most applications need only `paniolo`:
 
 ```xml
@@ -329,8 +336,12 @@ if (result.isValid()) {
 - **PDFs.** With `paniolo-facturx`, `validate` checks container, PDF/A (with `paniolo-pdfa`), and
   the embedded XML; `extractXml(pdf)` returns the XML, `attachments(pdf)` further files, and
   `producer(pdf)` the producing software.
-- **Routing.** `Paniolo.isPdf(bytes)` and `detect(xml)` (`UBL_INVOICE`, `UBL_CREDIT_NOTE`, `CII`)
-  tell what you received without reading it.
+- **Routing.** `Paniolo.isPdf(bytes)` identifies PDF input, and `detect(xml)` returns the XML
+  syntax (`UBL_INVOICE`, `UBL_CREDIT_NOTE`, or `CII`). For a quick e-invoice check,
+  use `isEInvoice(bytes)` or `probe(bytes)` (`Optional<Syntax>`), also for PDFs with
+  `paniolo-facturx`. They exclude MINIMUM, BASIC WL, and ZUGFeRD 1.0 and return false or empty
+  for unsuitable content. They inspect only the start of the XML, so a positive result is not
+  proof of well-formedness or validity; call `validate` next.
 - **Every input as a finding.** `validate(bytes, ValidationProfile.Syntax.UBL_INVOICE)` reports even
   malformed XML as a `FATAL` finding instead of an exception, e.g. for upload endpoints.
 - **Unknown documents.** By default, the detecting `validate` methods throw an
@@ -461,7 +472,7 @@ JSON is a storage format, not an exchange format; see the [module README](paniol
 the documents are valid:
 
 ```sh
-java -jar paniolo-cli/target/paniolo-cli-1.0.0-rc01-all.jar validate invoice.xml
+java -jar paniolo-cli/target/paniolo-cli-HEAD-SNAPSHOT-all.jar validate invoice.xml
 paniolo to-xml invoice.json --syntax CII -o invoice.xml
 paniolo to-facturx invoice.json --pdf layout.pdf --profile EN16931 -o factur-x.pdf
 paniolo validate -f json inbox/*.pdf | jq -r 'select(.valid | not) | .file'
@@ -522,7 +533,8 @@ Paniolo never downloads rules at runtime.
 | `validate(invoice, syntax)`                                                                                           | Write and validate in one step                                                                            |
 | `validate(bytes, type)`                                                                                               | Validate with an explicit document type, e.g. to report malformed XML as a finding                        |
 | `validate(bytes, facturXProfile)`                                                                                     | Validate the XML of a Factur-X profile with the official rules of that profile                            |
-| `detect(xml)`, `Paniolo.isPdf(bytes)`                                                                                 | Return `UBL_INVOICE`, `UBL_CREDIT_NOTE`, or `CII`; tell whether the content is a PDF                      |
+| `detect(xml)`, `Paniolo.isPdf(bytes)` | Return `UBL_INVOICE`, `UBL_CREDIT_NOTE`, or `CII`; tell whether the content is a PDF |
+| `isEInvoice(bytes)`, `probe(bytes)` | Quick e-invoice recognition for XML or PDF, without validation; unsuitable content returns false or an empty optional |
 | `toFacturX(invoice, pdfA, profile[, attachments])`                                                                    | Create a Factur-X / ZUGFeRD PDF/A-3 from your own PDF/A (`paniolo-facturx`)                               |
 | `toFacturX(invoice, profile[, layout, attachments])`                                                                  | Create a Factur-X / ZUGFeRD PDF/A-3 with a rendered page (`paniolo-facturx`)                           |
 | `embedXml(pdfA, xml, profile[, attachments])`                                                                         | Embed existing CII XML byte for byte into your PDF/A; returns the PDF and its validation                  |
@@ -729,7 +741,9 @@ All details in the example are fictitious.
   with `PaymentCardInformation`, SEPA direct debit `59` with `DirectDebit` (mandate, creditor ID, debited account).
   Payment to bank account `42` may name `CreditTransfer` accounts (optional): EN 16931 requires accounts for
   `30`/`58` only (BR-61) and forbids them for no code, and ZUGFeRD 1.0 invoices commonly state `42` with an IBAN.
-  The code is kept as stated, not changed to `58`. Other codes carry no account data.
+  The code is kept as stated, not changed to `58`. Other codes, such as `49` or `ZZZ`, may also
+  carry accounts, card, and mandate data; profile-specific restrictions are checked by validation.
+  Credit transfers `30`/`58` can retain direct debit information in the model as well.
 - Supporting documents (BG-24): `.addSupportingDocument(AdditionalSupportingDocument.create().reference("Timesheet")
   .attachment(Attachment.create().content(bytes).mimeCode("application/pdf").filename("timesheet.pdf").build()).build())`.
 - Allowances and charges also take a base amount, percentage, and reason code (BT-92 to BT-105).
@@ -740,9 +754,10 @@ places using `HALF_UP`. Tax is calculated for each tax category and rate based o
 amounts and document allowances and charges, then rounded to two decimal places.
 Lists are copied during construction; a built `Invoice` is immutable.
 
-Every model class offers a builder via `create()` (shortcuts for allowances and charges:
-`DocumentAdjustment.createAllowance()` / `DocumentAdjustment.createCharge()`). Validation runs in `build()`,
-so an incomplete builder fails with an exception there. The record constructors remain available.
+The main model types offer builders via `create()` (shortcuts for allowances and charges:
+`DocumentAdjustment.createAllowance()` / `DocumentAdjustment.createCharge()`). Structural model
+checks run in `build()`, so an incomplete builder fails with an exception there. The record
+constructors apply the same checks. XML schema and business-rule validation are separate operations.
 
 ## Reading an invoice
 
@@ -762,7 +777,8 @@ Invoice fromCii = new CiiInvoiceReader().fromBytes(ciiBytes);
 stay open. Parsing rejects DTDs and external entities. The UBL reader accepts `Invoice`
 and `CreditNote`.
 
-Readers map the elements the model supports and ignore everything else. Because the model
+Readers map the elements the model supports. Depending on the content, unsupported values are
+reported as warnings, rejected, or ignored; a successful read alone does not prove lossless import. Because the model
 derives totals from its lines, the reader recalculates them and compares the total VAT amount
 and the amount due with the values stated in the document. A difference raises an
 `IllegalArgumentException`: it indicates content outside the model, such as CII sub-lines of
@@ -801,6 +817,8 @@ result.warnings().forEach(w -> log(w.code(), w.lineId(), w.message()));
 | `READ-TEXT-LINE`      | A ZUGFeRD 1.0 line with text only, without item and quantity                       | The text becomes an invoice note (BG-1)                                                                                                                                  |
 | `READ-OTHER-TAX`      | A tax of another type than VAT, e.g. the insurance tax `AAM` of Factur-X EXTENDED   | The tax is not read and never taken for VAT; the calculated totals lack it, and `NORMALIZED` export is refused (see below)                                                |
 | `READ-TAX-EXEMPTION`  | EXTENDED: a line, allowance, or charge states another VAT exemption reason or code than its VAT breakdown, or a further breakdown repeats category and rate with another reason | The model keeps one breakdown per category and rate (per sub-invoice for French multi-vendor invoices); the text of the first breakdown is kept and the amounts are merged |
+| `READ-GROSS-PRICE`    | UBL: a price discount (BT-147) without gross price (BT-148)                                                                                                                     | The gross price is derived as net price plus discount; the original document keeps its form, a normalized export states the derived gross price                            |
+| `READ-LINE-QUANTITY`  | The stated line net amount has the opposite sign of quantity x net price outside the profiles that allow a negative net price                                                   | The quantity (BT-129) takes the sign of the amount, the price stays; `result.deviations()` lists BT-129 and BT-131                                                         |
 
 Four warnings report values the model does not keep or interpret, or takes from somewhere else,
 without changing an amount.
@@ -821,7 +839,7 @@ still dropped, and written again it states the recalculated price and the calcul
 `result.isExact()` tells whether any read warning was emitted; it does not prove lossless
 reading. `result.stated()` keeps the original amounts and `result.deviations()` lists amount
 differences, including totals that strict reading does not compare. Lines with quantity zero,
-a negative recalculated price outside EXTENDED (BR-27), and structural errors, are still rejected. `ReadMode.STRICT` is
+a negative recalculated price outside EXTENDED (BR-27) that a negated quantity does not explain, and structural errors, are still rejected. `ReadMode.STRICT` is
 the default of all methods without a mode.
 
 ### Importing received invoices with their original amounts
@@ -1349,7 +1367,8 @@ mvn verify
 ```
 
 This runs the tests of the default reactor, including the integration tests against the official
-XRechnung rules. The public invoice corpus and JMH benchmarks require their opt-in profiles.
+XRechnung rules. The public invoice corpus and JMH benchmarks require their opt-in profiles. CI enables
+`invoice-corpus` in its verification job on JDK 21 and 25.
 The build of `paniolo-rules` downloads the pinned KoSIT release `v2026-08-31`
 once from GitHub, verifies its SHA-256 checksum, and caches it in the local Maven repository.
 The release contains XRechnung 3.0.2, EN 16931 rules 1.3.16, and XRechnung Schematron 2.6.0.

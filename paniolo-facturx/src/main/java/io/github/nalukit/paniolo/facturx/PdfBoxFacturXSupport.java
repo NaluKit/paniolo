@@ -27,6 +27,7 @@ import io.github.nalukit.paniolo.spi.FacturXSupport;
 import io.github.nalukit.paniolo.xml.util.XmlDocuments;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.cos.COSArray;
+import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -265,38 +266,146 @@ public final class PdfBoxFacturXSupport
   private static Map<String, PDComplexFileSpecification> allFiles(PDDocumentCatalog catalog)
       throws IOException {
     Map<String, PDComplexFileSpecification> all = new LinkedHashMap<>();
+    for (var entry : fileSpecifications(catalog)) {
+      all.putIfAbsent(entry.getKey(),
+                      entry.getValue());
+    }
+    return all;
+  }
+
+  /**
+   * Every embedded file specification with its name, before files of the same name are merged. The
+   * same specification reached from the associated files and the name tree appears once.
+   */
+  private static List<Map.Entry<String, PDComplexFileSpecification>> fileSpecifications(PDDocumentCatalog catalog)
+      throws IOException {
+    var result = new java.util.ArrayList<Map.Entry<String, PDComplexFileSpecification>>();
+    var seen   = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<COSDictionary, Boolean>());
     COSArray associated = catalog.getCOSObject()
                                  .getCOSArray(AF);
     if (associated != null) {
       for (int i = 0; i < associated.size(); i++) {
         // getObject dereferences indirect references, which /AF entries usually are.
-        if (associated.getObject(i) instanceof COSDictionary dictionary) {
+        if (associated.getObject(i) instanceof COSDictionary dictionary && seen.add(dictionary)) {
           var file = new PDComplexFileSpecification(dictionary);
-          all.putIfAbsent(fileName(file),
-                          file);
+          result.add(Map.entry(fileName(file),
+                               file));
         }
       }
     }
     if (catalog.getNames() != null) {
-      embeddedFiles(catalog.getNames()
-                           .getEmbeddedFiles()).forEach(all::putIfAbsent);
+      for (var entry : embeddedFilePairs(catalog.getNames()
+                                                .getEmbeddedFiles())) {
+        if (seen.add(entry.getValue()
+                          .getCOSObject())) {
+          result.add(entry);
+        }
+      }
     }
-    return all;
+    return result;
+  }
+
+  /**
+   * Deepest name tree of embedded files that is followed. Name trees are balanced and a tree of
+   * 32 levels holds far more files than a PDF can; a deeper one is a damaged or hostile document and
+   * would exhaust the stack.
+   */
+  private static final int MAX_NAME_TREE_DEPTH = 32;
+
+  private static List<Map.Entry<String, PDComplexFileSpecification>> embeddedFilePairs(org.apache.pdfbox.pdmodel.common.PDNameTreeNode<PDComplexFileSpecification> node)
+      throws IOException {
+    var result = new java.util.ArrayList<Map.Entry<String, PDComplexFileSpecification>>();
+    collectEmbeddedFiles(node,
+                         result,
+                         java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>()),
+                         java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>()),
+                         1);
+    return result;
+  }
+
+  /**
+   * Walks the name tree below a node. A node that is its own ancestor is a cycle and a tree deeper than
+   * {@link #MAX_NAME_TREE_DEPTH} is too deep; both are refused. A node reached a second time on
+   * another path is read once.
+   */
+  private static void collectEmbeddedFiles(org.apache.pdfbox.pdmodel.common.PDNameTreeNode<PDComplexFileSpecification> node,
+                                           List<Map.Entry<String, PDComplexFileSpecification>> result,
+                                           java.util.Set<COSBase> path,
+                                           java.util.Set<COSBase> visited,
+                                           int depth)
+      throws IOException {
+    if (node == null) {
+      return;
+    }
+    COSBase identity = node.getCOSObject();
+    if (path.contains(identity)) {
+      throw new IllegalArgumentException("The name tree of the embedded files refers to itself (/Kids cycle)");
+    }
+    if (depth > MAX_NAME_TREE_DEPTH) {
+      throw new IllegalArgumentException("The name tree of the embedded files is deeper than " + MAX_NAME_TREE_DEPTH + " levels");
+    }
+    if (!visited.add(identity)) {
+      return;
+    }
+    path.add(identity);
+    if (node.getNames() != null) {
+      result.addAll(node.getNames()
+                        .entrySet());
+    }
+    if (node.getKids() != null) {
+      for (var kid : node.getKids()) {
+        collectEmbeddedFiles(kid,
+                             result,
+                             path,
+                             visited,
+                             depth + 1);
+      }
+    }
+    path.remove(identity);
+  }
+
+  /**
+   * The invoice file names that two different file specifications carry with different content.
+   */
+  private static java.util.Set<String> conflictingInvoiceFiles(PDDocumentCatalog catalog)
+      throws IOException {
+    var byName = new LinkedHashMap<String, List<PDComplexFileSpecification>>();
+    for (var entry : fileSpecifications(catalog)) {
+      if (INVOICE_NAMES.contains(entry.getKey())) {
+        byName.computeIfAbsent(entry.getKey(),
+                               name -> new java.util.ArrayList<>())
+              .add(entry.getValue());
+      }
+    }
+    var conflicts = new java.util.TreeSet<String>();
+    for (var entry : byName.entrySet()) {
+      var     specifications = entry.getValue();
+      byte[]  first          = contentOrNull(specifications.get(0));
+      for (int i = 1; i < specifications.size(); i++) {
+        if (first == null || !java.util.Arrays.equals(first,
+                                            contentOrNull(specifications.get(i)))) {
+          conflicts.add(entry.getKey());
+        }
+      }
+    }
+    return conflicts;
+  }
+
+  private static byte[] contentOrNull(PDComplexFileSpecification file)
+      throws IOException {
+    try {
+      return read(file);
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
   }
 
   private static Map<String, PDComplexFileSpecification> embeddedFiles(org.apache.pdfbox.pdmodel.common.PDNameTreeNode<PDComplexFileSpecification> node)
       throws IOException {
     Map<String, PDComplexFileSpecification> result = new LinkedHashMap<>();
-    if (node == null) {
-      return result;
-    }
-    if (node.getNames() != null) {
-      result.putAll(node.getNames());
-    }
-    if (node.getKids() != null) {
-      for (var kid : node.getKids()) {
-        result.putAll(embeddedFiles(kid));
-      }
+    for (var entry : embeddedFilePairs(node)) {
+      result.put(entry.getKey(),
+                 entry.getValue());
     }
     return result;
   }
@@ -1191,12 +1300,9 @@ public final class PdfBoxFacturXSupport
         }
         var file     = entry.getValue();
         var embedded = embeddedFile(file);
-        String mimeType = embedded == null ||
-                          embedded.getSubtype() == null ||
-                          !embedded.getSubtype()
-                                   .matches("[^/\\s]+/[^/\\s]+") ?
-                          "application/octet-stream" :
-                          embedded.getSubtype();
+        String mimeType = PdfAttachment.normalizeMimeType(embedded == null ?
+                                                          null :
+                                                          embedded.getSubtype());
         result.add(new PdfAttachment(name,
                                      read(file,
                                           MAX_FILE),
@@ -1220,20 +1326,39 @@ public final class PdfBoxFacturXSupport
     Objects.requireNonNull(probe,
                            "probe");
     try (PDDocument document = load(pdf)) {
-      // No XMP: the first invoice file in the order of INVOICE_NAMES is enough to answer.
-      var files = invoiceFiles(document.getDocumentCatalog());
+      // A PDF with several invoice files is no valid container, but extraction and reading take the
+      // one the XMP metadata names; the probe asks that file first and then every other candidate,
+      // so an empty answer never hides an invoice that the other ways read.
+      var catalog = document.getDocumentCatalog();
+      var files   = invoiceFiles(catalog);
       if (files.isEmpty()) {
         return null;
       }
-      PDEmbeddedFile embedded = embeddedFile(files.values()
-                                                  .iterator()
-                                                  .next());
-      if (embedded == null) {
-        return null;
+      var candidates = new java.util.ArrayList<PDComplexFileSpecification>();
+      if (files.size() > 1) {
+        candidates.add(select(parseXmp(catalog.getMetadata()),
+                              files).file());
       }
-      try (InputStream input = embedded.createInputStream()) {
-        return probe.apply(input);
+      for (var file : files.values()) {
+        if (!candidates.contains(file)) {
+          candidates.add(file);
+        }
       }
+      for (var file : candidates) {
+        PDEmbeddedFile embedded = embeddedFile(file);
+        if (embedded == null) {
+          continue;
+        }
+        try (InputStream input = embedded.createInputStream()) {
+          T answer = probe.apply(input);
+          if (answer != null) {
+            return answer;
+          }
+        } catch (IllegalArgumentException | IOException e) {
+          // try the next candidate
+        }
+      }
+      return null;
     } catch (IllegalArgumentException | IOException e) {
       return null;
     }
@@ -1308,6 +1433,13 @@ public final class PdfBoxFacturXSupport
                 io.github.nalukit.paniolo.validation.Severity.ERROR,
                 "Only one invoice XML may be embedded, found " + files.keySet(),
                 "/Root/Names/EmbeddedFiles");
+      }
+      for (String name : conflictingInvoiceFiles(catalog)) {
+        finding(findings,
+                "FX-MULTIPLE-INVOICES",
+                io.github.nalukit.paniolo.validation.Severity.ERROR,
+                "Different embedded files named " + name + " carry different content; only one invoice XML may be embedded",
+                "/Root/AF");
       }
       Document  xmp       = parseXmp(catalog.getMetadata());
       Selection selection = select(xmp,

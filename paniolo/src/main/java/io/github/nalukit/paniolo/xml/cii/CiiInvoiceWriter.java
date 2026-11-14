@@ -299,11 +299,14 @@ public final class CiiInvoiceWriter
       xml.element("ram:PaymentReference",
                   payment.remittanceInformation());
     }
+    // BT-6 equal to BT-5 is redundant: BR-53 then asks for a second amount that BR-CO-15 rejects,
+    // so CII states the one VAT total (BT-110) only; amounts do not change.
     xml.element("ram:TaxCurrencyCode",
-                invoice.taxCurrencyCode() == null ?
-                null :
+                separateTaxCurrency(invoice,
+                                    currency) ?
                 invoice.taxCurrencyCode()
-                       .name())
+                       .name() :
+                null)
        .element("ram:InvoiceCurrencyCode",
                 currency);
     var extended = invoice.extended();
@@ -349,6 +352,7 @@ public final class CiiInvoiceWriter
                        extended != null &&
                        !extended.logisticsServiceCharges()
                                 .isEmpty();
+    boolean firstBreakdown = true;
     for (var breakdown : totals.vatBreakdowns()) {
       xml.start("ram:ApplicableTradeTax");
       tax(xml,
@@ -359,7 +363,10 @@ public final class CiiInvoiceWriter
           invoice,
           extendedProfile && adjusted ?
           breakdown :
-          null);
+          null,
+          null,
+          firstBreakdown);
+      firstBreakdown = false;
       xml.end();
     }
     var period = invoice.invoicePeriod();
@@ -486,7 +493,8 @@ public final class CiiInvoiceWriter
                 totals.taxAmount(),
                 "currencyID",
                 currency);
-    if (invoice.taxCurrencyCode() != null) {
+    if (separateTaxCurrency(invoice,
+                            currency)) {
       xml.element("ram:TaxTotalAmount",
                   invoice.taxAmountInTaxCurrency(),
                   "currencyID",
@@ -766,7 +774,12 @@ public final class CiiInvoiceWriter
                           .isEmpty() ?
                    Collections.<CreditTransfer>singletonList(null) :
                    payment.creditTransfers();
+    boolean first = true;
     for (var account : accounts) {
+      // Card, debited account and payer BIC belong to the payment means once; further blocks only
+      // add the credit transfer accounts, which is how the reader merges them again.
+      boolean firstBlock = first;
+      first = false;
       xml.start("ram:SpecifiedTradeSettlementPaymentMeans")
          .element("ram:TypeCode",
                   payment.meansCode()
@@ -774,7 +787,7 @@ public final class CiiInvoiceWriter
          .element("ram:Information",
                   payment.meansText());
       var card = payment.paymentCard();
-      if (card != null) {
+      if (firstBlock && card != null) {
         xml.start("ram:ApplicableTradeSettlementFinancialCard")
            .element("ram:ID",
                     card.primaryAccountNumber())
@@ -782,15 +795,19 @@ public final class CiiInvoiceWriter
                     card.holderName())
            .end();
       }
-      if (payment.directDebit() != null) {
+      String debited   = payment.directDebit() == null ?
+                         null :
+                         payment.directDebit()
+                                .debitedAccountId();
+      String payerName = extended == null ?
+                         null :
+                         extended.payerAccountName();
+      if (firstBlock && (debited != null || payerName != null)) {
         xml.start("ram:PayerPartyDebtorFinancialAccount")
            .element("ram:IBANID",
-                    payment.directDebit()
-                           .debitedAccountId())
+                    debited)
            .element("ram:AccountName",
-                    extended == null ?
-                    null :
-                    extended.payerAccountName())
+                    payerName)
            .end();
       }
       if (account != null) {
@@ -801,7 +818,7 @@ public final class CiiInvoiceWriter
                     account.accountName())
            .end();
       }
-      if (extended != null && extended.payerBic() != null && payment.directDebit() != null) {
+      if (firstBlock && extended != null && extended.payerBic() != null && payment.directDebit() != null) {
         xml.start("ram:PayerSpecifiedDebtorFinancialInstitution")
            .element("ram:BICID",
                     extended.payerBic())
@@ -1113,7 +1130,8 @@ public final class CiiInvoiceWriter
           null,
           null,
           null,
-          dueDateTypeCode);
+          dueDateTypeCode,
+          false);
       xml.end();
     } else if (dueDateTypeCode != null) {
       // A subtotal or information line may state when its VAT becomes due without a VAT category.
@@ -1241,6 +1259,13 @@ public final class CiiInvoiceWriter
         null);
   }
 
+  private static boolean separateTaxCurrency(Invoice invoice,
+                                             String currency) {
+    return invoice.taxCurrencyCode() != null && !invoice.taxCurrencyCode()
+                                                        .name()
+                                                        .equals(currency);
+  }
+
   /**
    * Writes a tax; with an EXTENDED breakdown also the line and allowance/charge base amounts.
    */
@@ -1258,7 +1283,8 @@ public final class CiiInvoiceWriter
         amount,
         invoice,
         extendedBreakdown,
-        null);
+        null,
+        invoice != null);
   }
 
   /**
@@ -1271,7 +1297,8 @@ public final class CiiInvoiceWriter
                           BigDecimal amount,
                           Invoice invoice,
                           VatBreakdown extendedBreakdown,
-                          String lineDueDateTypeCode) {
+                          String lineDueDateTypeCode,
+                          boolean taxPoint) {
     xml.element("ram:CalculatedAmount",
                 amount)
        .element("ram:TypeCode",
@@ -1294,7 +1321,9 @@ public final class CiiInvoiceWriter
       xml.element("ram:ExemptionReasonCode",
                   tax.exemptionReasonCode());
     }
-    if (invoice != null) {
+    // BT-7 and BT-8 are document values: CII-SR-461 allows one TaxPointDate, so only the first
+    // breakdown carries them and the reader takes them from there.
+    if (invoice != null && taxPoint) {
       if (invoice.taxPointDate() != null) {
         xml.start("ram:TaxPointDate")
            .element("udt:DateString",

@@ -1,7 +1,7 @@
 # Paniolo branding
 
-Each variant exists as SVG (vector, preferred) and PNG (raster, e.g. for the GitHub social preview,
-which needs PNG or JPG).
+Banner, logo, and icon variants exist as SVG (vector, preferred) and PNG (raster, e.g. for the
+GitHub social preview). The small mark is SVG only; favicon formats are listed below.
 
 | File                               | Use                                                |
 |------------------------------------|----------------------------------------------------|

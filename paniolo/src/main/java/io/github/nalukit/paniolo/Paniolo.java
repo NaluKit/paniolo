@@ -610,15 +610,41 @@ public final class Paniolo
            customizationId(xml.get());
   }
 
+  /**
+   * The characters of XML bytes, decoded like the XML parser does it for the document itself: the
+   * byte order mark, the UTF-16 prolog, and the encoding of the XML declaration decide. Bytes that
+   * cannot be decoded as stated are read as UTF-8, and the malformed document is reported by the
+   * validation itself.
+   */
   private static Supplier<Reader> reader(byte[] xml) {
-    // A UTF-8 byte order mark would reach the XML parser as content before the prolog.
-    int start = xml.length >= 3 && (xml[0] & 0xFF) == 0xEF && (xml[1] & 0xFF) == 0xBB && (xml[2] & 0xFF) == 0xBF ?
-                3 :
-                0;
-    return () -> new java.io.InputStreamReader(new ByteArrayInputStream(xml,
-                                                                        start,
-                                                                        xml.length - start),
-                                               StandardCharsets.UTF_8);
+    return () -> new java.io.StringReader(decodedXml(xml));
+  }
+
+  private static String decodedXml(byte[] xml) {
+    java.nio.charset.Charset charset = StandardCharsets.UTF_8;
+    var factory = XMLInputFactory.newDefaultFactory();
+    factory.setProperty(XMLInputFactory.SUPPORT_DTD,
+                        false);
+    factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES,
+                        false);
+    try {
+      var reader = factory.createXMLStreamReader(new ByteArrayInputStream(xml));
+      try {
+        if (reader.getEncoding() != null) {
+          charset = java.nio.charset.Charset.forName(reader.getEncoding());
+        }
+      } finally {
+        reader.close();
+      }
+    } catch (XMLStreamException | java.nio.charset.UnsupportedCharsetException | java.nio.charset.IllegalCharsetNameException e) {
+      charset = StandardCharsets.UTF_8;
+    }
+    String text = new String(xml,
+                             charset);
+    // A byte order mark would reach the XML parser as content before the prolog.
+    return text.startsWith("\uFEFF") ?
+           text.substring(1) :
+           text;
   }
 
   /**
@@ -2421,6 +2447,40 @@ public final class Paniolo
     byte[] result = facturX().extract(Objects.requireNonNull(pdf,
                                                              "pdf"))
                              .xml();
+    super.logStop(watch);
+    return result;
+  }
+
+  /**
+   * Returns the Order-X XML ({@code order-x.xml}) embedded in an Order-X PDF, unchanged. Requires
+   * {@code paniolo-facturx}.
+   *
+   * @param pdf the Order-X PDF; must not be {@code null}
+   * @return the embedded XML bytes in their original encoding
+   * @throws IllegalArgumentException if the PDF contains no Order-X document
+   * @throws IllegalStateException    if {@code paniolo-facturx} is missing
+   */
+  public byte[] extractOrderXml(byte[] pdf) {
+    PanioloStopWatch watch = super.logStart("Paniolo.extractOrderXml");
+    byte[] result = facturX().extractOrder(Objects.requireNonNull(pdf,
+                                                                  "pdf"));
+    super.logStop(watch);
+    return result;
+  }
+
+  /**
+   * Returns the despatch advice XML ({@code cida.xml}) embedded in a PDF, unchanged. Requires
+   * {@code paniolo-facturx}.
+   *
+   * @param pdf the PDF with the despatch advice; must not be {@code null}
+   * @return the embedded XML bytes in their original encoding
+   * @throws IllegalArgumentException if the PDF contains no despatch advice
+   * @throws IllegalStateException    if {@code paniolo-facturx} is missing
+   */
+  public byte[] extractDespatchAdviceXml(byte[] pdf) {
+    PanioloStopWatch watch = super.logStart("Paniolo.extractDespatchAdviceXml");
+    byte[] result = facturX().extractDespatchAdvice(Objects.requireNonNull(pdf,
+                                                                           "pdf"));
     super.logStop(watch);
     return result;
   }

@@ -27,7 +27,15 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * EN 16931 totals, rounded per line and VAT group using decimal arithmetic; roundingAmount may be null.
+ * EN 16931 totals of an invoice, calculated with decimal arithmetic or derived from
+ * {@link DocumentTotals} for an invoice without lines. Calculated totals include document
+ * allowances and charges, EXTENDED logistics service charges, and any permitted stated line
+ * and VAT amounts. EXTENDED financial adjustments and XRechnung third party payments affect
+ * the amount due only.
+ *
+ * <p>VAT is grouped by category and rate, additionally by sub-invoice for French multi-vendor
+ * invoices. For MINIMUM invoices without a stated line total, line, allowance, and charge totals
+ * are null; the rounding adjustment may be null for any invoice.
  *
  * @param lineTotal          sum of invoice line net amounts (BT-106)
  * @param allowanceTotal     sum of document allowances (BT-107)
@@ -37,7 +45,7 @@ import java.util.Map;
  * @param taxInclusiveAmount invoice total with VAT (BT-112)
  * @param paidAmount         paid amount (BT-113)
  * @param roundingAmount     rounding adjustment (BT-114), or null
- * @param payableAmount      amount due for payment (BT-115), including third party payments where applicable
+ * @param payableAmount      amount due for payment (BT-115), including financial adjustments and third party payments where applicable
  * @param vatBreakdowns      VAT breakdowns by category and rate (BG-23); copied on construction
  */
 public record InvoiceTotals(BigDecimal lineTotal, BigDecimal allowanceTotal, BigDecimal chargeTotal, BigDecimal taxExclusiveAmount, BigDecimal taxAmount, BigDecimal taxInclusiveAmount, BigDecimal paidAmount, BigDecimal roundingAmount,

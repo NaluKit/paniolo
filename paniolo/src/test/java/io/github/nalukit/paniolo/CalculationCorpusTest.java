@@ -180,10 +180,10 @@ class CalculationCorpusTest {
 
   @Test
   void reportsWhenTheAmountsCannotBeRecalculated() {
-    // A negative line amount for a positive quantity cannot be explained by any net price (BR-27).
+    // A negative line amount that neither a positive price (BR-27) nor the negated quantity explains.
     var xml = new String(resource("valid.xrechnung-cii.xml"),
                          StandardCharsets.UTF_8).replaceFirst("<ram:LineTotalAmount>200.00<",
-                                                              "<ram:LineTotalAmount>-200.00<");
+                                                              "<ram:LineTotalAmount>-250.00<");
     var result = PANIOLO.validate(xml.getBytes(StandardCharsets.UTF_8));
     var findings = result.messages(ValidationMessage.Stage.CALCULATION);
     assertEquals(1,

@@ -22,8 +22,10 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * The amounts exactly as a document states them, independent of what the model calculates. Every
- * value is null if the document does not state it.
+ * The numeric amounts a document states, independent of what the model calculates. An amount
+ * is null if the document does not state it; {@code lines} is an immutable list, empty when no
+ * line amounts were collected. Numeric values do not preserve the original XML text; use
+ * {@link ImportResult#originalXml()} when its exact representation is needed.
  *
  * @param lineTotal          sum of invoice line net amounts (BT-106)
  * @param allowanceTotal     sum of allowances on document level (BT-107)

@@ -18,7 +18,11 @@
 package io.github.nalukit.paniolo.validation;
 
 /**
- * Original Schematron flags are mapped conservatively; unknown flags are errors.
+ * Severity of a validation finding. {@link #ERROR} and {@link #FATAL} make a
+ * {@link ValidationResult} invalid; {@link #INFO} and {@link #WARNING} do not. An
+ * {@link AcceptancePolicy} can additionally reject warnings or selected rule identifiers.
+ * Schematron flags are mapped with {@link #fromFlag(String)}; unknown flags become errors,
+ * unless the validation profile overrides their severity.
  */
 public enum Severity {
   /**

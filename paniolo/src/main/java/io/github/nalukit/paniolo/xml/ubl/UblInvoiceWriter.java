@@ -162,9 +162,11 @@ public final class UblInvoiceWriter
                   null)
          .element("cbc:PaymentID",
                   payment.remittanceInformation());
+      // Card and mandate belong to the payment means once; further blocks only add accounts.
+      boolean firstBlock = first;
       first = false;
       var card = payment.paymentCard();
-      if (card != null) {
+      if (firstBlock && card != null) {
         // NetworkID is mandatory in UBL but has no EN 16931 counterpart.
         xml.start("cac:CardAccount")
            .element("cbc:PrimaryAccountNumberID",
@@ -190,15 +192,17 @@ public final class UblInvoiceWriter
         xml.end();
       }
       var directDebit = payment.directDebit();
-      if (directDebit != null) {
+      if (firstBlock && directDebit != null) {
         xml.start("cac:PaymentMandate")
            .element("cbc:ID",
-                    directDebit.mandateReference())
-           .start("cac:PayerFinancialAccount")
-           .element("cbc:ID",
-                    directDebit.debitedAccountId())
-           .end()
-           .end();
+                    directDebit.mandateReference());
+        if (directDebit.debitedAccountId() != null) {
+          xml.start("cac:PayerFinancialAccount")
+             .element("cbc:ID",
+                      directDebit.debitedAccountId())
+             .end();
+        }
+        xml.end();
       }
       xml.end();
     }
@@ -240,23 +244,29 @@ public final class UblInvoiceWriter
                            boolean credit,
                            String currency,
                            String element) {
-    // An EXTENDED subtotal line may state no quantity, which UBL requires (BT-129).
-    if (line.quantity() == null) {
+    // An EXTENDED subtotal line may state no quantity, which UBL requires (BT-129). A line with
+    // sub-lines of the XRechnung extension may omit it: its amount is that of its sub-lines.
+    if (line.quantity() == null && line.subLines()
+                                       .isEmpty()) {
       throw new IllegalArgumentException("Line " + line.id() + ": UBL requires the invoiced quantity (BT-129)");
     }
-    String unit = line.unitCode()
+    String unit = line.unitCode() == null ?
+                  null :
+                  line.unitCode()
                       .getCode();
     xml.start(element)
        .element("cbc:ID",
                 line.id())
        .element("cbc:Note",
-                line.note())
-       .element(credit ?
-                "cbc:CreditedQuantity" :
-                "cbc:InvoicedQuantity",
-                line.quantity(),
-                "unitCode",
-                unit);
+                line.note());
+    if (line.quantity() != null) {
+      xml.element(credit ?
+                  "cbc:CreditedQuantity" :
+                  "cbc:InvoicedQuantity",
+                  line.quantity(),
+                  "unitCode",
+                  unit);
+    }
     money(xml,
           "cbc:LineExtensionAmount",
           line.netAmount(),
@@ -364,10 +374,12 @@ public final class UblInvoiceWriter
             "cbc:PriceAmount",
             line.netUnitPrice(),
             currency);
-      xml.element("cbc:BaseQuantity",
-                  line.priceBaseQuantity(),
-                  "unitCode",
-                  unit);
+      if (unit != null) {
+        xml.element("cbc:BaseQuantity",
+                    line.priceBaseQuantity(),
+                    "unitCode",
+                    unit);
+      }
       if (line.grossPrice() != null) {
         // UBL expresses the gross price (BT-148) as base amount of the price discount (BT-147).
         xml.start("cac:AllowanceCharge")
@@ -669,8 +681,11 @@ public final class UblInvoiceWriter
     }
     xml.element("cbc:DocumentCurrencyCode",
                 currency)
+       // BT-6 equal to BT-5 is redundant and rejected by PEPPOL-EN16931-R005; the amounts stay.
        .element("cbc:TaxCurrencyCode",
-                invoice.taxCurrencyCode() == null ?
+                invoice.taxCurrencyCode() == null || invoice.taxCurrencyCode()
+                                                            .name()
+                                                            .equals(currency) ?
                 null :
                 invoice.taxCurrencyCode()
                        .name())
@@ -879,7 +894,11 @@ public final class UblInvoiceWriter
          .end();
     }
     xml.end();
-    if (invoice.taxCurrencyCode() != null) {
+    // With the same currency the one TaxTotal above is BT-110 and BT-111 (BR-CO-15 allows no
+    // second total in the invoice currency).
+    if (invoice.taxCurrencyCode() != null && !invoice.taxCurrencyCode()
+                                                     .name()
+                                                     .equals(currency)) {
       xml.start("cac:TaxTotal");
       money(xml,
             "cbc:TaxAmount",

@@ -662,6 +662,42 @@ final class Canvas {
     }
 
     /**
+     * The length of the longest prefix of a word that fits the width, at least one character and at
+     * most one less than the word. The prefix width only grows with its length, so the length is
+     * found by doubling and halving; a long word without a break is measured about n log n
+     * characters in all, not n squared. A surrogate pair is not split.
+     */
+    private int fit(String word,
+                    float width) {
+      int hi = word.length() - 1;
+      int lo = 1;
+      int probe = Math.min(hi,
+                           32);
+      while (probe < hi && width(word.substring(0,
+                                                probe)) <= width) {
+        lo = probe;
+        probe = Math.min(hi,
+                         probe * 2);
+      }
+      hi = Math.max(lo,
+                    probe);
+      while (lo < hi) {
+        int mid = (lo + hi + 1) >>> 1;
+        if (width(word.substring(0,
+                                 mid)) <= width) {
+          lo = mid;
+        } else {
+          hi = mid - 1;
+        }
+      }
+      if (lo > 1 && Character.isHighSurrogate(word.charAt(lo - 1)) && Character.isLowSurrogate(word.charAt(lo))) {
+        lo--;
+      }
+      return Math.max(1,
+                      lo);
+    }
+
+    /**
      * Wraps text at spaces to the width; words longer than the width are broken; line breaks in the
      * text are kept.
      */
@@ -689,11 +725,8 @@ final class Canvas {
             line.setLength(0);
             line.append(candidate);
           } else if (line.isEmpty()) {
-            int cut = word.length() - 1;
-            while (cut > 1 && width(word.substring(0,
-                                                   cut)) > width) {
-              cut--;
-            }
+            int cut = fit(word,
+                          width);
             lines.add(word.substring(0,
                                      cut));
             words.push(word.substring(cut));

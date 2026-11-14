@@ -22,8 +22,10 @@ import org.w3c.dom.Node;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.time.format.ResolverStyle;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -35,6 +37,11 @@ import java.util.regex.Pattern;
  * Internal namespace-aware DOM navigation shared by the syntax readers; paths use prefixed names.
  */
 public final class XmlElement {
+  private static final DateTimeFormatter DATE_TIME_203 = DateTimeFormatter.ofPattern("uuuuMMddHHmm")
+                                                                          .withResolverStyle(ResolverStyle.STRICT);
+  private static final DateTimeFormatter DATE_TIME_204 = DateTimeFormatter.ofPattern("uuuuMMddHHmmss")
+                                                                          .withResolverStyle(ResolverStyle.STRICT);
+
   /**
    * The white space XML allows in {@code xs:base64Binary}: space, tab, carriage return, line feed.
    */
@@ -420,10 +427,56 @@ public final class XmlElement {
              .allMatch(Character::isDigit)) {
       throw new IllegalArgumentException("Invalid date \"" + text + "\" at " + found.location());
     }
-    return parseDate(text.substring(0,
-                                    8),
-                     DateTimeFormatter.BASIC_ISO_DATE,
-                     found);
+    if (length == 8) {
+      return parseDate(text,
+                       DateTimeFormatter.BASIC_ISO_DATE,
+                       found);
+    }
+    // Formats 203 and 204 carry a time: check all of it, then keep the date.
+    try {
+      return LocalDateTime.parse(text,
+                                 length == 12 ?
+                                 DATE_TIME_203 :
+                                 DATE_TIME_204)
+                          .toLocalDate();
+    } catch (DateTimeParseException e) {
+      throw new IllegalArgumentException("Invalid date \"" + text + "\" at " + found.location(),
+                                         e);
+    }
+  }
+
+  /**
+   * Boolean of the first element reached by the path in the lexical form of {@code xs:boolean}:
+   * {@code true}, {@code false}, {@code 1}, or {@code 0}, white space around it ignored.
+   *
+   * @param path slash separated prefixed names
+   * @return the value; false when the element is absent or empty
+   * @throws IllegalArgumentException with the position if the text is another value
+   */
+  public boolean booleanValue(String path) {
+    return Boolean.TRUE.equals(booleanOrNull(path));
+  }
+
+  /**
+   * Like {@link #booleanValue(String)}, but null when the element is absent or empty.
+   *
+   * @param path slash separated prefixed names
+   * @return the value, or null
+   * @throws IllegalArgumentException with the position if the text is another value
+   */
+  public Boolean booleanOrNull(String path) {
+    var    found = find(path);
+    String text  = found == null ?
+                   null :
+                   found.text();
+    if (text == null) {
+      return null;
+    }
+    return switch (text.strip()) {
+      case "true", "1" -> Boolean.TRUE;
+      case "false", "0" -> Boolean.FALSE;
+      default -> throw new IllegalArgumentException("Invalid boolean \"" + text + "\" at " + found.location() + ": expected true, false, 1, or 0");
+    };
   }
 
   /**

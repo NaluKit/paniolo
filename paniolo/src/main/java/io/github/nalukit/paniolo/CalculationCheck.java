@@ -27,7 +27,6 @@ import io.github.nalukit.paniolo.xml.ReadWarning;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -134,24 +133,29 @@ public final class CalculationCheck {
   static List<ValidationMessage> check(ReadResult imported,
                                        List<ValidationMessage> official) {
     var findings = new ArrayList<ValidationMessage>();
-    var recalculated = new HashSet<String>();
-    for (ReadWarning warning : imported.warnings()) {
-      if (ReadWarning.LINE_NET_PRICE.equals(warning.code())) {
-        recalculated.add(warning.lineId());
-        findings.add(finding(LINE_NET_AMOUNT,
-                             LINE_NET_AMOUNT,
-                             warning.message(),
-                             "BT-131[line=" + warning.lineId() + "]",
-                             official));
-      }
-    }
     var lines = new ArrayList<InvoiceLine>();
     flatten(imported.invoice()
                     .lines(),
             lines);
+    var topLevel = imported.invoice()
+                           .lines();
+    for (ReadWarning warning : imported.warnings()) {
+      if (ReadWarning.LINE_NET_PRICE.equals(warning.code())) {
+        findings.add(finding(LINE_NET_AMOUNT,
+                             LINE_NET_AMOUNT,
+                             warning.message(),
+                             "BT-131[line=" + warning.lineId() + "]",
+                             official,
+                             lineTarget(lines,
+                                        topLevel,
+                                        warning.lineId(),
+                                        null)));
+      }
+    }
     for (var line : lines) {
-      // A recalculated price also changed the gross price; the line finding covers it.
-      if (line.grossPrice() != null && line.netUnitPrice() != null && !recalculated.contains(line.id())) {
+      // A line whose net price was recalculated keeps gross price minus discount equal to it, so the
+      // check never fires for it; it must not be skipped by identifier, which several lines may share.
+      if (line.grossPrice() != null && line.netUnitPrice() != null) {
         BigDecimal discount = line.priceDiscount() == null ?
                               BigDecimal.ZERO :
                               line.priceDiscount();
@@ -173,10 +177,16 @@ public final class CalculationCheck {
                                " = " +
                                expected.toPlainString(),
                                "BT-146[line=" + line.id() + "]",
-                               official));
+                               official,
+                               lineTarget(lines,
+                                          topLevel,
+                                          line,
+                                          null)));
         }
       }
+      int adjustmentNumber = 0;
       for (var adjustment : line.adjustments()) {
+        adjustmentNumber++;
         allowanceCharge(findings,
                         adjustment.charge(),
                         adjustment.amount(),
@@ -186,11 +196,17 @@ public final class CalculationCheck {
                         (adjustment.charge() ?
                          "BG-28" :
                          "BG-27") + "[line=" + line.id() + "]",
-                        official);
+                        official,
+                        lineTarget(lines,
+                                   topLevel,
+                                   line,
+                                   adjustmentNumber));
       }
     }
+    int documentAdjustment = 0;
     for (var adjustment : imported.invoice()
                                   .adjustments()) {
+      documentAdjustment++;
       allowanceCharge(findings,
                       adjustment.charge(),
                       adjustment.amount(),
@@ -200,7 +216,11 @@ public final class CalculationCheck {
                       adjustment.charge() ?
                       "BG-21" :
                       "BG-20",
-                      official);
+                      official,
+                      new Target(false,
+                                 0,
+                                 0,
+                                 documentAdjustment));
     }
     // The official rules accept a VAT amount rounded by up to one cent per VAT category (BR-CO-17).
     BigDecimal tolerance = CENT.multiply(BigDecimal.valueOf(Math.max(1,
@@ -248,7 +268,8 @@ public final class CalculationCheck {
                               deviation.calculated()
                                        .toPlainString()),
                              deviation.businessTerm(),
-                             official);
+                             official,
+                             DOCUMENT);
         findings.add(rounding && finding.severity() == Severity.WARNING ?
                      new ValidationMessage(finding.ruleId(),
                                            Severity.INFO,
@@ -282,7 +303,8 @@ public final class CalculationCheck {
                                       BigDecimal percentage,
                                       String prefix,
                                       String location,
-                                      List<ValidationMessage> official) {
+                                      List<ValidationMessage> official,
+                                      Target target) {
     if (amount == null || base == null || percentage == null) {
       return;
     }
@@ -308,22 +330,163 @@ public final class CalculationCheck {
                            " % = " +
                            expected.toPlainString(),
                            location,
-                           official));
+                           official,
+                           target));
     }
+  }
+
+  /**
+   * Where the amount of a finding is in the document, as far as the official findings can be matched
+   * to it: a line (by its position among the top-level lines for UBL and among all lines for CII) with
+   * the position of an allowance or charge in it, or the document itself. A line whose identifier
+   * repeats cannot be told apart and has no target.
+   *
+   * @param line        a line, false for document level
+   * @param topIndex    1-based position among the top-level lines; 0 for none
+   * @param flatIndex   1-based position among all lines in document order; 0 for none
+   * @param adjustment  1-based position of the allowance or charge in its line or the document; 0 for none
+   */
+  private record Target(boolean line, int topIndex, int flatIndex, int adjustment) {
+  }
+
+  private static final Target DOCUMENT = new Target(false,
+                                                    0,
+                                                    0,
+                                                    0);
+
+  private static final Pattern LINE_STEP       = Pattern.compile("(?<![A-Za-z])(?:InvoiceLine|CreditNoteLine)\\[(\\d+)\\]");
+  private static final Pattern CII_LINE_STEP   = Pattern.compile("IncludedSupplyChainTradeLineItem\\[(\\d+)\\]");
+  private static final Pattern ADJUSTMENT_STEP = Pattern.compile("AllowanceCharge\\[(\\d+)\\]");
+
+  /**
+   * The target of a line instance: its position tells it apart from other lines with the same
+   * identifier.
+   */
+  private static Target lineTarget(List<InvoiceLine> flat,
+                                   List<InvoiceLine> topLevel,
+                                   InvoiceLine line,
+                                   Integer adjustment) {
+    int found = -1;
+    for (int i = 0; i < flat.size(); i++) {
+      if (flat.get(i) == line) {
+        found = i;
+        break;
+      }
+    }
+    if (found < 0) {
+      return null;
+    }
+    int top = 0;
+    for (int i = 0; i < topLevel.size(); i++) {
+      if (topLevel.get(i) == line) {
+        top = i + 1;
+      }
+    }
+    return new Target(true,
+                      top,
+                      found + 1,
+                      adjustment == null ?
+                      0 :
+                      adjustment);
+  }
+
+  private static Target lineTarget(List<InvoiceLine> flat,
+                                   List<InvoiceLine> topLevel,
+                                   String lineId,
+                                   Integer adjustment) {
+    int found = -1;
+    for (int i = 0; i < flat.size(); i++) {
+      if (java.util.Objects.equals(flat.get(i)
+                                       .id(),
+                                   lineId)) {
+        if (found >= 0) {
+          return null;
+        }
+        found = i;
+      }
+    }
+    if (found < 0) {
+      return null;
+    }
+    int top = 0;
+    for (int i = 0; i < topLevel.size(); i++) {
+      if (topLevel.get(i) == flat.get(found)) {
+        top = i + 1;
+      }
+    }
+    return new Target(true,
+                      top,
+                      found + 1,
+                      adjustment == null ?
+                      0 :
+                      adjustment);
+  }
+
+  /**
+   * Whether the location of an official finding names this very line, allowance, or charge. A location
+   * that does not say so reliably does not count: the finding is then no duplicate.
+   */
+  private static boolean refersTo(String location,
+                                  Target target) {
+    if (target == null) {
+      return false;
+    }
+    String where = location == null ?
+                   "" :
+                   location;
+    var ubl = LINE_STEP.matcher(where);
+    var cii = CII_LINE_STEP.matcher(where);
+    int number = -1;
+    boolean lineStep = false;
+    if (where.contains("SubInvoiceLine[")) {
+      return false;
+    }
+    while (ubl.find()) {
+      lineStep = true;
+      number   = Integer.parseInt(ubl.group(1));
+      if (target.line() && number != target.topIndex()) {
+        return false;
+      }
+    }
+    while (cii.find()) {
+      lineStep = true;
+      number   = Integer.parseInt(cii.group(1));
+      if (target.line() && number != target.flatIndex()) {
+        return false;
+      }
+    }
+    if (target.line() != lineStep) {
+      return false;
+    }
+    if (target.adjustment() > 0) {
+      var step = ADJUSTMENT_STEP.matcher(where);
+      boolean seen = false;
+      while (step.find()) {
+        seen = true;
+        if (Integer.parseInt(step.group(1)) != target.adjustment()) {
+          return false;
+        }
+      }
+      return seen;
+    }
+    return true;
   }
 
   private static ValidationMessage finding(String ruleId,
                                            String relationship,
                                            String message,
                                            String location,
-                                           List<ValidationMessage> official) {
+                                           List<ValidationMessage> official,
+                                           Target target) {
     Predicate<String> counterpart = OFFICIAL.get(relationship);
     Set<String> duplicates = new TreeSet<>();
     if (counterpart != null) {
       for (var finding : official) {
         // An official finding reported as information only, e.g. PEPPOL-EN16931-R120 of a document
-        // that does not state XRechnung, does not replace the warning.
-        if (finding.ruleId() != null && finding.stage() != ValidationMessage.Stage.CALCULATION && finding.severity() != Severity.INFO && counterpart.test(finding.ruleId())) {
+        // that does not state XRechnung, does not replace the warning. It must also name this line or
+        // this allowance or charge, not another one of the same rule.
+        if (finding.ruleId() != null && finding.stage() != ValidationMessage.Stage.CALCULATION && finding.severity() != Severity.INFO && counterpart.test(finding.ruleId()) && refersTo(finding.location(),
+                                                                                                                                                                                  target)) {
           duplicates.add(finding.ruleId());
         }
       }

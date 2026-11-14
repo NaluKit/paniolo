@@ -24,7 +24,13 @@ import java.math.BigDecimal;
 import java.util.Objects;
 
 /**
- * VAT category, percentage and optional exemption text / VATEX code.
+ * VAT category, percentage and optional exemption text / VATEX code. The model accepts the
+ * categories S, Z, E, AE, K, G, O, L, and M. Category S requires a positive rate, L and M a
+ * non-negative rate, O no rate, and all other categories a zero rate.
+ *
+ * <p>For French multi-vendor invoices, the exemption text can also carry the sub-invoice number;
+ * see {@link #subInvoiceNumber()}. Profile-specific exemption requirements are checked by XML
+ * validation.
  *
  * @param code                VAT category code (UNTDID 5305); required
  * @param rate                VAT rate in percent, or null for category O
@@ -43,7 +49,7 @@ public record TaxCategory(DutyTaxFeeCategory code, BigDecimal rate, String exemp
     Objects.requireNonNull(code,
                            "tax category code");
     if (!code.isAllowanceRelated()) {
-      throw new IllegalArgumentException("Unsupported EN 16931 VAT category: " + code);
+      throw new IllegalArgumentException("Unsupported EN 16931 VAT category: " + code + "; EN 16931 knows the categories S, Z, E, AE, K, G, O, L and M only, and the model does not replace the category stated by the document with another one, as that would change the VAT calculation (e.g. category B of the Italian split payment)");
     }
     if (code == DutyTaxFeeCategory.O) {
       if (rate != null) {

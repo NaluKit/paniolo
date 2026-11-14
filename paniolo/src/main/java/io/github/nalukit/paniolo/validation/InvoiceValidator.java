@@ -52,11 +52,16 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Reusable, thread-safe XSD and Schematron validator. Compiles artifacts once per instance.
- * Malformed and invalid invoices produce findings; broken rule configurations throw ValidationException.
- * Compiled Schematron XSLT is supported; raw .sch sources must be compiled by their publisher/toolchain.
+ * Reusable, thread-safe XSD and Schematron validator for the XML documents supported by a
+ * {@link ValidationProfile}. Compiles the profile's artifacts at construction, once per instance.
+ * Malformed or invalid documents produce findings; configuration and execution failures throw
+ * {@link ValidationException}. Compiled Schematron XSLT is supported; raw {@code .sch} sources
+ * must be compiled by their publisher or toolchain.
+ *
+ * <p>The schema, if present, runs first. Schema errors prevent Schematron execution; otherwise all
+ * configured stylesheets run in order, even if an earlier stylesheet reports errors.
  * Created with {@link #InvoiceValidator(ValidationProfile, boolean)} and {@code true}, every result
- * also carries the {@link ValidationStatistics} of the Schematron stylesheets.
+ * also carries {@link ValidationStatistics}; its stylesheet list is empty if none ran.
  */
 public final class InvoiceValidator {
   private static final System.Logger       LOGGER = System.getLogger(InvoiceValidator.class.getName());

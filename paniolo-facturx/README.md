@@ -240,8 +240,9 @@ var result = paniolo.validateOrder(pdf);           // PDF/A and XML
 - Dates are read and written in the formats 102, 203, and 204 (date, date with time of day); the
   time of day is kept in `OrderDetails` and `OrderPeriod`. An electronic address without scheme,
   which Order-X allows, keeps a null scheme; invoices and despatch advices still require it.
-- The line amount is quantity x net price, or the agreed quantity x net price if the line states one,
-  as in order responses. A response line may name only the substituted product.
+- The line amount uses the agreed quantity when present, otherwise the requested quantity:
+  quantity x net price / price base quantity, plus line charges minus line allowances, rounded
+  to cents. A response line may name only the substituted product.
 - All 24 XML examples of the official release are read by `readOrder(xmlOrPdf, true)`, and the orders
   written again pass the official rules. 19 of them are read strictly as well, without any loss;
   the other five state allowance and charge totals without the allowances and charges themselves (e.g.
@@ -339,7 +340,9 @@ and the base quantity with unit (`BasisQuantity`) of a document allowance or cha
 Several preceding invoice references (BG-3) are allowed. Logistics service charges count like
 document charges: they are part of the sum of charges (BT-108), the amount without VAT (BT-109), and
 the VAT breakdown. Advance payments document received amounts; set the paid amount (BT-113)
-yourself. Parties use `Party` and therefore need a name and a complete address. The reader reads all
+yourself. Further EXTENDED parties require a name and an address with more than the country;
+individual fields such as street are optional in the model, while profile rules are checked by
+validation. Invoice seller and buyer addresses can contain only the country. The reader reads all
 of it back; payment terms with a partial amount, discount, or penalty go to `extended()`, the first
 plain term to `paymentTerms` and `dueDate`; a term with its own payee is an EXTENDED term, too, and
 so is every further plain term with description or due date (e.g. instalments without amount, as
@@ -388,8 +391,8 @@ add up and are dropped. Percentages and base amounts of these allowances are not
 Not supported: VAT included in prices and descriptions of line periods, and sequence numbers and
 base quantities of line allowances and charges (the Factur-X rules do not allow them).
 
-UBL, and CII with any other specification identifier, reject an invoice with EXTENDED information
-in `Invoice.extended()` or in any line.
+UBL rejects EXTENDED information in `Invoice.extended()` or in any line. CII accepts it only
+for EXTENDED and for the supported subset of EXTENDED-CTC-FR described below.
 
 EXTENDED is validated against the official EXTENDED schema and Schematron (see below). CII D16B
 and EN 16931 alone would reject some EXTENDED content: D16B allows only one preceding invoice and no
@@ -447,9 +450,10 @@ ValidationResult result = paniolo.validate(xml);   // "EXTENDED-CTC-FR with BR-F
 - The profile is exchanged as CII XML: `toFacturX` rejects `FacturXProfile.EXTENDED_CTC_FR`
   (Factur-X PDFs use EXTENDED). PDFs with `fx:ConformanceLevel` `EXTENDED-CTC-FR`, as the Mustang
   project writes them, are read and validated.
-- Not supported: UBL (the UBL rules of EXTENDED-CTC-FR are not packaged), and negative net
-  prices, which the official self-billing example `UC13_AUTOF202600035_BIDIRECTIONNELLE` uses; it
-  validates but cannot be read.
+- Negative net and gross prices are supported in EXTENDED and EXTENDED-CTC-FR; the model
+  rejects them for other profiles (BR-27, BR-28). The self-billing example
+  `UC13_AUTOF202600035_BIDIRECTIONNELLE` uses negative prices.
+- Not supported: UBL (the UBL rules of EXTENDED-CTC-FR are not packaged).
 
 ## Validating
 
@@ -469,7 +473,10 @@ MINIMUM and BASIC WL yield the warning `FX-RULES-REQUIRED` (not checked, EN 1693
 EXTENDED the information `FX-EXTENDED-NOT-CHECKED`.
 
 Standalone XML with the plain EN 16931 identifier or without a known Factur-X identifier is
-validated against EN 16931 and XRechnung, as before. `FacturXProfile.ofSpecificationId` maps BT-24
+validated against EN 16931 and XRechnung. In automatic standalone XML validation, XRechnung CIUS
+findings are information when BT-24 does not state XRechnung; Peppol findings retain their severity
+for Peppol identifiers. Explicit syntax validation keeps the rules unchanged; see
+[validating XML](../README.md#validating-xml). `FacturXProfile.ofSpecificationId` maps BT-24
 to a profile, also for ZUGFeRD 2.0 and all XRechnung versions.
 
 ## Factur-X profile rules
@@ -538,7 +545,7 @@ stage `HYBRID`:
 | Rule                                                 | Severity        | Check                                                                                  |
 |------------------------------------------------------|-----------------|----------------------------------------------------------------------------------------|
 | `FX-NO-INVOICE`, `FX-NO-CONTENT`, `FX-NOT-PDF`       | fatal           | an invoice XML is embedded and readable                                                |
-| `FX-MULTIPLE-INVOICES`                               | error           | exactly one invoice XML                                                                |
+| `FX-MULTIPLE-INVOICES`                               | error           | exactly one invoice XML (also not two differing files of one name)                                                              |
 | `FX-NOT-ASSOCIATED`                                  | error           | the file is referenced from the catalog's `/AF` array                                  |
 | `FX-AF-RELATIONSHIP`                                 | error           | `AFRelationship` is Alternative, Data or Source                                        |
 | `FX-AF-RELATIONSHIP-DE`                              | warning         | Germany: Alternative (Data for MINIMUM and BASIC WL)                                   |

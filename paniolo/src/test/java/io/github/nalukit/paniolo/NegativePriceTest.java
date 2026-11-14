@@ -253,17 +253,37 @@ class NegativePriceTest {
     assertThrows(IllegalArgumentException.class,
                  () -> PANIOLO.read(stated,
                                     ReadMode.STRICT));
-    // The same document outside EXTENDED cannot take a negative price (BR-27).
+    // The same document outside EXTENDED cannot take a negative price (BR-27): the sign belongs to
+    // the quantity, which lenient reading negates; the price and the original amounts stay.
     String en16931 = stated.replace(ProcessControl.facturXExtended()
                                                   .specificationId(),
                                     ProcessControl.en16931()
                                                   .specificationId());
+    var negated = PANIOLO.read(en16931,
+                               ReadMode.LENIENT);
+    assertEquals(List.of(ReadWarning.LINE_QUANTITY),
+                 negated.warnings()
+                        .stream()
+                        .map(ReadWarning::code)
+                        .toList());
+    var line = negated.invoice()
+                      .lines()
+                      .get(1);
+    assertEquals(0,
+                 new BigDecimal("100.00").compareTo(line.netUnitPrice()));
+    assertEquals(0,
+                 new BigDecimal("-300.00").compareTo(line.netAmount()));
+    assertTrue(line.quantity()
+                   .signum() < 0);
+    // An amount that the negated quantity does not explain either is still rejected.
+    String unexplained = en16931.replace("-300.00",
+                                         "-250.00");
     var error = assertThrows(IllegalArgumentException.class,
-                             () -> PANIOLO.read(en16931,
+                             () -> PANIOLO.read(unexplained,
                                                 ReadMode.LENIENT));
     // The message names the stated amount, not the price that would follow from it.
     assertTrue(error.getMessage()
-                    .startsWith("Line 2: stated net amount -300.00 differs from quantity x net price"),
+                    .startsWith("Line 2: stated net amount -250.00 differs from quantity x net price"),
                error::getMessage);
   }
 }

@@ -335,4 +335,43 @@ class OrderXTest {
     assertThrows(IllegalArgumentException.class,
                  () -> PANIOLO.validateOrder(FacturXValidationTest.sample("minimum.xml")));
   }
+
+  @Test
+  void validatesOrderXInEveryXmlEncoding() {
+    String xml = PANIOLO.toOrderX(OrderSamples.basic(OrderTypeCode.ORDER)
+                                             .build());
+    var expected = PANIOLO.validateOrder(xml.getBytes(StandardCharsets.UTF_8));
+    assertTrue(expected.isValid(),
+               expected.messages()
+                       .toString());
+    record Variant(String declared, java.nio.charset.Charset charset, byte[] bom) {
+    }
+    for (var variant : List.of(new Variant("UTF-8",
+                                           StandardCharsets.UTF_8,
+                                           new byte[] {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF}),
+                               new Variant("UTF-16",
+                                           StandardCharsets.UTF_16LE,
+                                           new byte[] {(byte) 0xFF, (byte) 0xFE}),
+                               new Variant("UTF-16",
+                                           StandardCharsets.UTF_16BE,
+                                           new byte[] {(byte) 0xFE, (byte) 0xFF}),
+                               new Variant("UTF-16LE",
+                                           StandardCharsets.UTF_16LE,
+                                           new byte[0]),
+                               new Variant("UTF-16BE",
+                                           StandardCharsets.UTF_16BE,
+                                           new byte[0]))) {
+      var out = new java.io.ByteArrayOutputStream();
+      out.writeBytes(variant.bom());
+      out.writeBytes(xml.replace("encoding=\"UTF-8\"",
+                                 "encoding=\"" + variant.declared() + "\"")
+                        .getBytes(variant.charset()));
+      var result = PANIOLO.validateOrder(out.toByteArray());
+      assertEquals(expected.profileName(),
+                   result.profileName(),
+                   variant.toString());
+      assertTrue(result.isValid(),
+                 variant + " " + result.messages());
+    }
+  }
 }

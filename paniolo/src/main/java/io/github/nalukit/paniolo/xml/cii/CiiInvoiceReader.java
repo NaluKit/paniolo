@@ -248,16 +248,22 @@ public final class CiiInvoiceReader
       context.lost(ReadWarning.IDENTIFIER,
                    "Deliver-to location (BT-71) has the identifier " + local.text() + "; the global identifier " + global.text() + " (scheme " + global.attribute("schemeID") + ") is not kept");
     }
-    return new DeliveryInformation(shipTo == null ?
-                                   null :
-                                   shipTo.text("ram:Name"),
+    var name = shipTo == null ?
+               null :
+               shipTo.text("ram:Name");
+    var deliverTo = address == null ?
+                    null :
+                    address(address);
+    // An empty optional block, e.g. a ship-to party with empty ID and name, states no delivery.
+    if (name == null && location == null && date == null && deliverTo == null) {
+      return null;
+    }
+    return new DeliveryInformation(name,
                                    location == null ?
                                    null :
                                    location.text(),
                                    date,
-                                   address == null ?
-                                   null :
-                                   address(address),
+                                   deliverTo,
                                    location == null || location == local ?
                                    null :
                                    location.attribute("schemeID"));
@@ -466,15 +472,9 @@ public final class CiiInvoiceReader
                                XmlElement settlement,
                                Map<String, TaxCategory> categories,
                                ReadContext exemptions) {
-    String test = context.text("ram:TestIndicator/udt:Indicator");
-    String copy = header.text("ram:CopyIndicator/udt:Indicator");
-    extended.testIndicator(test == null ?
-                           null :
-                           Boolean.parseBoolean(test))
+    extended.testIndicator(context.booleanOrNull("ram:TestIndicator/udt:Indicator"))
             .documentName(header.text("ram:Name"))
-            .copyIndicator(copy == null ?
-                           null :
-                           Boolean.parseBoolean(copy))
+            .copyIndicator(header.booleanOrNull("ram:CopyIndicator/udt:Indicator"))
             .languageId(header.text("ram:LanguageID"))
             .effectiveDate(header.basicDate("ram:EffectiveSpecifiedPeriod/ram:CompleteDateTime/udt:DateTimeString"))
             .deliveryTermsLocationName(agreement.text("ram:ApplicableTradeDeliveryTerms/ram:RelevantTradeLocation/ram:Name"))
@@ -667,7 +667,7 @@ public final class CiiInvoiceReader
                                          period.basicDate("ram:EndDateTime/udt:DateTimeString")));
       }
       for (var adjustment : settlement.children("ram:SpecifiedTradeAllowanceCharge")) {
-        boolean charge = Boolean.parseBoolean(adjustment.text("ram:ChargeIndicator/udt:Indicator"));
+        boolean charge = adjustment.booleanValue("ram:ChargeIndicator/udt:Indicator");
         builder.addAdjustment(new LineAdjustment(charge,
                                                  adjustment.decimal("ram:ActualAmount"),
                                                  adjustment.decimal("ram:BasisAmount"),
@@ -702,7 +702,7 @@ public final class CiiInvoiceReader
   private static List<GrossPriceAdjustment> grossPriceAdjustments(XmlElement gross) {
     var adjustments = new ArrayList<GrossPriceAdjustment>();
     for (var adjustment : gross.children("ram:AppliedTradeAllowanceCharge")) {
-      adjustments.add(new GrossPriceAdjustment(Boolean.parseBoolean(adjustment.text("ram:ChargeIndicator/udt:Indicator")),
+      adjustments.add(new GrossPriceAdjustment(adjustment.booleanValue("ram:ChargeIndicator/udt:Indicator"),
                                                adjustment.decimal("ram:ActualAmount"),
                                                adjustment.text("ram:ReasonCode"),
                                                adjustment.text("ram:Reason")));
@@ -992,11 +992,12 @@ public final class CiiInvoiceReader
     String     taxCurrency = settlement.text("ram:TaxCurrencyCode");
     var        summation   = settlement.find("ram:SpecifiedTradeSettlementHeaderMonetarySummation");
     BigDecimal statedTax   = null;
+    BigDecimal taxInTaxCurrency = null;
     if (summation != null) {
       for (var amount : summation.children("ram:TaxTotalAmount")) {
         String amountCurrency = amount.attribute("currencyID");
         if (taxCurrency != null && taxCurrency.equals(amountCurrency) && !taxCurrency.equals(currency)) {
-          builder.taxAmountInTaxCurrency(amount.decimal());
+          taxInTaxCurrency = amount.decimal();
         } else if (amountCurrency == null || amountCurrency.equals(currency)) {
           statedTax = amount.decimal();
         }
@@ -1007,6 +1008,11 @@ public final class CiiInvoiceReader
                          prepaid)
              .roundingAmount(summation.decimal("ram:RoundingAmount"));
     }
+    // With the same currency for tax and invoice the single TaxTotalAmount is both amounts.
+    if (taxInTaxCurrency == null && taxCurrency != null && taxCurrency.equals(currency)) {
+      taxInTaxCurrency = statedTax;
+    }
+    builder.taxAmountInTaxCurrency(taxInTaxCurrency);
     builder.taxCurrencyCode(XmlElement.code(taxCurrency,
                                             CurrencyCode::of,
                                             "currency"));
@@ -1033,7 +1039,7 @@ public final class CiiInvoiceReader
     }
     int adjustmentNumber = 0;
     for (var adjustment : settlement.children("ram:SpecifiedTradeAllowanceCharge")) {
-      boolean charge = Boolean.parseBoolean(adjustment.text("ram:ChargeIndicator/udt:Indicator"));
+      boolean charge = adjustment.booleanValue("ram:ChargeIndicator/udt:Indicator");
       adjustmentNumber++;
       builder.addAdjustment(new DocumentAdjustment(charge,
                                                    adjustment.decimal("ram:ActualAmount"),

@@ -97,12 +97,14 @@ public record InvoiceLine(String id, String name, BigDecimal quantity, UnitCode 
     boolean structural = extended != null && extended.subtype() != null && !extended.subtype()
                                                                                    .counts();
     // Such a line without price may omit the quantity too, as the sub-invoice (GROUP) lines of a
-    // French multi-vendor invoice do; quantity and unit come together.
-    if (!structural || netUnitPrice != null || quantity != null || unitCode != null) {
-      Objects.requireNonNull(unitCode,
-                             "unitCode");
+    // French multi-vendor invoice do; quantity and unit come together. A line with sub-lines of the
+    // XRechnung extension may omit both as well, as its amount is that of its sub-lines (BR-DEX-02).
+    boolean hasSubLines = subLines != null && !subLines.isEmpty();
+    if (!(hasSubLines && quantity == null && unitCode == null) && (!structural || netUnitPrice != null || quantity != null || unitCode != null)) {
+      // The unit (BT-130) is required for the lines of an invoice (BR-23), which the invoice checks;
+      // the sub-lines of the XRechnung extension may state a quantity without a unit.
       Objects.requireNonNull(quantity,
-                             "quantity");
+                             "Line " + id + ": quantity (BT-129)");
     }
     if (netUnitPrice == null && !structural && (subLines == null || subLines.isEmpty())) {
       throw new NullPointerException("netUnitPrice");
@@ -185,7 +187,7 @@ public record InvoiceLine(String id, String name, BigDecimal quantity, UnitCode 
       statedNetAmount = ModelChecks.money(statedNetAmount);
     }
     // Without net price the sub-lines explain the stated amount (BR-DEX-02 below).
-    if (statedNetAmount != null && netUnitPrice != null) {
+    if (statedNetAmount != null && netUnitPrice != null && quantity != null) {
       BigDecimal exact = exactNetAmount(quantity,
                                         netUnitPrice,
                                         priceBaseQuantity,
@@ -207,7 +209,7 @@ public record InvoiceLine(String id, String name, BigDecimal quantity, UnitCode 
       BigDecimal sum = subLineTotal(subLines);
       BigDecimal net = statedNetAmount != null ?
                        statedNetAmount :
-                       netUnitPrice == null ?
+                       netUnitPrice == null || quantity == null ?
                        sum :
                        ModelChecks.money(exactNetAmount(quantity,
                                                         netUnitPrice,
@@ -340,8 +342,9 @@ public record InvoiceLine(String id, String name, BigDecimal quantity, UnitCode 
     if (statedNetAmount != null) {
       return statedNetAmount;
     }
-    if (netUnitPrice == null) {
-      // Without price and stated amount an EXTENDED information line states no amount.
+    if (netUnitPrice == null || quantity == null) {
+      // Without price and stated amount an EXTENDED information line states no amount; a line
+      // without quantity takes the amount of its sub-lines.
       return subLineTotal(subLines);
     }
     return ModelChecks.money(exactNetAmount(quantity,

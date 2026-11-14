@@ -62,11 +62,18 @@ class AttachmentTest {
    */
   private static byte[] pdfWithAttachment(String name)
       throws Exception {
+    return pdfWithAttachment(name,
+                             "text/plain");
+  }
+
+  private static byte[] pdfWithAttachment(String name,
+                                          String mimeType)
+      throws Exception {
     try (PDDocument document = Loader.loadPDF(TestPdfs.pdfA2b())) {
       var embedded = new PDEmbeddedFile(document,
                                         new ByteArrayInputStream("Hinweis".getBytes(StandardCharsets.UTF_8)),
                                         COSName.FLATE_DECODE);
-      embedded.setSubtype("text/plain");
+      embedded.setSubtype(mimeType);
       var file = new PDComplexFileSpecification();
       file.setFile(name);
       file.setFileUnicode(name);
@@ -81,6 +88,39 @@ class AttachmentTest {
       var out = new ByteArrayOutputStream();
       document.save(out);
       return out.toByteArray();
+    }
+  }
+
+  @Test
+  void foreignMimeTypesAreNormalizedAndNeverStopTheList()
+      throws Exception {
+    var expected = new java.util.LinkedHashMap<String, String>();
+    expected.put("text/plain;charset=UTF-8",
+                 "text/plain");
+    expected.put("  application/pdf ; version=1",
+                 "application/pdf");
+    expected.put("text",
+                 "application/octet-stream");
+    expected.put("text/",
+                 "application/octet-stream");
+    expected.put("te xt/plain",
+                 "application/octet-stream");
+    expected.put("text/plain\u0001",
+                 "application/octet-stream");
+    expected.put(";charset=UTF-8",
+                 "application/octet-stream");
+    expected.put("",
+                 "application/octet-stream");
+    for (var entry : expected.entrySet()) {
+      var attachments = PANIOLO.attachments(pdfWithAttachment("note.txt",
+                                                              entry.getKey()));
+      assertEquals(1,
+                   attachments.size(),
+                   entry.getKey());
+      assertEquals(entry.getValue(),
+                   attachments.get(0)
+                              .mimeType(),
+                   entry.getKey());
     }
   }
 

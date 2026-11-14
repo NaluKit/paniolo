@@ -1,0 +1,11 @@
+file	conforms	errors	note
+mustang/validator/src/test/resources/validV2PDF.pdf	true		
+mustang/validator/src/test/resources/validXRechnung.pdf	true		
+mustang/validator/src/test/resources/XMLinvalidV2PDF.pdf	true		
+mustang/validator/src/test/resources/invalidXMP.pdf	true		
+mustang/validator/src/test/resources/invalidXMP-ParseError.pdf	false	PDFA-PARSE	veraPDF cannot parse the file (PDFA-PARSE): upstream fixture with a broken XMP stream; it does not conform, by design.
+mustang/validator/src/test/resources/invalidXRechnung.pdf	true		
+mustang/validator/src/test/resources/corruptedV2PDF.pdf	false	PDFA-PARSE	veraPDF cannot parse the file (PDFA-PARSE): deliberately corrupted upstream fixture; it does not conform, by design.
+mustang/validator/src/test/resources/attributeBasedXMP_zugferd_2p0_EN16931_Einfach.pdf	true		
+mustang/validator/src/test/resources/zugferd_2p1_EXTENDED_PDFA-3A.pdf	true		
+mustang/validator/src/test/resources/validAvoir_FR_type380_BASICWL.pdf	true		

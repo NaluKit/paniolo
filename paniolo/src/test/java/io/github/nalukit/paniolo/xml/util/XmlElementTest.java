@@ -173,4 +173,72 @@ class XmlElementTest {
                  root.text("a:Party/a:Address/a:City"));
     assertNull(root.text("a:Party/a:ID"));
   }
+
+  private static XmlElement dateRoot(String format,
+                                     String value)
+      throws Exception {
+    var factory = DocumentBuilderFactory.newInstance();
+    factory.setNamespaceAware(true);
+    String xml = "<a:Root xmlns:a=\"urn:test:a\"><a:Date" + (format == null ?
+                                                                "" :
+                                                                " format=\"" + format + "\"") + ">" + value + "</a:Date></a:Root>";
+    return XmlElement.of(factory.newDocumentBuilder()
+                                .parse(new InputSource(new StringReader(xml)))
+                                .getDocumentElement(),
+                         Map.of("a",
+                                A));
+  }
+
+  @Test
+  void dateOfDateTimeChecksTheTimePart()
+      throws Exception {
+    assertEquals(java.time.LocalDate.of(2026,
+                                        11,
+                                        14),
+                 dateRoot("204",
+                          "20261114235959").dateOfDateTime("a:Date"));
+    assertEquals(java.time.LocalDate.of(2026,
+                                        11,
+                                        14),
+                 dateRoot("203",
+                          "202611140000").dateOfDateTime("a:Date"));
+    assertEquals(java.time.LocalDate.of(2026,
+                                        11,
+                                        14),
+                 dateRoot("102",
+                          "20261114").dateOfDateTime("a:Date"));
+    assertEquals(java.time.LocalDate.of(2026,
+                                        11,
+                                        14),
+                 dateRoot(null,
+                          "20261114").dateOfDateTime("a:Date"));
+    for (String[] invalid : new String[][] { { "204",
+                                               "20261114259999" },
+                                             { "204",
+                                               "20261114236000" },
+                                             { "204",
+                                               "20261114235960" },
+                                             { "203",
+                                               "202611142500" },
+                                             { "203",
+                                               "202611140060" },
+                                             { "204",
+                                               "20261314120000" },
+                                             { "204",
+                                               "20260230120000" },
+                                             { "102",
+                                               "20261332" },
+                                             { "204",
+                                               "2026111412000" } }) {
+      var root = dateRoot(invalid[0],
+                          invalid[1]);
+      var e = org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                                                            () -> root.dateOfDateTime("a:Date"),
+                                                            invalid[0] + " " + invalid[1]);
+      org.junit.jupiter.api.Assertions.assertTrue(e.getMessage()
+                                                   .contains(invalid[1]) && e.getMessage()
+                                                                             .contains("a:Date"),
+                                                  e.getMessage());
+    }
+  }
 }

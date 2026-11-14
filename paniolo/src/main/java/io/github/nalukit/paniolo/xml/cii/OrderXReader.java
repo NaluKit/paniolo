@@ -126,10 +126,7 @@ public final class OrderXReader {
 
   private static Boolean indicator(XmlElement element,
                                    String path) {
-    String value = element.text(path);
-    return value == null ?
-           null :
-           Boolean.parseBoolean(value);
+    return element.booleanOrNull(path);
   }
 
   /**
@@ -332,7 +329,7 @@ public final class OrderXReader {
       builder.tax(tax(settlement.find("ram:ApplicableTradeTax")))
              .buyerAccountingReference(settlement.text("ram:ReceivableSpecifiedTradeAccountingAccount/ram:ID"));
       for (var adjustment : settlement.children("ram:SpecifiedTradeAllowanceCharge")) {
-        builder.addAdjustment(new LineAdjustment(Boolean.parseBoolean(adjustment.text("ram:ChargeIndicator/udt:Indicator")),
+        builder.addAdjustment(new LineAdjustment(adjustment.booleanValue("ram:ChargeIndicator/udt:Indicator"),
                                                  adjustment.decimal("ram:ActualAmount"),
                                                  adjustment.decimal("ram:BasisAmount"),
                                                  adjustment.decimal("ram:CalculationPercent"),
@@ -360,8 +357,8 @@ public final class OrderXReader {
                                           OrderLineDetails.Builder details) {
     var applied = agreement.all("ram:GrossPriceProductTradePrice/ram:AppliedTradeAllowanceCharge");
     if (applied.size() == 1 &&
-        !Boolean.parseBoolean(applied.get(0)
-                                     .text("ram:ChargeIndicator/udt:Indicator")) &&
+        !applied.get(0)
+                .booleanValue("ram:ChargeIndicator/udt:Indicator") &&
         applied.get(0)
                .text("ram:ReasonCode") == null &&
         applied.get(0)
@@ -370,7 +367,7 @@ public final class OrderXReader {
                     .decimal("ram:ActualAmount");
     }
     for (var adjustment : applied) {
-      details.addPriceAdjustment(new PriceAdjustment(Boolean.parseBoolean(adjustment.text("ram:ChargeIndicator/udt:Indicator")),
+      details.addPriceAdjustment(new PriceAdjustment(adjustment.booleanValue("ram:ChargeIndicator/udt:Indicator"),
                                                      adjustment.decimal("ram:ActualAmount"),
                                                      adjustment.text("ram:ReasonCode"),
                                                      adjustment.text("ram:Reason")));
@@ -541,7 +538,7 @@ public final class OrderXReader {
              .requestedDespatchPeriod(period(delivery.find("ram:RequestedDespatchSupplyChainEvent")));
     }
     for (var adjustment : settlement.children("ram:SpecifiedTradeAllowanceCharge")) {
-      builder.addAdjustment(new DocumentAdjustment(Boolean.parseBoolean(adjustment.text("ram:ChargeIndicator/udt:Indicator")),
+      builder.addAdjustment(new DocumentAdjustment(adjustment.booleanValue("ram:ChargeIndicator/udt:Indicator"),
                                                    adjustment.decimal("ram:ActualAmount"),
                                                    adjustment.decimal("ram:BasisAmount"),
                                                    adjustment.decimal("ram:CalculationPercent"),

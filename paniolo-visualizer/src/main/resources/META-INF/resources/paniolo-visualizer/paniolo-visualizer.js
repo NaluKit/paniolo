@@ -89,7 +89,12 @@ async function toBytes(input) {
     if (typeof input === 'string') {
         const trimmed = input.trim();
         if (trimmed.startsWith('<')) {
-            return new TextEncoder().encode(trimmed);
+            // already decoded text: the BOM makes decodeText read it as UTF-8, whatever the declaration says
+            const text = new TextEncoder().encode(trimmed);
+            const bytes = new Uint8Array(text.length + 3);
+            bytes.set([0xef, 0xbb, 0xbf]);
+            bytes.set(text, 3);
+            return bytes;
         }
         if (/^[A-Za-z0-9+/=\s_-]+$/.test(trimmed)) {
             const bytes = base64(trimmed);
@@ -123,20 +128,49 @@ function isPdf(bytes) {
     return latin1(bytes.subarray(0, 1024)).includes('%PDF-');
 }
 
+/** Decodes strictly: a damaged sequence is an error, not a replacement character. */
+function strictDecode(label, bytes) {
+    try {
+        return new TextDecoder(label, {fatal: true}).decode(bytes);
+    } catch (e) {
+        throw new PanioloError('xml', 'invalid ' + label + ' sequence');
+    }
+}
+
+/**
+ * The XML text is saved as UTF-8; a declaration of another encoding (ISO-8859-1, UTF-16) would make
+ * every reader decode it wrongly, so it is changed to the encoding of the bytes.
+ */
+function utf8Declaration(xml) {
+    return xml.replace(/^(\s*<\?xml[^>]*?\bencoding\s*=\s*)(["'])[^"']*\2/, '$1$2UTF-8$2');
+}
+
 function decodeText(bytes) {
+    if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
+        return strictDecode('utf-8', bytes);
+    }
     if (bytes[0] === 0xfe && bytes[1] === 0xff) {
-        return new TextDecoder('utf-16be').decode(bytes);
+        return strictDecode('utf-16be', bytes);
     }
     if (bytes[0] === 0xff && bytes[1] === 0xfe) {
-        return new TextDecoder('utf-16le').decode(bytes);
+        return strictDecode('utf-16le', bytes);
+    }
+    // without BOM the first characters '<?' reveal UTF-16 (XML 1.0, appendix F)
+    if (bytes[0] === 0x3c && bytes[1] === 0x00 && bytes[2] === 0x3f && bytes[3] === 0x00) {
+        return strictDecode('utf-16le', bytes);
+    }
+    if (bytes[0] === 0x00 && bytes[1] === 0x3c && bytes[2] === 0x00 && bytes[3] === 0x3f) {
+        return strictDecode('utf-16be', bytes);
     }
     const head = latin1(bytes.subarray(0, 256));
     const declared = /^\s*<\?xml[^>]*encoding\s*=\s*["']([A-Za-z0-9._-]+)["']/.exec(head);
+    const label = declared ? declared[1].toLowerCase() : 'utf-8';
     try {
-        return new TextDecoder(declared ? declared[1].toLowerCase() : 'utf-8').decode(bytes);
+        new TextDecoder(label);
     } catch (e) {
-        return new TextDecoder('utf-8').decode(bytes);
+        throw new PanioloError('xml', 'unsupported encoding ' + label);
     }
+    return strictDecode(label, bytes);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -334,9 +368,29 @@ function ublParty(p) {
     });
 }
 
+/**
+ * An indicator in the lexical form of xs:boolean: true, false, 1, or 0, white space around it ignored; an
+ * absent element is false. Another text is refused, so that it never gets the opposite meaning.
+ */
+function xsBoolean(value, what) {
+    if (value === undefined || value === null || String(value).trim() === '') {
+        return false;
+    }
+    switch (String(value).trim()) {
+        case 'true':
+        case '1':
+            return true;
+        case 'false':
+        case '0':
+            return false;
+        default:
+            throw new PanioloError('invalidBoolean', what + ' = ' + value);
+    }
+}
+
 function ublAllowanceCharge(e) {
     return clean({
-        charge: txt(e, 'ChargeIndicator') === 'true',
+        charge: xsBoolean(txt(e, 'ChargeIndicator'), 'ChargeIndicator'),
         amount: txt(e, 'Amount'),
         base: txt(e, 'BaseAmount'),
         percent: txt(e, 'MultiplierFactorNumeric'),
@@ -392,7 +446,7 @@ function ublLine(l, index) {
         objectId: txt(l, 'DocumentReference/ID'),
         accountingCost: txt(l, 'AccountingCost'),
         allowanceCharges: all(l, 'AllowanceCharge').map(ublAllowanceCharge),
-        subLines: all(l, 'SubInvoiceLine').map(s => ublLine(s))
+        subLines: all(l, 'SubInvoiceLine').map((s, k) => ublLine(s, index + '/' + (k + 1)))
     });
 }
 
@@ -572,6 +626,9 @@ function ciiDate(el) {
     if (format === '203' && /^\d{12}$/.test(v)) {
         return v.slice(0, 4) + '-' + v.slice(4, 6) + '-' + v.slice(6, 8) + 'T' + v.slice(8, 10) + ':' + v.slice(10);
     }
+    if (format === '204' && /^\d{14}$/.test(v)) {
+        return v.slice(0, 4) + '-' + v.slice(4, 6) + '-' + v.slice(6, 8) + 'T' + v.slice(8, 10) + ':' + v.slice(10, 12) + ':' + v.slice(12);
+    }
     return value;
 }
 
@@ -621,7 +678,7 @@ function ciiParty(p) {
 
 function ciiAllowanceCharge(e) {
     return clean({
-        charge: txt(e, 'ChargeIndicator/Indicator') === 'true',
+        charge: xsBoolean(txt(e, 'ChargeIndicator/Indicator'), 'ChargeIndicator'),
         amount: txt(e, 'ActualAmount'),
         base: txt(e, 'BasisAmount'),
         percent: txt(e, 'CalculationPercent'),
@@ -743,13 +800,48 @@ function ciiAccounts(settlement) {
     return accounts.some(a => a.type) ? accounts : undefined;
 }
 
-/** Nests the lines of CII EXTENDED with a ParentLineID below their parent. */
+/**
+ * Nests the lines of CII EXTENDED with a ParentLineID below their parent. A hierarchy that cannot be
+ * built without losing a line is refused with the line named: a parent that is the line itself, does
+ * not exist, or is ambiguous because several lines carry its identifier, and a cycle of parents.
+ */
 function nestLines(lines) {
-    const byId = new Map(lines.filter(l => l.id).map(l => [l.id, l]));
+    const byId = new Map();
+    for (const line of lines) {
+        if (line.id) {
+            (byId.get(line.id) || byId.set(line.id, []).get(line.id)).push(line);
+        }
+    }
+    const parentOf = new Map();
+    for (const line of lines) {
+        if (!line.parentId) {
+            continue;
+        }
+        const candidates = byId.get(line.parentId) || [];
+        if (candidates.length === 0) {
+            throw new PanioloError('lineHierarchy', 'line ' + line.id + ': parent ' + line.parentId + ' does not exist');
+        }
+        if (candidates.length > 1) {
+            throw new PanioloError('lineHierarchy', 'line ' + line.id + ': parent ' + line.parentId + ' is ambiguous');
+        }
+        if (candidates[0] === line) {
+            throw new PanioloError('lineHierarchy', 'line ' + line.id + ' is its own parent');
+        }
+        parentOf.set(line, candidates[0]);
+    }
+    for (const line of lines) {
+        const path = new Set([line]);
+        for (let parent = parentOf.get(line); parent; parent = parentOf.get(parent)) {
+            if (path.has(parent)) {
+                throw new PanioloError('lineHierarchy', 'line ' + line.id + ' is part of a cycle of parents');
+            }
+            path.add(parent);
+        }
+    }
     const top = [];
     for (const line of lines) {
-        const parent = line.parentId && byId.get(line.parentId);
-        if (parent && parent !== line) {
+        const parent = parentOf.get(line);
+        if (parent) {
             (parent.subLines = parent.subLines || []).push(line);
         } else {
             top.push(line);
@@ -832,8 +924,8 @@ function mapCii(root, family) {
         businessProcess: specification ? businessProcess : undefined,
         number: txt(doc, 'ID'),
         name: txt(doc, 'Name'),
-        testDocument: txt(context, 'TestIndicator/Indicator') === 'true',
-        copy: txt(doc, 'CopyIndicator/Indicator') === 'true',
+        testDocument: xsBoolean(txt(context, 'TestIndicator/Indicator'), 'TestIndicator'),
+        copy: xsBoolean(txt(doc, 'CopyIndicator/Indicator'), 'CopyIndicator'),
         effectiveDate: ciiDate(one(doc, 'EffectiveSpecifiedPeriod/CompleteDateTime')),
         periodDescription: txt(settlement, 'BillingSpecifiedPeriod/Description'),
         typeCode,
@@ -1177,8 +1269,22 @@ function pdfText(value) {
     if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
         return new TextDecoder('utf-8').decode(bytes.subarray(3));
     }
-    return latin1(bytes);
+    let out = '';
+    for (const b of bytes) {
+        out += String.fromCharCode(PDF_DOC_ENCODING[b] || b);
+    }
+    return out;
 }
+
+/** PDFDocEncoding differs from Latin-1 at 0x18 to 0x1F, 0x80 to 0x9E, and 0xA0. */
+const PDF_DOC_ENCODING = (() => {
+    const map = {0xa0: 0x20ac};
+    [0x2d8, 0x2c7, 0x2c6, 0x2d9, 0x2dd, 0x2db, 0x2da, 0x2dc].forEach((c, i) => map[0x18 + i] = c);
+    [0x2022, 0x2020, 0x2021, 0x2026, 0x2014, 0x2013, 0x192, 0x2044, 0x2039, 0x203a, 0x2212, 0x2030, 0x201e,
+        0x201c, 0x201d, 0x2018, 0x2019, 0x201a, 0x2122, 0xfb01, 0xfb02, 0x141, 0x152, 0x160, 0x178, 0x17d,
+        0x131, 0x142, 0x153, 0x161, 0x17e].forEach((c, i) => map[0x80 + i] = c);
+    return map;
+})();
 
 async function inflate(data) {
     const stream = new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate'));
@@ -1211,13 +1317,42 @@ async function inflate(data) {
 
 async function readPdf(bytes) {
     const s = latin1(bytes);
-    if (/\/Encrypt\s*(?:\d+\s+\d+\s+R|<<)/.test(s)) {
-        throw new PanioloError('pdfEncrypted');
-    }
     const objects = new Map();
-    const header = /(\d+)\s+\d+\s+obj\b/g;
+    // The file trailers: the dictionaries after the keyword trailer and the cross-reference streams. The
+    // last one is the active one and declares the encryption (/Encrypt); a comment, a string, or an
+    // embedded document that merely contains the word does not.
+    const sections = [];
+    let integers = null;
+    const integerObjects = () => {
+        if (!integers) {
+            integers = new Map();
+            const integer = /(?:^|\s)(\d+)\s+\d+\s+obj\s+(\d+)\s+endobj/g;
+            for (let m; (m = integer.exec(s));) {
+                integers.set(Number(m[1]), Number(m[2]));
+            }
+        }
+        return integers;
+    };
+    const header = /(\d+)\s+\d+\s+obj\b|\btrailer\b/g;
     let match;
     while ((match = header.exec(s))) {
+        if (match[1] === undefined) {
+            const lineStart = Math.max(s.lastIndexOf('\n', match.index), s.lastIndexOf('\r', match.index)) + 1;
+            if (/^\s*%/.test(s.slice(lineStart, match.index))) {
+                continue;
+            }
+            const trailer = new PdfParser(s, header.lastIndex);
+            try {
+                const dict = trailer.value();
+                if (dict && dict.dict) {
+                    sections.push({at: match.index, dict: dict.dict});
+                    header.lastIndex = trailer.p;
+                }
+            } catch (e) {
+                // not a trailer dictionary
+            }
+            continue;
+        }
         const parser = new PdfParser(s, header.lastIndex);
         let value;
         try {
@@ -1226,6 +1361,9 @@ async function readPdf(bytes) {
             continue;
         }
         parser.space();
+        if (value && value.dict && value.dict.get('Type') && value.dict.get('Type').name === 'XRef') {
+            sections.push({at: match.index, dict: value.dict});
+        }
         if (value && value.dict && s.startsWith('stream', parser.p)) {
             let start = parser.p + 6;
             if (s[start] === '\r') {
@@ -1234,14 +1372,19 @@ async function readPdf(bytes) {
             if (s[start] === '\n') {
                 start++;
             }
-            const length = value.dict.get('Length');
+            let length = value.dict.get('Length');
+            if (length && length.ref !== undefined) {
+                // an indirect length: the integer object may stand anywhere in the file
+                length = integerObjects().get(length.ref);
+            }
             let end = -1;
             if (typeof length === 'number' && /^\s*endstream/.test(s.substr(start + length, 16))) {
                 end = start + length;
             } else {
+                // a missing or wrong length: the first endstream keyword, as tolerant readers do
                 const found = s.indexOf('endstream', start);
                 if (found < 0) {
-                    continue;
+                    throw new PanioloError('pdf', 'object ' + match[1] + ': stream length ' + length + ' does not lead to endstream');
                 }
                 end = found;
                 while (end > start && (s[end - 1] === '\n' || s[end - 1] === '\r')) {
@@ -1254,6 +1397,10 @@ async function readPdf(bytes) {
             objects.set(Number(match[1]), {value});
             header.lastIndex = parser.p;
         }
+    }
+    const active = sections.reduce((last, section) => (!last || section.at > last.at ? section : last), null);
+    if (active && active.dict.has('Encrypt')) {
+        throw new PanioloError('pdfEncrypted');
     }
     const resolve = v => (v && v.ref !== undefined ? (objects.get(v.ref) || {}).value : v);
     const nameOf = v => (resolve(v) || {}).name;
@@ -1361,9 +1508,14 @@ async function readPdf(bytes) {
 
 const SEVERITIES = ['FATAL', 'ERROR', 'WARNING', 'INFO'];
 
+/**
+ * The identity of the line that a report location names: the positions of its steps from the top-level
+ * line down, such as 3 or 3/2 for the second sub-line of the third line. CII lines are numbered flat.
+ */
 function lineIndexOf(location) {
-    const m = /(IncludedSupplyChainTradeLineItem|InvoiceLine|CreditNoteLine|DespatchLine)\[(\d+)\]/.exec(location || '');
-    return m ? Number(m[2]) : undefined;
+    const steps = [...(location || '').matchAll(/(?:^|[^A-Za-z])(?:IncludedSupplyChainTradeLineItem|InvoiceLine|CreditNoteLine|DespatchLine|SubInvoiceLine)\[(\d+)\]/g)]
+        .map(m => Number(m[1]));
+    return steps.length ? steps.join('/') : undefined;
 }
 
 function mapReport(root) {
@@ -1434,11 +1586,14 @@ export async function parse(input) {
         }
         const candidates = [...files.filter(f => INVOICE_FILE_NAMES.includes(f.name.toLowerCase())),
             ...files.filter(f => /xml/i.test(f.mime || '') || /\.xml$/i.test(f.name))];
+        let damaged = null;
         for (const file of candidates) {
             let model;
             try {
                 model = fromXml(decodeText(file.data));
             } catch (e) {
+                // a damaged encoding is reported as such if no other file is an invoice
+                damaged = damaged || (e instanceof PanioloError && e.code === 'xml' && /sequence|encoding/.test(e.detail || '') ? e : null);
                 continue;
             }
             model.container = 'PDF';
@@ -1447,7 +1602,7 @@ export async function parse(input) {
             model.attachments = [...(model.attachments || []), ...files.filter(f => f !== file)];
             return model;
         }
-        throw new PanioloError('pdfNoXml');
+        throw damaged || new PanioloError('pdfNoXml');
     }
     const model = fromXml(decodeText(bytes));
     model.container = 'XML';
@@ -1687,6 +1842,8 @@ const TEXTS = {
             input: 'Diese Eingabe wird nicht unterstützt. Erwartet werden Bytes (Uint8Array, ArrayBuffer, Blob) oder XML-Text.',
             xml: 'Das XML ist nicht wohlgeformt.',
             unknownRoot: 'Dieses XML ist keine unterstützte E-Rechnung, Bestellung oder Lieferavis.',
+            lineHierarchy: 'Die Positionshierarchie ist fehlerhaft: Elternposition fehlt, ist mehrdeutig oder verweist im Kreis.',
+            invalidBoolean: 'Ein Kennzeichen hat einen ungültigen Wert; erlaubt sind true, false, 1 und 0.',
             isReport: 'Dieses XML ist ein Prüfbericht. Bitte zusätzlich das Dokument laden.',
             notReport: 'Dieses XML ist kein Prüfbericht.',
             pdf: 'Das PDF kann nicht gelesen werden.',
@@ -1776,6 +1933,8 @@ const TEXTS = {
             input: 'This input is not supported. Expected bytes (Uint8Array, ArrayBuffer, Blob) or XML text.',
             xml: 'The XML is not well-formed.',
             unknownRoot: 'This XML is not a supported e-invoice, order, or despatch advice.',
+            lineHierarchy: 'The line hierarchy is broken: a parent line is missing, ambiguous, or refers in a circle.',
+            invalidBoolean: 'An indicator has an invalid value; true, false, 1, and 0 are allowed.',
             isReport: 'This XML is a validation report. Please load the document as well.',
             notReport: 'This XML is not a validation report.',
             pdf: 'The PDF cannot be read.',
@@ -1866,6 +2025,8 @@ const TEXTS = {
             input: 'Cette entrée n’est pas prise en charge. Attendu : des octets (Uint8Array, ArrayBuffer, Blob) ou du texte XML.',
             xml: 'Le XML n’est pas bien formé.',
             unknownRoot: 'Ce XML n’est pas une facture électronique, une commande ou un avis d’expédition pris en charge.',
+            lineHierarchy: 'La hiérarchie des positions est erronée : position parente manquante, ambiguë ou circulaire.',
+            invalidBoolean: 'Un indicateur a une valeur non valide ; true, false, 1 et 0 sont autorisés.',
             isReport: 'Ce XML est un rapport de contrôle. Veuillez également charger le document.',
             notReport: 'Ce XML n’est pas un rapport de contrôle.',
             pdf: 'Le PDF ne peut pas être lu.',
@@ -2161,17 +2322,75 @@ class Formatter {
         return m ? m[1].length : 0;
     }
 
+    /**
+     * A decimal string as sign, integer digits, and fraction digits, or null for anything else. Values
+     * that Intl.NumberFormat cannot show exactly through a double (more than 15 digits in all) are
+     * composed from these parts, so no digit is rounded away.
+     */
+    exactParts(value) {
+        const m = /^(-?)(\d+)(?:\.(\d+))?$/.exec(String(value).trim());
+        if (!m || m[2].length + (m[3] || '').length <= 15) {
+            return null;
+        }
+        return {sign: m[1], integer: m[2], fraction: m[3] || ''};
+    }
+
+    /**
+     * Formats exact digits with the layout of a locale formatter: its currency symbol, grouping, and
+     * decimal separator are kept, the digits are the ones of the document.
+     */
+    exactFormat(parts, formatter, minFraction) {
+        let fraction = parts.fraction;
+        if (minFraction === 0) {
+            fraction = fraction.replace(/0+$/, '');
+        } else {
+            fraction = fraction.padEnd(minFraction, '0');
+        }
+        const digit = this.numberFormat('digit', {useGrouping: false});
+        const integer = this.numberFormat('int', {maximumFractionDigits: 0}).format(BigInt(parts.integer));
+        const local_ = [...fraction].map(c => digit.format(+c)).join('');
+        const layout = formatter.formatToParts(parts.sign ? -1.5 : 1.5);
+        let out = '';
+        let integerDone = false;
+        for (const part of layout) {
+            if (part.type === 'integer' || part.type === 'group') {
+                if (!integerDone) {
+                    out += integer;
+                    integerDone = true;
+                }
+            } else if (part.type === 'decimal') {
+                out += fraction ? part.value : '';
+            } else if (part.type === 'fraction') {
+                out += local_;
+            } else if (part.type === 'minusSign' && /^0+$/.test(parts.integer + fraction)) {
+                // a negative zero is shown without sign
+            } else {
+                out += part.value;
+            }
+        }
+        return out;
+    }
+
     amount(value, currency) {
         if (value === undefined || value === null || value === '') {
             return '';
         }
-        const digits = Math.min(20, Math.max(2, this.decimals(value)));
+        const digits = Math.max(2, this.decimals(value));
+        const exact = this.exactParts(value);
         if (currency && /^[A-Z]{3}$/.test(currency)) {
+            const options = {style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2};
+            if (exact) {
+                return this.exactFormat(exact, this.numberFormat('c' + currency + 'x', {...options}), 2);
+            }
             return this.numberFormat('c' + currency + digits, {
-                style: 'currency', currency, minimumFractionDigits: digits, maximumFractionDigits: digits
+                style: 'currency', currency, minimumFractionDigits: digits, maximumFractionDigits: Math.min(100, digits)
             }).format(value);
         }
-        return this.numberFormat('d' + digits, {minimumFractionDigits: digits, maximumFractionDigits: digits})
+        if (exact) {
+            return this.exactFormat(exact, this.numberFormat('dx', {minimumFractionDigits: 2, maximumFractionDigits: 2}), 2) +
+                (currency ? ' ' + currency : '');
+        }
+        return this.numberFormat('d' + digits, {minimumFractionDigits: digits, maximumFractionDigits: Math.min(100, digits)})
             .format(value) + (currency ? ' ' + currency : '');
     }
 
@@ -2179,12 +2398,30 @@ class Formatter {
         if (value === undefined || value === null || value === '') {
             return '';
         }
-        const digits = Math.min(20, this.decimals(value));
+        const exact = this.exactParts(value);
+        if (exact) {
+            return this.exactFormat(exact, this.numberFormat('nx', {minimumFractionDigits: 1, maximumFractionDigits: 1}), 0);
+        }
+        const digits = Math.min(100, this.decimals(value));
         return this.numberFormat('n' + digits, {minimumFractionDigits: 0, maximumFractionDigits: digits}).format(value);
     }
 
     percent(value) {
         return value === undefined ? '' : this.number(value) + ' %';
+    }
+
+    /**
+     * A calendar date or time is shown only when it exists: a day that does not fit the month, an hour
+     * above 23, and a year before 1000 (which Date and Intl would shift or shorten) keep the value
+     * of the document as it is.
+     */
+    validDate(year, month, day) {
+        if (year < 1000 || month < 1 || month > 12 || day < 1) {
+            return false;
+        }
+        const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+        const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+        return day <= days[month - 1];
     }
 
     date(value) {
@@ -2194,14 +2431,23 @@ class Formatter {
         let m;
         try {
             if ((m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value))) {
+                if (!this.validDate(+m[1], +m[2], +m[3])) {
+                    return value;
+                }
                 return new Intl.DateTimeFormat(this.locale, {dateStyle: 'medium', timeZone: 'UTC'})
                     .format(new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])));
             }
-            if ((m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(value))) {
-                return new Intl.DateTimeFormat(this.locale, {dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC'})
-                    .format(new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5])));
+            if ((m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?/.exec(value))) {
+                if (!this.validDate(+m[1], +m[2], +m[3]) || +m[4] > 23 || +m[5] > 59 || (m[6] !== undefined && +m[6] > 59)) {
+                    return value;
+                }
+                return new Intl.DateTimeFormat(this.locale, {dateStyle: 'medium', timeStyle: m[6] === undefined ? 'short' : 'medium', timeZone: 'UTC'})
+                    .format(new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], m[6] === undefined ? 0 : +m[6])));
             }
             if ((m = /^(\d{4})-(\d{2})$/.exec(value))) {
+                if (!this.validDate(+m[1], +m[2], 1)) {
+                    return value;
+                }
                 return new Intl.DateTimeFormat(this.locale, {year: 'numeric', month: 'long', timeZone: 'UTC'})
                     .format(new Date(Date.UTC(+m[1], +m[2] - 1, 1)));
             }
@@ -2378,9 +2624,10 @@ class Renderer {
         for (const stage of (report && report.stages) || []) {
             for (const message of stage.messages) {
                 if (message.line) {
-                    const list = this.findingsByLine.get(message.line) || [];
+                    const key = String(message.line);
+                    const list = this.findingsByLine.get(key) || [];
                     list.push(message);
-                    this.findingsByLine.set(message.line, list);
+                    this.findingsByLine.set(key, list);
                 }
             }
         }
@@ -2795,8 +3042,8 @@ class Renderer {
     lineRow(l, depth) {
         const t = this.t;
         const f = this.f;
-        const findings = (l.index && this.findingsByLine.get(l.index)) || [];
-        const key = 'line-' + (l.index || l.id);
+        const findings = (l.index && this.findingsByLine.get(String(l.index))) || [];
+        const key = 'line-' + String(l.index || l.id).replace(/\//g, '-');
         const details = this.lineDetails(l);
         const quantity = l.quantity !== undefined ? html`
             <span>${f.number(l.quantity)} <span class="unit">${f.unit(l.unit)}</span></span>` : '';
@@ -2942,7 +3189,7 @@ class Renderer {
         ];
         const facts = this.facts(rows, 'small');
         const allowances = (l.allowanceCharges || []).length ? this.allowanceTable(l.allowanceCharges) : '';
-        const findings = (l.index && this.findingsByLine.get(l.index)) || [];
+        const findings = (l.index && this.findingsByLine.get(String(l.index))) || [];
         if (!facts && !allowances && !findings.length) {
             return '';
         }
@@ -3582,6 +3829,9 @@ export class PanioloViewer extends Base {
         this._tab = 'overview';
         this._previews = new Map();
         this._sequence = 0;
+        this._reportSequence = 0;
+        this._selection = 0;
+        this._errorOfReport = false;
         this._root.addEventListener('click', e => this._onClick(e));
         this._root.addEventListener('keydown', e => this._onKey(e));
         this._root.addEventListener('change', e => this._onChange(e));
@@ -3650,7 +3900,11 @@ export class PanioloViewer extends Base {
             this.setAttribute('theme', 'auto');
         }
         if (!this._model && !this._loading && this.getAttribute('src')) {
+            // the document first: choosing it drops a report, so the report is requested after that
             this._fetch(this.getAttribute('src'), false);
+            if (this.getAttribute('report-src')) {
+                this._fetch(this.getAttribute('report-src'), true);
+            }
         } else {
             this._render();
         }
@@ -3681,19 +3935,47 @@ export class PanioloViewer extends Base {
      * @returns Promise of the model; rejected if the document cannot be read (the viewer shows the error)
      */
     async load(input, options) {
+        return this._load(input, options, this._select());
+    }
+
+    /**
+     * Chooses a new document: everything that was started for the previous choice, a document or a
+     * report, is outdated from now on and shows nothing. Returns the generation of the new choice.
+     */
+    _select() {
         const sequence = ++this._sequence;
+        this._selection++;
+        this._reportSequence++;
+        this._report = null;
         this._loading = true;
         this._error = null;
         this._render();
+        return sequence;
+    }
+
+    async _load(input, options, sequence) {
+        const reportSequence = this._reportSequence;
         try {
             const model = await parse(input);
-            const report = options && options.report ? await parseReport(options.report) : null;
+            let report = null;
+            if (options && options.report && reportSequence === this._reportSequence) {
+                try {
+                    report = await parseReport(options.report);
+                } catch (error) {
+                    // a report that a newer choice has replaced meanwhile neither fails the document nor shows an error
+                    if (reportSequence === this._reportSequence) {
+                        throw error;
+                    }
+                }
+            }
             if (sequence !== this._sequence) {
                 return model;
             }
             this._revokePreviews();
             this._model = model;
-            this._report = report;
+            if (report && reportSequence === this._reportSequence) {
+                this._report = report;
+            }
             this._loading = false;
             const allowed = this._allowedTabs();
             this._tab = allowed && !allowed.includes('overview') ? allowed[0] : 'overview';
@@ -3713,16 +3995,30 @@ export class PanioloViewer extends Base {
     /** Loads a validation report for the shown document. */
     async loadReport(input) {
         if (input == null) {
+            this._reportSequence++;
             this._report = null;
+            this._dropReportError();
             this._render();
             return null;
         }
+        return this._loadReport(input, this._sequence, ++this._reportSequence);
+    }
+
+    /** Attaches a report to the document generation and report request it was started for. */
+    async _loadReport(input, sequence, reportSequence) {
+        const current = () => sequence === this._sequence && reportSequence === this._reportSequence;
         try {
-            this._report = await parseReport(input);
-            this._render();
-            return this._report;
+            const report = await parseReport(input);
+            if (current()) {
+                this._report = report;
+                this._dropReportError();
+                this._render();
+            }
+            return report;
         } catch (error) {
-            this._fail(error);
+            if (current()) {
+                this._fail(error, true);
+            }
             throw error;
         }
     }
@@ -3730,6 +4026,8 @@ export class PanioloViewer extends Base {
     /** Removes the document. */
     clear() {
         this._sequence++;
+        this._selection++;
+        this._reportSequence++;
         this._revokePreviews();
         this._model = null;
         this._report = null;
@@ -3766,22 +4064,28 @@ export class PanioloViewer extends Base {
     // -- internals ----------------------------------------------------------------------------------
 
     async _fetch(url, report) {
+        // the choice counts from the moment of the request, not from the arrival of the answer
+        const sequence = report ? this._sequence : this._select();
+        const reportSequence = report ? ++this._reportSequence : this._reportSequence;
+        const current = () => sequence === this._sequence && (!report || reportSequence === this._reportSequence);
         try {
             const response = await fetch(url, {credentials: 'same-origin'});
             if (report) {
-                await this.loadReport(response);
+                await this._loadReport(response, sequence, reportSequence);
             } else {
-                await this.load(response);
+                await this._load(response, undefined, sequence);
             }
         } catch (error) {
-            // shown by load or loadReport; a network error is shown here
-            if (!(error instanceof PanioloError)) {
-                this._fail(new PanioloError('fetch', error.message));
+            // shown by load or loadReport; a network error is shown here, unless a newer choice replaced it
+            if (!(error instanceof PanioloError) && current()) {
+                this._fail(new PanioloError('fetch', error.message), report);
             }
         }
     }
 
     async _loadFiles(files) {
+        // the choice counts from the selection, not from the end of reading the files
+        const selection = ++this._selection;
         let documentFile = null;
         let reportFile = null;
         for (const file of files) {
@@ -3798,6 +4102,9 @@ export class PanioloViewer extends Base {
             }
             documentFile = documentFile || bytes;
         }
+        if (selection !== this._selection) {
+            return;
+        }
         try {
             if (documentFile) {
                 await this.load(documentFile, {report: reportFile});
@@ -3811,9 +4118,18 @@ export class PanioloViewer extends Base {
         }
     }
 
-    _fail(error) {
+    /** A failed report does not damage the document: a correct report or its removal ends that error. */
+    _dropReportError() {
+        if (this._errorOfReport && this._error) {
+            this._error = null;
+        }
+        this._errorOfReport = false;
+    }
+
+    _fail(error, ofReport = false) {
         this._loading = false;
         this._error = error;
+        this._errorOfReport = ofReport;
         this._render();
         const code = error instanceof PanioloError ? error.code : 'unknown';
         this.dispatchEvent(new CustomEvent('paniolo-error', {
@@ -4003,7 +4319,7 @@ export class PanioloViewer extends Base {
                 this.print();
                 break;
             case 'download-xml':
-                this._download(new TextEncoder().encode(m.xml), m.xmlFileName || (m.number || 'document') + '.xml', 'application/xml');
+                this._download(new TextEncoder().encode(utf8Declaration(m.xml)), m.xmlFileName || (m.number || 'document') + '.xml', 'application/xml');
                 break;
             case 'download-pdf':
                 this._download(m.pdf, (m.number || 'document') + '.pdf', 'application/pdf');
@@ -4099,7 +4415,7 @@ export class PanioloViewer extends Base {
 }
 
 function digits(value) {
-    return String(value).replace(/[^0-9]/g, '');
+    return String(value).replace(/[^0-9/]/g, '');
 }
 
 if (typeof customElements !== 'undefined' && !customElements.get(TAG_NAME)) {
