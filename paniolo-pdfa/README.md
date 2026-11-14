@@ -15,6 +15,10 @@ It is based on [veraPDF](https://verapdf.org), the reference PDF/A validator, an
 </dependency>
 ```
 
+veraPDF's dependency on Jackson 2 (`jackson-databind`) is excluded: veraPDF needs it only for its
+own report output, which Paniolo does not use. An application that uses the veraPDF processor
+itself adds `jackson-databind` 2.x; see [Jackson version](../docs/jackson.md).
+
 ```java
 ValidationResult result = paniolo.validate(facturXPdf);
 List<ValidationMessage> pdfa = result.messages(ValidationMessage.Stage.PDF_A);

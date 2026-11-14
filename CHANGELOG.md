@@ -40,6 +40,18 @@ reference in `docs/api/<version>.md`.
 
 ### Changed
 
+- `paniolo-json` and `paniolo-cli` use Jackson 3 (`tools.jackson.core:jackson-databind` 3.1, managed
+  with `tools.jackson:jackson-bom`) instead of Jackson 2.
+  `PanioloJson.configure` takes and returns the Jackson 3 `tools.jackson.databind.json.JsonMapper.Builder`,
+  and `PanioloJsonModule` is a Jackson 3 module; code using them changes its imports from
+  `com.fasterxml.jackson.databind` / `com.fasterxml.jackson.core` to `tools.jackson.databind` /
+  `tools.jackson.core`. The JSON format is unchanged: JSON stored with 1.0.0-rc01 loads and is
+  written again byte for byte. `PanioloJson.read` still throws `IllegalArgumentException` with
+  property path or line and column. The Jackson 3 defaults that would change the format are set
+  explicitly; see `docs/jackson.md` and the migration notes in `paniolo-json/README.md`.
+- `paniolo-pdfa` excludes veraPDF's `jackson-databind` 2.x, which veraPDF uses only for its own
+  report output; Paniolo and the executable CLI JAR carry Jackson 3 only. Applications that use the
+  veraPDF processor themselves add Jackson 2 on their own.
 - Fewer modules, so fewer artifacts per release (nine instead of fifteen). Packages and class names
   are unchanged; only the Maven coordinates change:
   - `paniolo-xml`, `paniolo-xml-ubl`, `paniolo-xml-cii`, and `paniolo-validation` are part of

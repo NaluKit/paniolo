@@ -17,7 +17,7 @@
  */
 package io.github.nalukit.paniolo.cli;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import io.github.nalukit.paniolo.Paniolo;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -546,7 +546,7 @@ class PanioloCliTest {
                      "-f",
                      "json");
       var mapper = new ObjectMapper();
-      var objects = new java.util.ArrayList<com.fasterxml.jackson.databind.JsonNode>();
+      var objects = new java.util.ArrayList<tools.jackson.databind.JsonNode>();
       for (String line : json.out()
                              .lines()
                              .toList()) {
@@ -1143,7 +1143,7 @@ class PanioloCliTest {
                    "-f",
                    "json");
     var mapper  = new ObjectMapper();
-    var entries = new java.util.ArrayList<com.fasterxml.jackson.databind.JsonNode>();
+    var entries = new java.util.ArrayList<tools.jackson.databind.JsonNode>();
     for (String line : json.out()
                            .lines()
                            .toList()) {

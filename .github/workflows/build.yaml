@@ -25,6 +25,7 @@ on:
     paths-ignore:
       - "CHANGELOG.md"
       - "CODE_OF_CONDUCT.md"
+      - "Comparsion.md"
       - "README.md"
       - "SECURITY.md"
       - "docs/**"

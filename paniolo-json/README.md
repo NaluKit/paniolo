@@ -2,8 +2,9 @@
 
 `paniolo-json` stores invoices, orders, and despatch advices of the
 [Paniolo model](../paniolo-shared-model/README.md) as JSON and loads them again, for example for
-drafts, message queues, or REST interfaces. It depends only on `paniolo-shared-model` and Jackson
-Databind (Apache License 2.0), which is why it is optional. It requires Java 21.
+drafts, message queues, or REST interfaces. It depends only on `paniolo-shared-model` and Jackson 3
+Databind (`tools.jackson.core:jackson-databind`, Apache License 2.0), which is why it is optional.
+It requires Java 21.
 
 ```xml
 <dependency>
@@ -22,9 +23,12 @@ String text = json.toJson(invoice);                      // or toPrettyJson, toB
 Invoice loaded = json.read(text, Invoice.class);         // also Order, DespatchAdvice, ...
 ```
 
-To use an own `ObjectMapper`, for example in Spring, apply the same settings to its builder:
+To use an own Jackson 3 mapper, for example in Spring Boot 4, apply the same settings to its
+builder:
 
 ```java
+import tools.jackson.databind.json.JsonMapper;
+
 JsonMapper mapper = PanioloJson.configure(JsonMapper.builder()).build();
 ```
 
@@ -75,13 +79,33 @@ complete XRechnung example (business-rule validation is separate):
 - `PanioloJson` is immutable and thread-safe. Register `PanioloJsonModule` once when building a
   mapper and do not change it afterwards.
 
+## Jackson version
+
+Paniolo uses Jackson 3 (`tools.jackson`) since 1.0.0; 1.0.0-rc01 used Jackson 2. The JSON format
+is unchanged: JSON stored with 1.0.0-rc01 loads as before. Migrating from 1.0.0-rc01:
+
+- `PanioloJson.configure` takes and returns `tools.jackson.databind.json.JsonMapper.Builder`, and
+  `PanioloJsonModule` is a Jackson 3 module; replace the `com.fasterxml.jackson.databind` and
+  `com.fasterxml.jackson.core` imports by `tools.jackson.databind` and `tools.jackson.core`.
+  Annotations stay in `com.fasterxml.jackson.annotation`.
+- A mapper built with `configure` throws Jackson 3's unchecked `JacksonException`.
+  `PanioloJson.read` still throws `IllegalArgumentException` as described above.
+- Applications still on Jackson 2 can use `PanioloJson.create()`; both Jackson majors can share
+  one classpath.
+
+The changed defaults of Jackson 3 and the checks of the format are described in
+[Jackson version](../docs/jackson.md).
+
 ## Build and tests
 
 ```sh
 mvn -pl paniolo-json -am verify
 ```
 
-Tests cover the format, all codes of all code lists, hand-written JSON, and invalid documents.
+Tests cover the format, all codes of all code lists, JSON stored with 1.0.0-rc01, hand-written
+JSON, invalid documents, and an own mapper with an own module (`OwnMapperTest`).
+`JsonFixturesTest` in `paniolo-facturx` loads and writes JSON of further documents stored with
+1.0.0-rc01 byte for byte.
 `JsonRoundTripTest` in `paniolo-facturx` stores and loads the test invoices of all Factur-X
 profiles (including EXTENDED with sub-lines, MINIMUM and BASIC WL, and read ZUGFeRD 1.0
 documents), all Order-X documents, and a despatch advice.

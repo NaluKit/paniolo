@@ -17,8 +17,8 @@
  */
 package io.github.nalukit.paniolo.cli;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 import io.github.nalukit.paniolo.Paniolo;
 import io.github.nalukit.paniolo.config.FacturXProfile;
 import io.github.nalukit.paniolo.config.PdfAttachment;

@@ -22,17 +22,20 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.annotation.Nulls;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.StreamReadFeature;
-import com.fasterxml.jackson.core.StreamWriteFeature;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import io.github.nalukit.paniolo.model.Invoice;
 import io.github.nalukit.paniolo.model.despatch.DespatchAdvice;
 import io.github.nalukit.paniolo.model.order.Order;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.StreamReadFeature;
+import tools.jackson.core.StreamWriteFeature;
+import tools.jackson.core.exc.JacksonIOException;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.MapperFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.cfg.EnumFeature;
+import tools.jackson.databind.exc.ValueInstantiationException;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -61,8 +64,9 @@ public final class PanioloJson {
 
   private PanioloJson() {
     mapper = configure(JsonMapper.builder()).build();
-    pretty = mapper.copy()
-                   .enable(SerializationFeature.INDENT_OUTPUT);
+    pretty = mapper.rebuild()
+                   .enable(SerializationFeature.INDENT_OUTPUT)
+                   .build();
   }
 
   /**
@@ -76,8 +80,10 @@ public final class PanioloJson {
 
   /**
    * Applies the settings Paniolo JSON uses to a mapper builder: the {@link PanioloJsonModule},
-   * record components as the only properties, no {@code null} values, missing lists as empty
-   * lists, exact decimals without exponent, and rejection of unknown properties.
+   * record components as the only properties in the order of the record, no {@code null} values,
+   * missing lists as empty lists, exact decimals without exponent, and rejection of unknown
+   * properties and trailing content. Settings whose default changed between Jackson 2 and 3 are
+   * set explicitly, so the JSON stays the same whatever the defaults of the builder are.
    *
    * @param builder the mapper builder
    * @return the configured builder
@@ -85,19 +91,26 @@ public final class PanioloJson {
   public static JsonMapper.Builder configure(JsonMapper.Builder builder) {
     return builder.addModule(new PanioloJsonModule())
                   // Only the record components are stored, not derived methods like isCountryOnly().
-                  .visibility(PropertyAccessor.ALL,
-                              JsonAutoDetect.Visibility.NONE)
-                  .visibility(PropertyAccessor.FIELD,
-                              JsonAutoDetect.Visibility.ANY)
-                  .serializationInclusion(JsonInclude.Include.NON_NULL)
+                  .changeDefaultVisibility(visibility -> visibility.withVisibility(PropertyAccessor.ALL,
+                                                                                   JsonAutoDetect.Visibility.NONE)
+                                                                   .withVisibility(PropertyAccessor.FIELD,
+                                                                                   JsonAutoDetect.Visibility.ANY))
+                  .changeDefaultPropertyInclusion(inclusion -> inclusion.withValueInclusion(JsonInclude.Include.NON_NULL))
                   // Lists may be left out or null; they are empty then, as in the builders.
                   .withConfigOverride(List.class,
-                                      override -> override.setSetterInfo(JsonSetter.Value.forValueNulls(Nulls.AS_EMPTY)))
+                                      override -> override.setNullHandling(JsonSetter.Value.forValueNulls(Nulls.AS_EMPTY)))
                   .enable(StreamWriteFeature.WRITE_BIGDECIMAL_AS_PLAIN)
                   .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
                   .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
                   .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
-                  .enable(StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION);
+                  .enable(StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION)
+                  // Properties in the order of the record components, as in the stored JSON.
+                  .disable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
+                  // Enums without own serializer, e.g. countries, by their constant name.
+                  .disable(EnumFeature.WRITE_ENUMS_USING_TO_STRING,
+                           EnumFeature.READ_ENUMS_USING_TO_STRING)
+                  // A null primitive, e.g. "charge": null, is read as its default value.
+                  .disable(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES);
   }
 
   private static String write(ObjectMapper mapper,
@@ -106,7 +119,7 @@ public final class PanioloJson {
                            "value");
     try {
       return mapper.writeValueAsString(value);
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       throw new IllegalArgumentException("Cannot write " +
                                          value.getClass()
                                               .getSimpleName() +
@@ -119,7 +132,7 @@ public final class PanioloJson {
   /**
    * Model checks fail inside the record constructors; their message is the useful one.
    */
-  private static RuntimeException failure(IOException e) {
+  private static RuntimeException failure(JacksonException e) {
     if (e instanceof ValueInstantiationException instantiation && instantiation.getCause() instanceof IllegalArgumentException cause) {
       return new IllegalArgumentException(cause.getMessage() +
                                           " (" +
@@ -129,18 +142,18 @@ public final class PanioloJson {
                                           ")",
                                           cause);
     }
-    if (e instanceof JsonProcessingException processing) {
-      return new IllegalArgumentException("Invalid Paniolo JSON: " + processing.getOriginalMessage() + " at " + path(processing),
-                                          e);
+    // Only a failing stream is an I/O problem; everything else is an invalid document.
+    if (e instanceof JacksonIOException io && io.getCause() instanceof IOException cause) {
+      return new UncheckedIOException(cause);
     }
-    return new UncheckedIOException(e);
+    return new IllegalArgumentException("Invalid Paniolo JSON: " + e.getOriginalMessage() + " at " + path(e),
+                                        e);
   }
 
-  private static String path(JsonProcessingException e) {
-    if (e instanceof com.fasterxml.jackson.databind.JsonMappingException mapping &&
-        !mapping.getPath()
-                .isEmpty()) {
-      return mapping.getPathReference();
+  private static String path(JacksonException e) {
+    if (!e.getPath()
+          .isEmpty()) {
+      return e.getPathReference();
     }
     return e.getLocation() == null ?
            "unknown location" :
@@ -207,7 +220,7 @@ public final class PanioloJson {
     try {
       return mapper.readValue(json,
                               type);
-    } catch (IOException e) {
+    } catch (JacksonException e) {
       throw failure(e);
     }
   }
@@ -231,7 +244,7 @@ public final class PanioloJson {
     try {
       return mapper.readValue(json,
                               type);
-    } catch (IOException e) {
+    } catch (JacksonException e) {
       throw failure(e);
     }
   }
@@ -254,9 +267,9 @@ public final class PanioloJson {
                            "type");
     try {
       return mapper.readerFor(type)
-                   .without(com.fasterxml.jackson.core.JsonParser.Feature.AUTO_CLOSE_SOURCE)
+                   .without(StreamReadFeature.AUTO_CLOSE_SOURCE)
                    .readValue(json);
-    } catch (IOException e) {
+    } catch (JacksonException e) {
       throw failure(e);
     }
   }
