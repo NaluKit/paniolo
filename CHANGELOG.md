@@ -6,6 +6,10 @@ reference in `docs/api/<version>.md`.
 
 ## [Unreleased]
 
+## [1.0.0-rc02] - 2026-11-15
+
+Second release candidate. See the [API reference for 1.0.0-rc02](docs/api/1.0.0-rc02.md).
+
 ### Added
 
 - `ImportFidelityTest` validates every normalized export of the corpus against the rules of its target
@@ -345,5 +349,6 @@ reference in `docs/api/<version>.md`.
 First release candidate, published to Maven Central under the group ID `io.github.nalukit`. See
 the [API reference for 1.0.0-rc01](docs/api/1.0.0-rc01.md).
 
-[Unreleased]: https://github.com/NaluKit/paniolo/compare/1.0.0-rc01...HEAD
+[Unreleased]: https://github.com/NaluKit/paniolo/compare/1.0.0-rc02...HEAD
+[1.0.0-rc02]: https://github.com/NaluKit/paniolo/releases/tag/1.0.0-rc02
 [1.0.0-rc01]: https://github.com/NaluKit/paniolo/releases/tag/1.0.0-rc01

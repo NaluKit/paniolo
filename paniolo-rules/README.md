@@ -15,7 +15,7 @@ unless `Paniolo.builder()` names another release, for example with `facturXRules
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo-rules</artifactId>
-  <version>1.0.0-rc01</version>
+  <version>1.0.0-rc02</version>
 </dependency>
 ```
 
