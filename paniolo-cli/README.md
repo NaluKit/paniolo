@@ -96,6 +96,10 @@ case-insensitive (`--profile en16931`).
   Peppol. See [validating XML](../README.md#validating-xml). `--syntax` explicitly selects
   EN 16931 and XRechnung with their unchanged severities; `--profile EN16931` selects the
   Factur-X EN 16931 rules for CII XML.
+- **Layout options**: `--lang`, `--logo`, `--logo-position`, `--no-sender-address`, `--font`,
+  `--bold-font`, `--accent`, `--footer`, and `--watermark` configure the rendered pages like
+  `PdfLayout` ([PDF layout](../paniolo-facturx/docs/pdf-layout.md)). Without `--font`, the pages
+  use IBM Plex Sans Regular and Bold; `--font` alone emboldens the given font for bold text.
 - **Rules**: `--rules`, `--facturx-rules`, `--extended-ctc-fr-rules`, `--order-x-rules`, and
   `--despatch-advice-rules` configure the facade like the methods of `Paniolo.builder()`.
 - **Calculation check**: `--calculation-check` adds the optional recalculation of the amounts

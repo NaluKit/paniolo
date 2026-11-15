@@ -134,7 +134,7 @@ Supported:
   attachments, validated with the KoSIT extension scenario.
 - Producing software of received PDFs, recognized from the signatures the Mustang project uses.
 - Rendering of the visual PDF/A-3b document of invoices, orders, and delivery notes (DIN 5008,
-  German, English, and French, logo, own fonts) with `paniolo-facturx`.
+  German, English, and French, logo, IBM Plex Sans or own fonts) with `paniolo-facturx`.
 - JSON storage of invoices, orders, and despatch advices with the checks of the model (`paniolo-json`).
 - Migration of Mustang integrations: `paniolo-mustang` maps `org.mustangproject.Invoice` (any
   `IExportableTransaction`) to the model; built for Mustang 2.26.0, newer Mustang versions are
@@ -253,7 +253,7 @@ names the missing dependency.
 | [`paniolo`](paniolo/README.md)                                 | **Entry point for applications**: `Paniolo` facade; UBL and CII writers and readers ([XML](paniolo/docs/xml.md), [UBL](paniolo/docs/ubl.md), [CII](paniolo/docs/cii.md)), [validation](paniolo/docs/validation.md) with Saxon-HE, structured validation results and XML report; includes the model and the rules |
 | [`paniolo-shared-model`](paniolo-shared-model/README.md)       | Immutable model of invoices, orders, and despatch advices, builders, code lists, and total calculations; no runtime dependencies                                                                                                                            |
 | [`paniolo-rules`](paniolo-rules/README.md)                     | Official rules, pinned and checksum-verified: KoSIT XRechnung (current and older versions), Factur-X / ZUGFeRD of FeRD for all five profiles, ZUGFeRD 1.0, the French EXTENDED-CTC-FR and BR-FR rules, and the Order-X rules (XSD, Schematron XSLT) |
-| [`paniolo-facturx`](paniolo-facturx/README.md)                 | Optional PDF support: embeds and extracts invoices, orders, delivery notes, and attachments in PDF/A-3, container checks, producer detection, ZUGFeRD 1.0 migration (Apache PDFBox); renders the visual PDF/A-3b pages of invoices, orders, and delivery notes ([layout](paniolo-facturx/docs/pdf-layout.md): DIN 5008, German, English, and French, logo, own fonts) |
+| [`paniolo-facturx`](paniolo-facturx/README.md)                 | Optional PDF support: embeds and extracts invoices, orders, delivery notes, and attachments in PDF/A-3, container checks, producer detection, ZUGFeRD 1.0 migration (Apache PDFBox); renders the visual PDF/A-3b pages of invoices, orders, and delivery notes ([layout](paniolo-facturx/docs/pdf-layout.md): DIN 5008, German, English, and French, logo, IBM Plex Sans or own fonts) |
 | [`paniolo-pdfa`](paniolo-pdfa/README.md)                       | Optional PDF/A conformance checks for all PDFs validated by the facade (veraPDF)                                                                                                                                                                            |
 | [`paniolo-json`](paniolo-json/README.md)                       | Optional JSON storage of invoices, orders, and despatch advices (Jackson)                                                                                                                                                                                   |
 | [`paniolo-visualizer`](paniolo-visualizer/README.md)           | Optional browser visualizer: web component `<paniolo-viewer>` that renders UBL, CII, Factur-X / ZUGFeRD PDFs, ZUGFeRD 1.0, Order-X, despatch advices, and validation reports from bytes; standalone HTML from Java                                          |
@@ -1443,7 +1443,9 @@ accordingly), and the ZUGFeRD 1.0 schemas and Schematron taken unmodified from t
 (Apache 2.0, with the original FeRD terms of use of ZUGFeRD 1.0). The Order-X SVRL stylesheets
 compiled by Paniolo contain templates of the ISO Schematron skeleton (MIT License,
 `META-INF/licenses/MIT-ISO-Schematron.txt`). `META-INF/NOTICE` of `paniolo-rules` lists every
-packaged work with its terms.
+packaged work with its terms. `paniolo-facturx` packages the font IBM Plex Sans unmodified under
+the SIL Open Font License 1.1 (Copyright © 2017 IBM Corp., Reserved Font Name "Plex"), with its
+license; see `META-INF/NOTICE` in its JAR.
 
 Paniolo itself is Apache 2.0, but some dependencies are under the Mozilla Public License 2.0:
 Saxon-HE, a required dependency of `paniolo`, and veraPDF (dual licensed GPLv3+ /

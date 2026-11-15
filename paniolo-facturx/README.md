@@ -1,7 +1,9 @@
 # Paniolo Factur-X / ZUGFeRD
 
 `paniolo-facturx` adds PDF support to the [`Paniolo`](../paniolo/README.md) facade. It depends on
-`paniolo` and Apache PDFBox 3 (Apache License 2.0) and is found through `java.util.ServiceLoader`:
+`paniolo` and Apache PDFBox 3 (Apache License 2.0), packages the font IBM Plex Sans (SIL Open
+Font License 1.1, see `META-INF/NOTICE`) for the rendered pages, and is found through
+`java.util.ServiceLoader`:
 add the dependency and the facade methods below work, there is nothing to configure. Applications
 without it keep a PDF-free class path.
 

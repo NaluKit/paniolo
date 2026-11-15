@@ -39,7 +39,7 @@ public interface PdfLayoutSupport {
    * @param invoice the invoice
    * @param layout  language, logo, fonts, and colors
    * @return the PDF/A-3b document
-   * @throws IllegalArgumentException if the logo or a font cannot be read
+   * @throws IllegalArgumentException if the logo or a font cannot be read or embedded
    */
   byte[] render(Invoice invoice,
                 PdfLayout layout);
@@ -51,7 +51,7 @@ public interface PdfLayoutSupport {
    * @param order  the order
    * @param layout language, logo, fonts, and colors
    * @return the PDF/A-3b document
-   * @throws IllegalArgumentException if the logo or a font cannot be read
+   * @throws IllegalArgumentException if the logo or a font cannot be read or embedded
    */
   default byte[] render(Order order,
                         PdfLayout layout) {
@@ -64,7 +64,7 @@ public interface PdfLayoutSupport {
    * @param advice the despatch advice
    * @param layout language, logo, fonts, and colors
    * @return the PDF/A-3b document
-   * @throws IllegalArgumentException if the logo or a font cannot be read
+   * @throws IllegalArgumentException if the logo or a font cannot be read or embedded
    */
   default byte[] render(DespatchAdvice advice,
                         PdfLayout layout) {

@@ -51,9 +51,10 @@ import java.util.Objects;
  *                          without effect if there is no logo
  * @param logoPosition      side of the letterhead the logo is shown on; {@link LogoPosition#LEFT}
  *                          by default. The sender's address is shown on the other side.
- * @param regularFont       TrueType font for regular text, or null for Liberation Sans (packaged
- *                          with PDFBox)
- * @param boldFont          TrueType font for bold text, or null to embolden the regular font
+ * @param regularFont       TrueType font for regular text, or null for IBM Plex Sans (packaged
+ *                          with paniolo-facturx)
+ * @param boldFont          TrueType font for bold text, or null to embolden the regular font; with
+ *                          no regular font, IBM Plex Sans Bold is used
  * @param accentColor       color of rules and headings as RGB, e.g. {@code 0x019ABC}
  * @param footer            additional footer text on every page, e.g. management and register
  *                          court, or null
@@ -101,7 +102,7 @@ public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, b
 
   /**
    * The default layout: German labels, the sender's address in the letterhead, no logo,
-   * Liberation Sans, the Paniolo accent color.
+   * IBM Plex Sans, the Paniolo accent color.
    *
    * @return the default layout
    */
@@ -231,8 +232,10 @@ public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, b
   }
 
   /**
-   * Returns a copy with own TrueType fonts, e.g. the corporate font. The fonts are embedded as
-   * subsets, as PDF/A requires; their license must allow embedding.
+   * Returns a copy with own TrueType fonts instead of IBM Plex Sans, e.g. the corporate font. The
+   * fonts are embedded as subsets, as PDF/A requires; their license must allow embedding in
+   * documents. Fonts whose embedding permissions forbid embedding or subsetting are rejected when
+   * the document is rendered.
    *
    * @param regular font for regular text
    * @param bold    font for bold text, or null to embolden the regular font
@@ -340,7 +343,7 @@ public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, b
   /**
    * Returns a copy of the regular font.
    *
-   * @return the TrueType font, or null for Liberation Sans
+   * @return the TrueType font, or null for IBM Plex Sans
    */
   @Override
   public byte[] regularFont() {
@@ -350,7 +353,8 @@ public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, b
   /**
    * Returns a copy of the bold font.
    *
-   * @return the TrueType font, or null to embolden the regular font
+   * @return the TrueType font, or null for IBM Plex Sans Bold without an own regular font and the
+   *     emboldened regular font with one
    */
   @Override
   public byte[] boldFont() {

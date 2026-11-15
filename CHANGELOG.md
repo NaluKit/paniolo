@@ -6,6 +6,17 @@ reference in `docs/api/<version>.md`.
 
 ## [Unreleased]
 
+### Changed
+
+- The rendered PDFs use IBM Plex Sans Regular and Bold (SIL Open Font License 1.1), packaged with
+  `paniolo-facturx`, instead of Liberation Sans of PDFBox. Bold text uses the real bold face instead
+  of emboldening the regular font. Digits are slightly wider, so line and page breaks of existing
+  documents can differ. Own fonts of `PdfLayout.withFonts` are unchanged.
+
+- `PdfLayout.withFonts` fonts whose embedding permissions (`fsType`) forbid embedding or subsetting
+  are rejected with a message naming the restriction instead of "no readable TrueType font" or an
+  error while saving the PDF. The PDF layout documentation explains the license of own fonts.
+
 ## [1.0.0-rc02] - 2026-11-15
 
 Second release candidate. See the [API reference for 1.0.0-rc02](docs/api/1.0.0-rc02.md).

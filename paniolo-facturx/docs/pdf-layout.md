@@ -3,8 +3,9 @@
 [`paniolo-facturx`](../README.md) renders the visual PDF/A-3b document of invoices, Order-X orders,
 and despatch advices from the Paniolo model (package `io.github.nalukit.paniolo.pdflayout`). With
 it, a Factur-X / ZUGFeRD invoice, an Order-X PDF, or a CIDA delivery note needs no PDF of its own:
-Paniolo renders the pages, writes the XML, and embeds it. It is based on Apache PDFBox; there is
-no further dependency to add.
+Paniolo renders the pages, writes the XML, and embeds it. It is based on Apache PDFBox and sets
+the text in IBM Plex Sans, which the module packages (see [Fonts](#fonts)); there is no further
+dependency to add.
 
 ## Usage
 
@@ -176,10 +177,22 @@ documents created with `toFacturX` pass `Paniolo.validate`, including the PDF/A 
 
 ## Fonts
 
-The default font is Liberation Sans (SIL Open Font License), which PDFBox packages; bold text is
-emboldened from the regular font. `PdfLayout.withFonts(regular, bold)` embeds own TrueType fonts,
-e.g. the corporate font; their license must allow embedding. Characters a font has no glyph for
-are shown as `?`, spaces as spaces, so any text can be rendered.
+The default font is IBM Plex Sans Regular and Bold (version 3.006, SIL Open Font License 1.1,
+Reserved Font Name "Plex"), packaged with `paniolo-facturx` unmodified together with its license
+(`io/github/nalukit/paniolo/pdflayout/fonts/IBMPlexSans-LICENSE.txt`, see `META-INF/NOTICE`). It
+covers Latin including Central and Eastern European languages, Greek, and Cyrillic, and its digits
+have the same width, so amounts line up in the columns. `PdfLayout.withFonts(regular, bold)`
+embeds own TrueType fonts, e.g. the corporate font; without a bold font, bold text is emboldened
+from the regular font. Characters a font has no glyph for are shown as `?`, spaces as spaces, so
+any text can be rendered.
+
+Own fonts are embedded as subsets in every generated PDF, which is then passed on to customers.
+Paniolo does not check their license; whoever passes the fonts is responsible for it. Fonts under
+the SIL Open Font License or the Apache License allow this without restriction. Many commercial
+fonts, including corporate fonts licensed for desktop use only, need a separate license for
+embedding in documents or for use on servers; check the font license before using such a font.
+Fonts whose embedding permissions (`fsType` of the OS/2 table) forbid embedding or subsetting are
+rejected with an `IllegalArgumentException` that names the restriction.
 
 ## Limits
 

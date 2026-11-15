@@ -409,7 +409,7 @@ class PdfLayoutTest {
                  text);
       assertTrue(text.contains("abzüglich Mengenrabatt"),
                  text);
-      // characters without glyph in Liberation Sans are replaced
+      // characters without glyph in the font are replaced
       assertTrue(text.contains("äöüß"),
                  text);
     }
@@ -676,6 +676,80 @@ class PdfLayoutTest {
                                        PdfLayout.defaults()
                                                 .withFonts("no font".getBytes(StandardCharsets.UTF_8),
                                                            null)));
+    }
+
+    @Test
+    @DisplayName("rejects fonts whose embedding permissions forbid embedding")
+    void rejectsRestrictedFonts()
+        throws IOException {
+      var invoice = TestInvoices.simple("R-1")
+                                .build();
+      for (int fsType : new int[] { 0x0002, 0x0200, 0x0100 }) {
+        var layout = PdfLayout.defaults()
+                              .withFonts(fontWithFsType(fsType),
+                                         null);
+        var e = assertThrows(IllegalArgumentException.class,
+                             () -> PANIOLO.toPdf(invoice,
+                                                 layout));
+        assertTrue(e.getMessage()
+                    .contains("does not permit embedding"),
+                   e.getMessage());
+      }
+      // editable embedding is allowed
+      assertTrue(PANIOLO.toPdf(invoice,
+                               PdfLayout.defaults()
+                                        .withFonts(fontWithFsType(0x0008),
+                                                   null)).length > 0);
+    }
+
+    @Test
+    @DisplayName("embeds IBM Plex Sans Regular and Bold by default")
+    void embedsDefaultFonts()
+        throws IOException {
+      byte[] pdf = PANIOLO.toPdf(TestInvoices.simple("R-1")
+                                             .build(),
+                                 PdfLayout.defaults());
+      var fonts = new java.util.TreeSet<String>();
+      try (var document = Loader.loadPDF(pdf)) {
+        for (PDPage page : document.getPages()) {
+          for (COSName name : page.getResources()
+                                  .getFontNames()) {
+            String font = page.getResources()
+                              .getFont(name)
+                              .getName();
+            // subset prefix "ABCDEF+"
+            fonts.add(font.substring(font.indexOf('+') + 1));
+          }
+        }
+      }
+      // PostScript names of the regular and the bold face
+      assertEquals(java.util.Set.of("IBMPlexSans",
+                                    "IBMPlexSans-Bold"),
+                   fonts);
+      assertEquals(List.of(),
+                   pdfaFailures(pdf));
+    }
+
+    /**
+     * The default font with the given fsType in its OS/2 table.
+     */
+    private static byte[] fontWithFsType(int fsType)
+        throws IOException {
+      byte[] font;
+      try (InputStream input = DocumentRenderer.class.getResourceAsStream(DocumentRenderer.DEFAULT_FONT)) {
+        font = input.readAllBytes();
+      }
+      var buffer = java.nio.ByteBuffer.wrap(font);
+      int tables = buffer.getShort(4) & 0xFFFF;
+      for (int i = 0; i < tables; i++) {
+        int entry = 12 + 16 * i;
+        if (buffer.getInt(entry) == 0x4F532F32) { // "OS/2"
+          buffer.putShort(buffer.getInt(entry + 8) + 8,
+                          (short) fsType);
+          return font;
+        }
+      }
+      throw new IllegalStateException("No OS/2 table");
     }
   }
 

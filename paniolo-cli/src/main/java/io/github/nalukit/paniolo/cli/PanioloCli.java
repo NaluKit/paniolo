@@ -558,7 +558,7 @@ public final class PanioloCli {
     @Option(names = "--no-sender-address", description = "Hides the sender's address in the letterhead, e.g. for paper with a preprinted letterhead.")
     boolean noSenderAddress;
 
-    @Option(names = "--font", paramLabel = "FILE", description = "TrueType font for the rendered PDF instead of Liberation Sans.")
+    @Option(names = "--font", paramLabel = "FILE", description = "TrueType font for the rendered PDF instead of IBM Plex Sans.")
     Path font;
 
     @Option(names = "--bold-font", paramLabel = "FILE", description = "TrueType font for bold text; requires --font.")

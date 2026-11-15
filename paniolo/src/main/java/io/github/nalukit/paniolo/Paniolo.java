@@ -2197,7 +2197,7 @@ public final class Paniolo
    * @param document the validated content, for its size and SHA-256, or {@code null}
    * @param layout   language, fonts, accent color and footer; logo and sender address are not used
    * @return the PDF/A-3b report
-   * @throws IllegalArgumentException if a font of the layout cannot be read
+   * @throws IllegalArgumentException if a font of the layout cannot be read or embedded
    * @throws IllegalStateException    if {@code paniolo-facturx} is missing
    */
   public byte[] toReportPdf(ValidationResult result,
@@ -2280,7 +2280,7 @@ public final class Paniolo
    * @param invoice the invoice; must not be {@code null}
    * @param layout  language, logo, fonts, and colors; must not be {@code null}
    * @return the PDF/A-3b document
-   * @throws IllegalArgumentException if the logo or a font of the layout cannot be read
+   * @throws IllegalArgumentException if the logo or a font of the layout cannot be read or embedded
    * @throws IllegalStateException    if {@code paniolo-facturx} is missing
    */
   public byte[] toPdf(Invoice invoice,
@@ -2647,7 +2647,7 @@ public final class Paniolo
    * @param order  the order; must not be {@code null}
    * @param layout language, logo, fonts, and colors; must not be {@code null}
    * @return the PDF/A-3b document, without embedded XML
-   * @throws IllegalArgumentException if the logo or a font of the layout cannot be read
+   * @throws IllegalArgumentException if the logo or a font of the layout cannot be read or embedded
    * @throws IllegalStateException    if {@code paniolo-facturx} is missing
    */
   public byte[] toPdf(Order order,
@@ -3015,7 +3015,7 @@ public final class Paniolo
    * @param advice the despatch advice; must not be {@code null}
    * @param layout language, logo, fonts, and colors; must not be {@code null}
    * @return the PDF/A-3b document, without embedded XML
-   * @throws IllegalArgumentException if the logo or a font of the layout cannot be read
+   * @throws IllegalArgumentException if the logo or a font of the layout cannot be read or embedded
    * @throws IllegalStateException    if {@code paniolo-facturx} is missing
    */
   public byte[] toPdf(DespatchAdvice advice,

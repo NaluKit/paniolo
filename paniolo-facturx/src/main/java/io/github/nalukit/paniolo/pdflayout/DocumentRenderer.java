@@ -27,6 +27,10 @@ import io.github.nalukit.paniolo.pdflayout.Canvas.Cell;
 import io.github.nalukit.paniolo.pdflayout.Canvas.Font;
 import io.github.nalukit.paniolo.pdflayout.Canvas.Row;
 import io.github.nalukit.paniolo.pdflayout.Canvas.Style;
+import org.apache.fontbox.ttf.OS2WindowsMetricsTable;
+import org.apache.fontbox.ttf.TTFParser;
+import org.apache.fontbox.ttf.TrueTypeFont;
+import org.apache.pdfbox.io.RandomAccessReadBuffer;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -56,9 +60,13 @@ import static io.github.nalukit.paniolo.pdflayout.Canvas.PAGE;
  */
 abstract class DocumentRenderer {
   /**
-   * Liberation Sans (SIL Open Font License), packaged with PDFBox.
+   * IBM Plex Sans Regular (SIL Open Font License 1.1), packaged with this module.
    */
-  static final String DEFAULT_FONT = "/org/apache/pdfbox/resources/ttf/LiberationSans-Regular.ttf";
+  static final String DEFAULT_FONT      = "fonts/IBMPlexSans-Regular.ttf";
+  /**
+   * IBM Plex Sans Bold (SIL Open Font License 1.1), packaged with this module.
+   */
+  static final String DEFAULT_BOLD_FONT = "fonts/IBMPlexSans-Bold.ttf";
 
   static final int TEXT      = 0x1B1F24;
   static final int MUTED     = 0x5B6573;
@@ -87,9 +95,41 @@ abstract class DocumentRenderer {
     this.accent = layout.accentColor();
   }
 
+  /**
+   * The default fonts, read once on first use.
+   */
+  private static final class DefaultFonts {
+    static final byte[] REGULAR = read(DEFAULT_FONT);
+    static final byte[] BOLD    = read(DEFAULT_BOLD_FONT);
+
+    private static byte[] read(String name) {
+      try (InputStream input = DocumentRenderer.class.getResourceAsStream(name)) {
+        if (input == null) {
+          throw new IllegalStateException("Font not found: " + name);
+        }
+        return input.readAllBytes();
+      } catch (IOException e) {
+        throw new UncheckedIOException("Cannot read the font " + name,
+                                       e);
+      }
+    }
+  }
+
   private static PDType0Font font(PDDocument document,
                                   byte[] data,
                                   String name) {
+    String restriction;
+    try (TrueTypeFont ttf = new TTFParser().parse(new RandomAccessReadBuffer(data))) {
+      restriction = embeddingRestriction(ttf.getOS2Windows());
+    } catch (IOException | RuntimeException e) {
+      throw new IllegalArgumentException("The " + name + " font of the layout is no readable TrueType font",
+                                         e);
+    }
+    if (restriction != null) {
+      throw new IllegalArgumentException("The " + name + " font of the layout " + restriction +
+                                         " (fsType of the OS/2 table); embedding it needs a font that " +
+                                         "allows this, check its license");
+    }
     try {
       return PDType0Font.load(document,
                               new ByteArrayInputStream(data));
@@ -97,6 +137,29 @@ abstract class DocumentRenderer {
       throw new IllegalArgumentException("The " + name + " font of the layout is no readable TrueType font",
                                          e);
     }
+  }
+
+  /**
+   * The embedding permissions of a font as PDFBox checks them: restricted license embedding and
+   * bitmap embedding only forbid embedding, no subsetting forbids the subsets the layout embeds.
+   *
+   * @return why the font cannot be embedded, or {@code null} if it can
+   */
+  static String embeddingRestriction(OS2WindowsMetricsTable os2) {
+    if (os2 == null) {
+      return null;
+    }
+    int fsType = os2.getFsType();
+    if ((fsType & 0x000F) == OS2WindowsMetricsTable.FSTYPE_RESTRICTED) {
+      return "does not permit embedding (restricted license embedding)";
+    }
+    if ((fsType & OS2WindowsMetricsTable.FSTYPE_BITMAP_ONLY) != 0) {
+      return "does not permit embedding (bitmap embedding only)";
+    }
+    if ((fsType & OS2WindowsMetricsTable.FSTYPE_NO_SUBSETTING) != 0) {
+      return "does not permit embedding as subset";
+    }
+    return null;
   }
 
   static boolean sameCountry(Address a,
@@ -211,13 +274,10 @@ abstract class DocumentRenderer {
     PDType0Font regular;
     PDType0Font bold = null;
     if (layout.regularFont() == null) {
-      try (InputStream input = PDDocument.class.getResourceAsStream(DEFAULT_FONT)) {
-        if (input == null) {
-          throw new IllegalStateException("Font not found: " + DEFAULT_FONT);
-        }
-        regular = PDType0Font.load(document,
-                                   input);
-      }
+      regular = PDType0Font.load(document,
+                                 new ByteArrayInputStream(DefaultFonts.REGULAR));
+      bold    = PDType0Font.load(document,
+                                 new ByteArrayInputStream(DefaultFonts.BOLD));
     } else {
       regular = font(document,
                      layout.regularFont(),
