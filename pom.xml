@@ -72,6 +72,9 @@
     <plugin.compiler.version>3.16.0</plugin.compiler.version>
     <plugin.cyclonedx.version>2.9.3</plugin.cyclonedx.version>
     <plugin.dependency-check.version>13.0.0</plugin.dependency-check.version>
+    <!-- H2 driver of dependency-check-maven (driver.h2database.version of its parent POM); the
+         plugin uses it and scripts/ci/check-owasp-db-age.sh reads the database with it -->
+    <plugin.dependency-check.h2.version>2.4.240</plugin.dependency-check.h2.version>
     <plugin.download.version>1.13.0</plugin.download.version>
     <plugin.enforcer.version>3.5.0</plugin.enforcer.version>
     <plugin.flatten.version>1.9.0</plugin.flatten.version>
@@ -137,6 +140,13 @@
           <groupId>org.owasp</groupId>
           <artifactId>dependency-check-maven</artifactId>
           <version>${plugin.dependency-check.version}</version>
+          <dependencies>
+            <dependency>
+              <groupId>com.h2database</groupId>
+              <artifactId>h2</artifactId>
+              <version>${plugin.dependency-check.h2.version}</version>
+            </dependency>
+          </dependencies>
         </plugin>
       </plugins>
     </pluginManagement>

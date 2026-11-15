@@ -127,6 +127,22 @@ jobs:
       - name: Check the release note links
         run: scripts/release/test-release-notes.sh
 
+  # Regression tests of the CI scripts for the OWASP database: the age check and the image update.
+  ci-scripts:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Check the OWASP image update and database age scripts
+        run: |
+          scripts/ci/test-update-owasp-image.sh
+          scripts/ci/test-owasp-db-age.sh
+
   # Builds sources and JavaDoc with the release profile, without signing or publishing anything,
   # so problems with the release build show up before a merge and not only in the deploy job.
   release-dry-run:
@@ -162,7 +178,7 @@ jobs:
   owasp:
     runs-on: ubuntu-26.04
     timeout-minutes: 8
-    needs: [ verify ]
+    needs: [ verify, ci-scripts ]
     services:
       # Pinned by digest, so that the executed image cannot change without a commit. The image
       # carries the vulnerability database, so a pinned image freezes it: the step "Check the age
@@ -180,20 +196,19 @@ jobs:
           cache: maven
       - name: Copy owasp database from container to runner
         run: docker cp "$(docker ps -aqf "name=owasp-db")":/dependency-check/data ./dependency-checker-db/
+      # The age comes from the update metadata in the database (nvd.api.last.modified), not from
+      # file times, so new files next to old data do not make it look current.
       - name: Check the age of the vulnerability database
         env:
           OWASP_DB_MAX_AGE_DAYS: 14
         run: |
-          newest=$(find ./dependency-checker-db -type f -printf '%T@\n' | sort -n | tail -n 1)
-          [[ -n $newest ]] || { echo "::error::The vulnerability database is empty"; exit 1; }
-          age_days=$(( ($(date +%s) - ${newest%.*}) / 86400 ))
-          summary="Vulnerability database: newest file from $(date -u -d "@${newest%.*}" +%F) ($age_days days old, limit $OWASP_DB_MAX_AGE_DAYS), image from the digest in the workflow"
-          echo "$summary"
-          echo "$summary" >> "$GITHUB_STEP_SUMMARY"
-          if [[ $age_days -gt $OWASP_DB_MAX_AGE_DAYS ]]; then
-            echo "::error::The vulnerability database is older than $OWASP_DB_MAX_AGE_DAYS days; update the image digest (scripts/ci/update-owasp-image.sh)"
+          if ! summary=$(scripts/ci/check-owasp-db-age.sh ./dependency-checker-db "$OWASP_DB_MAX_AGE_DAYS" 2>&1); then
+            echo "$summary"
+            echo "::error::The vulnerability database is not current enough; update the image digest (scripts/ci/update-owasp-image.sh)"
             exit 1
           fi
+          echo "$summary"
+          echo "$summary (image from the digest in the workflow)" >> "$GITHUB_STEP_SUMMARY"
       - name: OWASP Check
         # the plugin version comes from the pluginManagement of the parent POM
         run: |
@@ -222,7 +237,7 @@ jobs:
       # build provenance attestations of the release artifacts
       id-token: write
       attestations: write
-    needs: [ verify, release-dry-run, owasp, visualizer-browser ]
+    needs: [ verify, ci-scripts, release-dry-run, owasp, visualizer-browser ]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
     steps:
       - uses: actions/checkout@v7
