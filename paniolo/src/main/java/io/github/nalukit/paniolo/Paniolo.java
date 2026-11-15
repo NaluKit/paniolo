@@ -22,6 +22,7 @@ import io.github.nalukit.paniolo.config.FacturXResult;
 import io.github.nalukit.paniolo.config.InvoiceSyntax;
 import io.github.nalukit.paniolo.config.PdfAttachment;
 import io.github.nalukit.paniolo.config.PdfLayout;
+import io.github.nalukit.paniolo.config.PdfaScriptCache;
 import io.github.nalukit.paniolo.config.PdfProducer;
 import io.github.nalukit.paniolo.config.UnknownDocumentHandling;
 import io.github.nalukit.paniolo.model.Invoice;
@@ -43,6 +44,8 @@ import io.github.nalukit.paniolo.validation.ValidationMessage;
 import io.github.nalukit.paniolo.validation.ValidationProfile;
 import io.github.nalukit.paniolo.validation.ValidationResult;
 import io.github.nalukit.paniolo.validation.ValidationStatistics;
+import io.github.nalukit.paniolo.validation.XrechnungScenario;
+import io.github.nalukit.paniolo.validation.XrechnungSpecification;
 import io.github.nalukit.paniolo.xml.ExportVariant;
 import io.github.nalukit.paniolo.xml.ImportResult;
 import io.github.nalukit.paniolo.xml.InvoiceXmlReader;
@@ -61,11 +64,13 @@ import io.github.nalukit.paniolo.xml.ubl.DespatchAdviceWriter;
 import io.github.nalukit.paniolo.xml.ubl.UblInvoiceReader;
 import io.github.nalukit.paniolo.xml.ubl.UblInvoiceWriter;
 import io.github.nalukit.paniolo.xml.util.SpecificationGenerations;
+import io.github.nalukit.paniolo.xml.util.XmlDocuments;
 
 import javax.xml.namespace.QName;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -83,7 +88,9 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HexFormat;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -91,7 +98,6 @@ import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.regex.Pattern;
 
 /**
  * Single entry point (facade) for writing, reading, converting and validating electronic business
@@ -175,15 +181,13 @@ import java.util.regex.Pattern;
  * <p>The facade itself has no PDF dependency. PDF features are discovered at runtime with
  * {@link ServiceLoader}; add the modules you need to the classpath:
  * <ul>
- *   <li>{@code io.github.nalukit:paniolo-facturx} &ndash; required by every method that reads, writes or
- *       inspects a PDF (Factur-X / ZUGFeRD, Order-X PDF, PDF delivery note). Without it these methods
- *       throw an {@link IllegalStateException} naming the missing dependency.</li>
- *   <li>{@code io.github.nalukit:paniolo-pdf-layout} &ndash; renders the visual PDF/A document of
- *       invoices, orders, and despatch advices for the {@code toPdf} methods,
- *       {@link #toFacturX(Invoice, FacturXProfile, PdfLayout, List)},
+ *   <li>{@code io.github.nalukit:paniolo-facturx} &ndash; required by every method that reads, writes,
+ *       inspects, or renders a PDF (Factur-X / ZUGFeRD, Order-X PDF, PDF delivery note); also renders
+ *       the visual PDF/A document of invoices, orders, and despatch advices for the {@code toPdf}
+ *       methods, {@link #toFacturX(Invoice, FacturXProfile, PdfLayout, List)},
  *       {@link #toOrderXPdf(Order, PdfLayout, List)}, and
- *       {@link #toDespatchAdvicePdf(DespatchAdvice, PdfLayout, List)}; brings
- *       {@code paniolo-facturx}.</li>
+ *       {@link #toDespatchAdvicePdf(DespatchAdvice, PdfLayout, List)}. Without it these methods
+ *       throw an {@link IllegalStateException} naming the missing dependency.</li>
  *   <li>{@code io.github.nalukit:paniolo-pdfa} &ndash; optional; adds the PDF/A conformance check
  *       (ISO 19005) to the validation of PDFs. Without it the result carries the information
  *       {@code PDFA-NOT-CHECKED}.</li>
@@ -192,11 +196,10 @@ import java.util.regex.Pattern;
  * <h2>Rules</h2>
  *
  * <p>The official KoSIT XRechnung validator configuration (which also contains the EN 16931 rules and
- * the UBL / CII schemas) is packaged in {@code paniolo-xrechnung-rules} and used by default.
- * Official Factur-X / ZUGFeRD, ZUGFeRD 1.0, French EXTENDED-CTC-FR and Order-X rules are packaged
- * in {@code paniolo-facturx-rules}. Alternative rule bundles can be configured with the
- * {@link Builder}. Peppol BIS Despatch Advice rules are not packaged and must be supplied through
- * {@link Builder#despatchAdviceRules(Path)}.
+ * the UBL / CII schemas) is packaged in {@code paniolo-rules} and used by default, together
+ * with the official Factur-X / ZUGFeRD, ZUGFeRD 1.0, French EXTENDED-CTC-FR and Order-X rules.
+ * Alternative rule bundles can be configured with the {@link Builder}. Peppol BIS Despatch Advice
+ * rules are not packaged and must be supplied through {@link Builder#despatchAdviceRules(Path)}.
  *
  * <h2>Optional checks</h2>
  *
@@ -226,14 +229,7 @@ public final class Paniolo
     extends PanioloBase {
   private static final String                               UBL                   = "urn:oasis:names:specification:ubl:schema:xsd:";
   private static final String                               CII                   = "urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100";
-  /**
-   * The CIUS part of the specification identifier of XRechnung 1.2 to 2.3.
-   */
-  private static final Pattern                              XRECHNUNG_VERSION     = Pattern.compile(":kosit:standard:xrechnung_(\\d+\\.\\d+)");
-  /**
-   * The extension part of the specification identifier of XRechnung 2.x.
-   */
-  private static final String                               XRECHNUNG_2_EXTENSION = "#conformant#urn:xoev-de:kosit:extension:xrechnung_";
+  private static final String                               RAM                   = "urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100";
   private static final ZugferdV1InvoiceReader               ZUGFERD_1             = new ZugferdV1InvoiceReader();
   private static final OrderXWriter                         ORDER_WRITER          = new OrderXWriter();
   private static final OrderXReader                         ORDER_READER          = new OrderXReader();
@@ -247,6 +243,8 @@ public final class Paniolo
    */
   static final         String                               UNKNOWN_DOCUMENT      = "Unknown document";
   private final        Supplier<Path>                       rules;
+  private final        Supplier<List<XrechnungSpecification>> xrechnungSpecificationsSource;
+  private volatile     List<XrechnungSpecification>         xrechnungSpecifications;
   private final        Supplier<Path>                       facturXRules;
   private final        Supplier<Path>                       franceRules;
   private final        Supplier<Path>                       orderXRules;
@@ -254,6 +252,7 @@ public final class Paniolo
   private final        boolean                              calculationCheck;
   private final        boolean                              ruleStatistics;
   private final        UnknownDocumentHandling              unknownDocuments;
+  private final        PdfaScriptCache                      pdfaScriptCache;
   private final        String                               xrechnungRelease;
   private final        String                               facturXRelease;
   private final        String                               orderXRelease;
@@ -268,6 +267,7 @@ public final class Paniolo
   private final        Map<Object, CompiledValidator>       validators            = new ConcurrentHashMap<>();
 
   private Paniolo(Supplier<Path> rules,
+                  Supplier<List<XrechnungSpecification>> xrechnungSpecifications,
                   Supplier<Path> facturXRules,
                   Supplier<Path> franceRules,
                   Supplier<Path> orderXRules,
@@ -275,10 +275,12 @@ public final class Paniolo
                   boolean calculationCheck,
                   boolean ruleStatistics,
                   UnknownDocumentHandling unknownDocuments,
+                  PdfaScriptCache pdfaScriptCache,
                   String xrechnungRelease,
                   String facturXRelease,
                   String orderXRelease) {
     this.rules               = rules;
+    this.xrechnungSpecificationsSource = xrechnungSpecifications;
     this.facturXRules        = facturXRules;
     this.franceRules         = franceRules;
     this.orderXRules         = orderXRules;
@@ -286,9 +288,37 @@ public final class Paniolo
     this.calculationCheck    = calculationCheck;
     this.ruleStatistics      = ruleStatistics;
     this.unknownDocuments    = unknownDocuments;
+    this.pdfaScriptCache     = pdfaScriptCache;
     this.xrechnungRelease    = xrechnungRelease;
     this.facturXRelease      = facturXRelease;
     this.orderXRelease       = orderXRelease;
+  }
+
+  /**
+   * Releases the PDF/A rules veraPDF compiled and cached for the <em>calling</em> thread, e.g. at
+   * the end of a batch or before a worker thread is returned to its pool. Later PDF/A checks on the
+   * thread compile them again.
+   *
+   * <pre>{@code
+   * try {
+   *   for (byte[] pdf : batch) {
+   *     results.add(paniolo.validate(pdf));
+   *   }
+   * } finally {
+   *   Paniolo.releasePdfaScriptCache();   // on the thread that validated the batch
+   * }
+   * }</pre>
+   *
+   * <p>veraPDF keeps the compiled rules per thread, so the method must run on the thread that ran
+   * the checks; it cannot release the caches of other threads, and a separate cleanup thread
+   * releases nothing. It is safe to call at any time, also with empty caches or without
+   * {@code paniolo-pdfa}, where it does nothing. It also clears rules compiled by other veraPDF
+   * validations on the same thread. To release after every check, configure
+   * {@link Builder#pdfaScriptCache(PdfaScriptCache)} with
+   * {@link PdfaScriptCache#CLEAR_AFTER_CHECK} instead.
+   */
+  public static void releasePdfaScriptCache() {
+    PdfaHolder.SUPPORT.ifPresent(PdfaSupport::releaseThreadCaches);
   }
 
   /**
@@ -345,7 +375,7 @@ public final class Paniolo
   }
 
   private static PdfLayoutSupport pdfLayout() {
-    return PdfLayoutHolder.SUPPORT.orElseThrow(() -> new IllegalStateException("Rendering a PDF requires the dependency io.github.nalukit:paniolo-pdf-layout"));
+    return PdfLayoutHolder.SUPPORT.orElseThrow(() -> new IllegalStateException("Rendering a PDF requires the dependency io.github.nalukit:paniolo-facturx"));
   }
 
   private static FacturXSupport facturX() {
@@ -353,6 +383,22 @@ public final class Paniolo
   }
 
   private static ValidationProfile.Syntax detect(String namespace,
+                                                 String localName) {
+    var syntax = syntax(namespace,
+                        localName);
+    if (syntax != null) {
+      return syntax;
+    }
+    if (ZugferdV1InvoiceReader.RSM.equals(namespace)) {
+      throw new IllegalArgumentException("ZUGFeRD 1.0 is no EN 16931 invoice; validate it with Paniolo.validate(byte[]) or migrate it with Paniolo.migrateZugferd1");
+    }
+    throw new IllegalArgumentException("Unsupported invoice document: {" + namespace + "}" + localName);
+  }
+
+  /**
+   * Returns the EN 16931 document type of a root element, or null if it is none.
+   */
+  private static ValidationProfile.Syntax syntax(String namespace,
                                                  String localName) {
     if ((UBL + "Invoice-2").equals(namespace) && "Invoice".equals(localName)) {
       return ValidationProfile.Syntax.UBL_INVOICE;
@@ -363,10 +409,7 @@ public final class Paniolo
     if (CII.equals(namespace) && "CrossIndustryInvoice".equals(localName)) {
       return ValidationProfile.Syntax.CII;
     }
-    if (ZugferdV1InvoiceReader.RSM.equals(namespace)) {
-      throw new IllegalArgumentException("ZUGFeRD 1.0 is no EN 16931 invoice; validate it with Paniolo.validate(byte[]) or migrate it with Paniolo.migrateZugferd1");
-    }
-    throw new IllegalArgumentException("Unsupported invoice document: {" + namespace + "}" + localName);
+    return null;
   }
 
   private static byte[] readAll(InputStream input) {
@@ -381,8 +424,8 @@ public final class Paniolo
 
   /**
    * Creates an instance with the default configuration: validation against the official KoSIT
-   * XRechnung rules (current and older versions) packaged in {@code paniolo-xrechnung-rules} and the
-   * official Factur-X / ZUGFeRD rules (incl. ZUGFeRD 1.0) packaged in {@code paniolo-facturx-rules},
+   * XRechnung rules (current and older versions) and the official Factur-X / ZUGFeRD rules (incl.
+   * ZUGFeRD 1.0), both packaged in {@code paniolo-rules},
    * no Order-X or Peppol Despatch Advice rules.
    *
    * <p>This is the right choice for most applications. Creating the instance is cheap; the packaged
@@ -459,27 +502,9 @@ public final class Paniolo
    * Returns the name of the root element, or null for malformed XML.
    */
   private static QName rootName(byte[] xml) {
-    var factory = XMLInputFactory.newDefaultFactory();
-    factory.setProperty(XMLInputFactory.SUPPORT_DTD,
-                        false);
-    factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES,
-                        false);
-    try {
-      var reader = factory.createXMLStreamReader(new ByteArrayInputStream(xml));
-      try {
-        while (reader.hasNext()) {
-          if (reader.next() == XMLStreamConstants.START_ELEMENT) {
-            return reader.getName();
-          }
-        }
-      } finally {
-        reader.close();
-      }
-    } catch (XMLStreamException e) {
-      return null;
-    }
-    return null;
+    return XmlDocuments.rootName(new ByteArrayInputStream(xml));
   }
+
 
   /**
    * Returns the Factur-X profile a standalone CII document is validated with: MINIMUM, BASIC WL,
@@ -498,30 +523,81 @@ public final class Paniolo
   }
 
   /**
-   * Returns true if a UBL Invoice or CII document states the specification identifier of the
-   * XRechnung extension. UBL CreditNote has no extension scenario and is validated as XRechnung.
+   * Prefixes of the rule identifiers of the XRechnung CIUS: the German rules, those of the
+   * extension, the temporary rules, and the Peppol rules XRechnung adopts. The EN 16931 rules
+   * (e.g. {@code BR-DEC-01}) do not start with any of them.
    */
-  private static boolean isXrechnungExtension(ValidationProfile.Syntax type,
-                                              String specificationId) {
-    if (type == ValidationProfile.Syntax.UBL_CREDIT_NOTE || specificationId == null) {
-      return false;
-    }
-    String id = specificationId.trim();
-    return ProcessControl.XRECHNUNG_3_EXTENSION.equals(id) || id.contains(XRECHNUNG_2_EXTENSION);
+  private static final List<String> XRECHNUNG_RULE_PREFIXES = List.of("BR-DE-",
+                                                                      "BR-DEX-",
+                                                                      "BR-TMP-",
+                                                                      "PEPPOL-EN16931-");
+
+  /**
+   * Returns true if a specification identifier states XRechnung, its extension or an older version
+   * of it, e.g. {@code urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0},
+   * whether supported or not.
+   */
+  private static boolean statesXrechnung(String specificationId) {
+    return XrechnungIdentifiers.claimsXrechnung(specificationId);
   }
 
   /**
-   * Returns the older XRechnung version, e.g. {@code 2.3}, that a specification identifier states,
-   * if its rules are packaged; null for XRechnung 3 and all other identifiers.
+   * Reports the findings of the XRechnung rules of a document that does not state XRechnung as
+   * information: XRechnung is a CIUS of EN 16931, and its rules (e.g. {@code BR-DE-15}, buyer
+   * reference) do not apply to a plain EN 16931 invoice. The findings stay visible, e.g. for
+   * deciding whether the document could be sent as XRechnung; a recipient that requires XRechnung
+   * rejects on them with an {@link io.github.nalukit.paniolo.validation.AcceptancePolicy}. The
+   * Peppol rules stay as they are for a document that states Peppol BIS Billing. If any finding
+   * was changed, the information {@code XR-NOT-STATED} explains why.
    */
-  private static String olderXrechnungVersion(String specificationId) {
-    if (specificationId == null) {
-      return null;
+  private static ValidationResult xrechnungRulesInformative(String specificationId,
+                                                            ValidationResult result) {
+    var     messages   = new ArrayList<ValidationMessage>();
+    boolean downgraded = false;
+    for (var message : result.messages()) {
+      if (message.severity() != Severity.INFO && isXrechnungRule(message.ruleId(),
+                                                                 specificationId)) {
+        messages.add(new ValidationMessage(message.ruleId(),
+                                           Severity.INFO,
+                                           message.message(),
+                                           message.location(),
+                                           message.stage()));
+        downgraded = true;
+      } else {
+        messages.add(message);
+      }
     }
-    var matcher = XRECHNUNG_VERSION.matcher(specificationId);
-    return matcher.find() && XrechnungRules.LEGACY_VERSIONS.contains(matcher.group(1)) ?
-           matcher.group(1) :
-           null;
+    if (!downgraded) {
+      return result;
+    }
+    messages.add(new ValidationMessage("XR-NOT-STATED",
+                                       Severity.INFO,
+                                       "The document states " +
+                                       (specificationId == null ?
+                                        "no specification identifier" :
+                                        specificationId) +
+                                       ", not XRechnung; the findings of the XRechnung rules are reported as information and do not make it invalid",
+                                       "",
+                                       ValidationMessage.Stage.SCHEMATRON));
+    return result.withMessages(messages);
+  }
+
+  /**
+   * Returns true if a rule belongs to the XRechnung CIUS and does not apply to a document of the
+   * specification identifier. The Peppol rules {@code PEPPOL-EN16931} apply to a document that
+   * states Peppol BIS Billing.
+   */
+  private static boolean isXrechnungRule(String ruleId,
+                                         String specificationId) {
+    if (ruleId == null) {
+      return false;
+    }
+    if (ruleId.startsWith("PEPPOL-EN16931-") && specificationId != null && specificationId.toLowerCase(Locale.ROOT)
+                                                                                      .contains("peppol")) {
+      return false;
+    }
+    return XRECHNUNG_RULE_PREFIXES.stream()
+                                  .anyMatch(ruleId::startsWith);
   }
 
   /**
@@ -534,15 +610,41 @@ public final class Paniolo
            customizationId(xml.get());
   }
 
+  /**
+   * The characters of XML bytes, decoded like the XML parser does it for the document itself: the
+   * byte order mark, the UTF-16 prolog, and the encoding of the XML declaration decide. Bytes that
+   * cannot be decoded as stated are read as UTF-8, and the malformed document is reported by the
+   * validation itself.
+   */
   private static Supplier<Reader> reader(byte[] xml) {
-    // A UTF-8 byte order mark would reach the XML parser as content before the prolog.
-    int start = xml.length >= 3 && (xml[0] & 0xFF) == 0xEF && (xml[1] & 0xFF) == 0xBB && (xml[2] & 0xFF) == 0xBF ?
-                3 :
-                0;
-    return () -> new java.io.InputStreamReader(new ByteArrayInputStream(xml,
-                                                                        start,
-                                                                        xml.length - start),
-                                               StandardCharsets.UTF_8);
+    return () -> new java.io.StringReader(decodedXml(xml));
+  }
+
+  private static String decodedXml(byte[] xml) {
+    java.nio.charset.Charset charset = StandardCharsets.UTF_8;
+    var factory = XMLInputFactory.newDefaultFactory();
+    factory.setProperty(XMLInputFactory.SUPPORT_DTD,
+                        false);
+    factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES,
+                        false);
+    try {
+      var reader = factory.createXMLStreamReader(new ByteArrayInputStream(xml));
+      try {
+        if (reader.getEncoding() != null) {
+          charset = java.nio.charset.Charset.forName(reader.getEncoding());
+        }
+      } finally {
+        reader.close();
+      }
+    } catch (XMLStreamException | java.nio.charset.UnsupportedCharsetException | java.nio.charset.IllegalCharsetNameException e) {
+      charset = StandardCharsets.UTF_8;
+    }
+    String text = new String(xml,
+                             charset);
+    // A byte order mark would reach the XML parser as content before the prolog.
+    return text.startsWith("\uFEFF") ?
+           text.substring(1) :
+           text;
   }
 
   /**
@@ -736,27 +838,15 @@ public final class Paniolo
   }
 
   /**
-   * The rules of the packaged release of an older XRechnung version, named after that release.
+   * The rules of a scenario of the packaged release of an older XRechnung version, named after that
+   * release.
    */
   private static ValidationProfile olderXrechnung(ValidationProfile.Syntax type,
                                                   String version,
-                                                  boolean extension) {
-    Path              bundle = XrechnungRules.legacyBundle(version);
-    ValidationProfile profile;
-    try {
-      profile = extension ?
-                ValidationProfile.xrechnungExtension(bundle,
-                                                     type) :
-                ValidationProfile.xrechnung(bundle,
-                                            type);
-    } catch (ValidationException e) {
-      if (!extension) {
-        throw e;
-      }
-      // Older releases have no extension scenario for every syntax (XRechnung 1.2 none at all).
-      profile = ValidationProfile.xrechnung(bundle,
-                                            type);
-    }
+                                                  XrechnungScenario scenario) {
+    var profile = ValidationProfile.xrechnung(XrechnungRules.legacyBundle(version),
+                                              type,
+                                              scenario);
     return new ValidationProfile(profile.name() + ", XRechnung " + XrechnungRules.legacyVersion(version),
                                  profile.resourceRoot(),
                                  profile.schema(),
@@ -1258,7 +1348,12 @@ public final class Paniolo
    *   <li>{@link ExportVariant#ORIGINAL} &ndash; the received XML, byte for byte. A syntax, if given,
    *       must be the syntax of the received XML; the original is never converted.</li>
    *   <li>{@link ExportVariant#NORMALIZED} &ndash; the invoice model written in the given syntax. If
-   *       {@link ImportResult#isNormalized()} is true, the amounts differ from the received ones.</li>
+   *       {@link ImportResult#isNormalized()} is true, the amounts differ from the received ones. It
+   *       is refused if the document states taxes of another type than VAT, e.g. AAM
+   *       ({@link io.github.nalukit.paniolo.xml.ReadWarning#OTHER_TAX}).</li>
+   *   <li>{@link ExportVariant#NORMALIZED_DROPPING_OTHER_TAXES} &ndash; like
+   *       {@link ExportVariant#NORMALIZED}, but explicitly without those taxes; the amount due is
+   *       lower than the received one.</li>
    * </ul>
    *
    * @param imported the import result; must not be {@code null}
@@ -1285,7 +1380,7 @@ public final class Paniolo
       }
     }
     byte[] result = imported.export(variant,
-                                    variant == ExportVariant.NORMALIZED ?
+                                    variant.isNormalized() ?
                                     writer(syntax) :
                                     null);
     super.logStop(watch);
@@ -1349,6 +1444,120 @@ public final class Paniolo
   }
 
   /**
+   * Checks cheaply whether a document is an electronic invoice according to EN 16931: UBL Invoice,
+   * UBL CreditNote or CII XML, or a Factur-X / ZUGFeRD 2.x PDF with such an XML embedded. Never
+   * throws for unsuitable content.
+   *
+   * <p>Only the start of the XML is read: the root element and, for CII, the specification
+   * identifier (BT-24) in the document context. For a PDF, only the cross-reference table, the
+   * catalog with the embedded files and the start of the embedded invoice XML are read, without XMP
+   * metadata, page content or PDF/A checks. Validity is not checked; use {@link #validate(byte[])}
+   * for that.
+   *
+   * <pre>{@code
+   * byte[] received = Files.readAllBytes(path);
+   * if (paniolo.isEInvoice(received)) {
+   *   ValidationResult result = paniolo.validate(received);
+   * }
+   * }</pre>
+   *
+   * <p>The Factur-X / ZUGFeRD profiles MINIMUM and BASIC WL carry no invoice lines and are no
+   * electronic invoices in Germany; like ZUGFeRD 1.0, Order-X and despatch advices they yield
+   * {@code false}. A CII document without BT-24 counts as an electronic invoice.
+   *
+   * @param xmlOrPdf invoice XML or PDF; must not be {@code null}
+   * @return {@code true} if the document is an electronic invoice
+   * @throws IllegalStateException if the content is a PDF and {@code paniolo-facturx} is missing
+   * @see #probe(byte[])
+   */
+  public boolean isEInvoice(byte[] xmlOrPdf) {
+    return probe(xmlOrPdf).isPresent();
+  }
+
+  /**
+   * Determines cheaply the document type of an electronic invoice in XML or PDF form, like
+   * {@link #isEInvoice(byte[])}, and returns it. Unlike {@link #detect(byte[])}, it accepts PDFs
+   * and reports unsuitable content as empty result instead of an exception.
+   *
+   * @param xmlOrPdf invoice XML or PDF; must not be {@code null}
+   * @return the document type, or empty if the content is no electronic invoice (also for malformed
+   * XML, unreadable or encrypted PDFs, ZUGFeRD 1.0, and the profiles MINIMUM and BASIC WL)
+   * @throws IllegalStateException if the content is a PDF and {@code paniolo-facturx} is missing
+   */
+  public Optional<ValidationProfile.Syntax> probe(byte[] xmlOrPdf) {
+    Objects.requireNonNull(xmlOrPdf,
+                           "xmlOrPdf");
+    PanioloStopWatch watch = super.logStart("Paniolo.probe");
+    ValidationProfile.Syntax result = isPdf(xmlOrPdf) ?
+                                      facturX().probeInvoice(xmlOrPdf,
+                                                             Paniolo::probeXml) :
+                                      probeXml(new ByteArrayInputStream(xmlOrPdf));
+    super.logStop(watch);
+    return Optional.ofNullable(result);
+  }
+
+  /**
+   * Reads the start of invoice XML: the root element and, for CII, BT-24 up to the end of the
+   * document context. Returns null for no electronic invoice, MINIMUM and BASIC WL.
+   */
+  private static ValidationProfile.Syntax probeXml(InputStream input) {
+    try {
+      var reader = XmlDocuments.streamReader(input);
+      try {
+        while (reader.hasNext()) {
+          if (reader.next() == XMLStreamConstants.START_ELEMENT) {
+            var syntax = syntax(reader.getNamespaceURI(),
+                                reader.getLocalName());
+            if (syntax != ValidationProfile.Syntax.CII) {
+              return syntax;
+            }
+            var profile = FacturXProfile.ofSpecificationId(ciiSpecificationId(reader));
+            return profile == FacturXProfile.MINIMUM || profile == FacturXProfile.BASIC_WL ?
+                   null :
+                   syntax;
+          }
+        }
+      } finally {
+        reader.close();
+      }
+    } catch (XMLStreamException e) {
+      return null;
+    }
+    return null;
+  }
+
+  /**
+   * BT-24 of a CII invoice whose root element the reader is positioned on, or null if the document
+   * context has none. Stops at the end of the document context.
+   */
+  private static String ciiSpecificationId(XMLStreamReader reader)
+      throws XMLStreamException {
+    boolean guideline = false;
+    while (reader.hasNext()) {
+      int event = reader.next();
+      if (event == XMLStreamConstants.START_ELEMENT) {
+        if (!guideline && RAM.equals(reader.getNamespaceURI()) && "GuidelineSpecifiedDocumentContextParameter".equals(reader.getLocalName())) {
+          guideline = true;
+        } else if (guideline && RAM.equals(reader.getNamespaceURI()) && "ID".equals(reader.getLocalName())) {
+          return reader.getElementText()
+                       .strip();
+        } else if (CII.equals(reader.getNamespaceURI()) && "ExchangedDocument".equals(reader.getLocalName())) {
+          // The document context precedes the document; without context there is no BT-24.
+          return null;
+        }
+      } else if (event == XMLStreamConstants.END_ELEMENT) {
+        if ("ExchangedDocumentContext".equals(reader.getLocalName())) {
+          return null;
+        }
+        if (RAM.equals(reader.getNamespaceURI()) && "GuidelineSpecifiedDocumentContextParameter".equals(reader.getLocalName())) {
+          guideline = false;
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
    * Validates invoice XML; the document type and the rules to apply are detected from the content.
    *
    * <p>The validation runs the official checks in stages and reports every finding as a
@@ -1368,13 +1577,33 @@ public final class Paniolo
    *
    * <p><b>Which rules are applied?</b> They are chosen from the specification identifier (BT-24):
    * <ul>
-   *   <li>XRechnung, EN 16931 and unknown identifiers &ndash; the EN 16931 and XRechnung rules of the
-   *       configured KoSIT bundle.</li>
+   *   <li>XRechnung &ndash; the EN 16931 and XRechnung rules of the configured KoSIT bundle, in the
+   *       scenario the identifier selects: standard, extension, or CVD (Clean Vehicles Directive).
+   *       The identifier must match one of the {@code scenarios.xml} of the bundle exactly, as in the
+   *       KoSIT validator.</li>
+   *   <li>An identifier that states XRechnung (contains {@code xrechnung} in any spelling) but that
+   *       no supported version and scenario accepts for the document type, e.g. an unknown version
+   *       {@code ...xrechnung_9.9}, the XRechnung 3.0 version under the namespace of XRechnung 2
+   *       ({@code urn:xoev-de:kosit:standard:xrechnung_3.0}), appended parts
+   *       ({@code ...xrechnung_3.0#garbage}), or the extension for UBL CreditNote &ndash; checked
+   *       against the configured XRechnung rules, so the other findings stay visible, and
+   *       <em>invalid</em> with the error {@code XR-SPECIFICATION-UNSUPPORTED} at BT-24. Its message
+   *       names the identifier, the reason and the supported identifiers.</li>
+   *   <li>Plain EN 16931, Peppol BIS Billing and other identifiers that do not state XRechnung
+   *       &ndash; the same rules, but the
+   *       findings of the XRechnung CIUS ({@code BR-DE}, {@code BR-DEX}, {@code BR-TMP} and, except
+   *       for Peppol, {@code PEPPOL-EN16931}) are information, e.g. a missing buyer reference
+   *       {@code BR-DE-15}: they do not apply to a document that does not state XRechnung. The
+   *       information {@code XR-NOT-STATED} says so. A recipient that requires XRechnung rejects
+   *       on them with an {@link io.github.nalukit.paniolo.validation.AcceptancePolicy}, e.g.
+   *       {@code AcceptancePolicy.officialRules().rejectOn("BR-DE-15")}.</li>
    *   <li>An older XRechnung version 1.2, 2.0, 2.1, 2.2 or 2.3 &ndash; the packaged KoSIT release of
    *       that version (see {@code XrechnungRules.LEGACY_VERSIONS}), with the information
    *       {@code XR-OLDER-VERSION}.</li>
    *   <li>The XRechnung extension ({@link ProcessControl#XRECHNUNG_3_EXTENSION}, or that of an older
-   *       version) &ndash; the rules of the extension scenario, e.g. allowing sub invoice lines.</li>
+   *       version) &ndash; the rules of the extension scenario, e.g. allowing sub invoice lines; only
+   *       for the document types the version defines it for (XRechnung 3.0, 2.3 and 2.2: UBL Invoice
+   *       and CII; 2.1 and 2.0: UBL Invoice; 1.2: none).</li>
    *   <li>CII with a Factur-X profile MINIMUM, BASIC WL, BASIC or EXTENDED (also in the ZUGFeRD 2.0 /
    *       2.1 notation) &ndash; validated like {@link #validate(byte[], FacturXProfile)}, i.e. with
    *       the official Factur-X rules of the profile.</li>
@@ -1406,14 +1635,17 @@ public final class Paniolo
    */
   public ValidationResult validate(String xml) {
     PanioloStopWatch watch = super.logStart("Paniolo.validate");
-    if (isZugferd1(xml.getBytes(StandardCharsets.UTF_8))) {
+    // Converted once for detection and the calculation check; the rules still validate the
+    // characters, so the encoding of the XML declaration stays ignored.
+    byte[] bytes = xml.getBytes(StandardCharsets.UTF_8);
+    if (isZugferd1(bytes)) {
       ValidationResult result = validateZugferd1(zugferd1Validator().validate(xml));
       return measured(watch,
-                      calculated(xml.getBytes(StandardCharsets.UTF_8),
+                      calculated(bytes,
                                  result));
     }
     var unknown = new ArrayList<ValidationMessage>();
-    var type    = detect(xml.getBytes(StandardCharsets.UTF_8),
+    var type    = detect(bytes,
                          unknown,
                          ValidationMessage.Stage.XML);
     if (type == null) {
@@ -1429,7 +1661,7 @@ public final class Paniolo
                                               () -> new StringReader(xml),
                                               validator -> validator.validate(xml));
     return measured(watch,
-                    calculated(xml.getBytes(StandardCharsets.UTF_8),
+                    calculated(bytes,
                                result));
   }
 
@@ -1526,7 +1758,9 @@ public final class Paniolo
    *
    * <p>No profile detection takes place: Factur-X profiles and the XRechnung extension are
    * <em>not</em> recognized; the document is always checked against EN 16931 and XRechnung. Use
-   * {@link #validate(byte[])} for automatic rule selection.
+   * {@link #validate(byte[])} for automatic rule selection. A document whose specification
+   * identifier (BT-24) states XRechnung but is not supported for the document type is invalid with
+   * the error {@code XR-SPECIFICATION-UNSUPPORTED}, as in {@link #validate(String)}.
    *
    * @param xml  the XML; must not be {@code null}
    * @param type the document type to validate against; must not be {@code null}
@@ -1536,6 +1770,16 @@ public final class Paniolo
                                    ValidationProfile.Syntax type) {
     PanioloStopWatch watch  = super.logStart("Paniolo.validate");
     ValidationResult result = validator(type).validate(xml);
+    String specificationId = specificationId(type,
+                                             reader(xml));
+    if (statesXrechnung(specificationId) &&
+        !SpecificationGenerations.isEn16931Of2026(specificationId) &&
+        selectXrechnung(type,
+                        specificationId) == null) {
+      result = unsupportedXrechnung(type,
+                                    specificationId,
+                                    result);
+    }
     return measured(watch,
                     calculated(xml,
                                result));
@@ -1577,7 +1821,7 @@ public final class Paniolo
    * }</pre>
    *
    * <p>CII is checked against the official Factur-X schema and Schematron of the profile: those
-   * packaged in {@code paniolo-facturx-rules} (FeRD release ZUGFeRD 2.5.2 / Factur-X 1.09.2), or the
+   * packaged in {@code paniolo-rules} (FeRD release ZUGFeRD 2.5.2 / Factur-X 1.09.2), or the
    * release configured with {@link Builder#facturXRules(Path)}. Profile XRECHNUNG is always checked
    * against EN 16931 and XRechnung.
    *
@@ -1897,11 +2141,11 @@ public final class Paniolo
 
   /**
    * Renders an invoice as visual PDF/A-3b document with the default layout (German labels).
-   * Requires {@code paniolo-pdf-layout}.
+   * Requires {@code paniolo-facturx}.
    *
    * @param invoice the invoice; must not be {@code null}
    * @return the PDF/A-3b document, without embedded XML
-   * @throws IllegalStateException if {@code paniolo-pdf-layout} is missing
+   * @throws IllegalStateException if {@code paniolo-facturx} is missing
    * @see #toPdf(Invoice, PdfLayout)
    */
   public byte[] toPdf(Invoice invoice) {
@@ -1917,7 +2161,7 @@ public final class Paniolo
    * @param fileName name of the validated file, or {@code null}
    * @param document the validated content, for its size and SHA-256, or {@code null}
    * @return the PDF/A-3b report
-   * @throws IllegalStateException if {@code paniolo-pdf-layout} is missing
+   * @throws IllegalStateException if {@code paniolo-facturx} is missing
    */
   public byte[] toReportPdf(ValidationResult result,
                             String fileName,
@@ -1930,7 +2174,7 @@ public final class Paniolo
 
   /**
    * Renders a validation report as PDF/A-3b document, e.g. for archiving or for departments that
-   * work with documents rather than XML. Requires {@code paniolo-pdf-layout}.
+   * work with documents rather than XML. Requires {@code paniolo-facturx}.
    *
    * <pre>{@code
    * byte[] received = Files.readAllBytes(path);
@@ -1938,14 +2182,15 @@ public final class Paniolo
    * byte[] pdf = paniolo.toReportPdf(result, path.getFileName().toString(), received);
    * }</pre>
    *
-   * <p>The report shows the validated file with its size and SHA-256, the profile and the rule
-   * releases of this instance, the time of rendering as validation time (UTC), the overall result,
-   * the number of findings per severity and stage, and every finding with severity, stage,
-   * complete rule identifier, message and location: the findings of {@link ValidationResult#toXml()}
-   * and the CLI JSON, in the order of {@link ValidationResult#messages()} like the JSON (the XML
-   * report groups them by stage). The findings table repeats
-   * its header on every page. The machine-readable report remains the basis; the PDF is a rendering
-   * of it.
+   * <p>The report is laid out as conformance report: a verdict in the color of the result (conform,
+   * conform with warnings, not conform with the recommendation to reject the document), the number
+   * of findings per severity, the time of rendering as validation time (UTC), the validated file with
+   * its size and SHA-256, the profile and the rule releases of this instance, the validation stages
+   * with their findings and result, the Schematron and PDF/A statistics if collected, and every
+   * finding as a block with severity, complete rule identifier, message and location: the findings
+   * of {@link ValidationResult#toXml()} and the CLI JSON, grouped by stage like the XML report. A
+   * result without findings is rendered with the conform verdict. The machine-readable report
+   * remains the basis; the PDF is a rendering of it.
    *
    * @param result   the validation result; must not be {@code null}
    * @param fileName name of the validated file, or {@code null}
@@ -1953,7 +2198,7 @@ public final class Paniolo
    * @param layout   language, fonts, accent color and footer; logo and sender address are not used
    * @return the PDF/A-3b report
    * @throws IllegalArgumentException if a font of the layout cannot be read
-   * @throws IllegalStateException    if {@code paniolo-pdf-layout} is missing
+   * @throws IllegalStateException    if {@code paniolo-facturx} is missing
    */
   public byte[] toReportPdf(ValidationResult result,
                             String fileName,
@@ -2017,7 +2262,7 @@ public final class Paniolo
    * Renders an invoice as visual PDF/A-3b document: letterhead with seller and logo, recipient,
    * document data, lines with sub-lines and line allowances and charges, document allowances and
    * charges, totals with the VAT breakdown, payment details, notes, and the seller's legal details
-   * in the footer of every page. Requires {@code paniolo-pdf-layout}.
+   * in the footer of every page. Requires {@code paniolo-facturx}.
    *
    * <p>EXTENDED content (Factur-X EXTENDED and EXTENDED-CTC-FR) is shown as well: the document
    * status of a test or copy, further references, delivery terms and parties, line details such as
@@ -2036,7 +2281,7 @@ public final class Paniolo
    * @param layout  language, logo, fonts, and colors; must not be {@code null}
    * @return the PDF/A-3b document
    * @throws IllegalArgumentException if the logo or a font of the layout cannot be read
-   * @throws IllegalStateException    if {@code paniolo-pdf-layout} is missing
+   * @throws IllegalStateException    if {@code paniolo-facturx} is missing
    */
   public byte[] toPdf(Invoice invoice,
                       PdfLayout layout) {
@@ -2053,7 +2298,7 @@ public final class Paniolo
 
   /**
    * Creates a Factur-X / ZUGFeRD hybrid invoice whose visual part Paniolo renders itself, with the
-   * default layout and without further attachments. Requires {@code paniolo-pdf-layout}.
+   * default layout and without further attachments. Requires {@code paniolo-facturx}.
    *
    * <pre>{@code
    * byte[] facturX = paniolo.toFacturX(invoice, FacturXProfile.EN16931);
@@ -2064,7 +2309,7 @@ public final class Paniolo
    * @return the Factur-X PDF/A-3 document
    * @throws IllegalArgumentException if the specification identifier does not match the profile or
    *                                  the invoice content does not fit the profile
-   * @throws IllegalStateException    if {@code paniolo-pdf-layout} is missing
+   * @throws IllegalStateException    if {@code paniolo-facturx} is missing
    * @see #toFacturX(Invoice, FacturXProfile, PdfLayout, List)
    */
   public byte[] toFacturX(Invoice invoice,
@@ -2078,8 +2323,7 @@ public final class Paniolo
   /**
    * Creates a Factur-X / ZUGFeRD hybrid invoice whose visual part Paniolo renders with
    * {@link #toPdf(Invoice, PdfLayout)}, and embeds the CII XML and further files like
-   * {@link #toFacturX(Invoice, byte[], FacturXProfile, List)}. Requires {@code paniolo-pdf-layout},
-   * which brings {@code paniolo-facturx}.
+   * {@link #toFacturX(Invoice, byte[], FacturXProfile, List)}. Requires {@code paniolo-facturx}.
    *
    * <pre>{@code
    * byte[] facturX = paniolo.toFacturX(invoice,
@@ -2096,8 +2340,7 @@ public final class Paniolo
    * @throws IllegalArgumentException if the specification identifier does not match the profile, the
    *                                  invoice content does not fit the profile, an attachment name is
    *                                  used twice, or the layout has a watermark
-   * @throws IllegalStateException    if {@code paniolo-pdf-layout} or {@code paniolo-facturx} is
-   *                                  missing
+   * @throws IllegalStateException    if {@code paniolo-facturx} is missing
    */
   public byte[] toFacturX(Invoice invoice,
                           FacturXProfile profile,
@@ -2204,6 +2447,40 @@ public final class Paniolo
     byte[] result = facturX().extract(Objects.requireNonNull(pdf,
                                                              "pdf"))
                              .xml();
+    super.logStop(watch);
+    return result;
+  }
+
+  /**
+   * Returns the Order-X XML ({@code order-x.xml}) embedded in an Order-X PDF, unchanged. Requires
+   * {@code paniolo-facturx}.
+   *
+   * @param pdf the Order-X PDF; must not be {@code null}
+   * @return the embedded XML bytes in their original encoding
+   * @throws IllegalArgumentException if the PDF contains no Order-X document
+   * @throws IllegalStateException    if {@code paniolo-facturx} is missing
+   */
+  public byte[] extractOrderXml(byte[] pdf) {
+    PanioloStopWatch watch = super.logStart("Paniolo.extractOrderXml");
+    byte[] result = facturX().extractOrder(Objects.requireNonNull(pdf,
+                                                                  "pdf"));
+    super.logStop(watch);
+    return result;
+  }
+
+  /**
+   * Returns the despatch advice XML ({@code cida.xml}) embedded in a PDF, unchanged. Requires
+   * {@code paniolo-facturx}.
+   *
+   * @param pdf the PDF with the despatch advice; must not be {@code null}
+   * @return the embedded XML bytes in their original encoding
+   * @throws IllegalArgumentException if the PDF contains no despatch advice
+   * @throws IllegalStateException    if {@code paniolo-facturx} is missing
+   */
+  public byte[] extractDespatchAdviceXml(byte[] pdf) {
+    PanioloStopWatch watch = super.logStart("Paniolo.extractDespatchAdviceXml");
+    byte[] result = facturX().extractDespatchAdvice(Objects.requireNonNull(pdf,
+                                                                           "pdf"));
     super.logStop(watch);
     return result;
   }
@@ -2349,11 +2626,11 @@ public final class Paniolo
 
   /**
    * Renders an order, order change, or order response as visual PDF/A-3b document with the
-   * default layout (German labels), without embedded XML. Requires {@code paniolo-pdf-layout}.
+   * default layout (German labels), without embedded XML. Requires {@code paniolo-facturx}.
    *
    * @param order the order; must not be {@code null}
    * @return the PDF/A-3b document
-   * @throws IllegalStateException if {@code paniolo-pdf-layout} is missing
+   * @throws IllegalStateException if {@code paniolo-facturx} is missing
    * @see #toPdf(Order, PdfLayout)
    */
   public byte[] toPdf(Order order) {
@@ -2365,13 +2642,13 @@ public final class Paniolo
    * Renders an order, order change, or order response as visual PDF/A-3b document: the buyer's
    * letterhead for orders and changes, the seller's for responses; requested delivery, lines with
    * the ordered and, in a response, the confirmed quantity and the line status; totals; delivery
-   * parties; delivery and payment terms. Requires {@code paniolo-pdf-layout}.
+   * parties; delivery and payment terms. Requires {@code paniolo-facturx}.
    *
    * @param order  the order; must not be {@code null}
    * @param layout language, logo, fonts, and colors; must not be {@code null}
    * @return the PDF/A-3b document, without embedded XML
    * @throws IllegalArgumentException if the logo or a font of the layout cannot be read
-   * @throws IllegalStateException    if {@code paniolo-pdf-layout} is missing
+   * @throws IllegalStateException    if {@code paniolo-facturx} is missing
    */
   public byte[] toPdf(Order order,
                       PdfLayout layout) {
@@ -2388,7 +2665,7 @@ public final class Paniolo
 
   /**
    * Creates an Order-X PDF/A-3 whose visual part Paniolo renders itself, with the default layout.
-   * Requires {@code paniolo-pdf-layout}.
+   * Requires {@code paniolo-facturx}.
    *
    * <pre>{@code
    * byte[] pdf = paniolo.toOrderXPdf(order);
@@ -2396,7 +2673,7 @@ public final class Paniolo
    *
    * @param order the order; must not be {@code null}
    * @return the Order-X PDF/A-3 document
-   * @throws IllegalStateException if {@code paniolo-pdf-layout} is missing
+   * @throws IllegalStateException if {@code paniolo-facturx} is missing
    * @see #toOrderXPdf(Order, PdfLayout, List)
    */
   public byte[] toOrderXPdf(Order order) {
@@ -2408,7 +2685,7 @@ public final class Paniolo
   /**
    * Creates an Order-X PDF/A-3 whose visual part Paniolo renders with
    * {@link #toPdf(Order, PdfLayout)}, and embeds the Order-X XML and further files like
-   * {@link #toOrderXPdf(Order, byte[], List)}. Requires {@code paniolo-pdf-layout}.
+   * {@link #toOrderXPdf(Order, byte[], List)}. Requires {@code paniolo-facturx}.
    *
    * @param order       the order; must not be {@code null}
    * @param layout      language, logo, fonts, and colors; must not be {@code null}
@@ -2416,7 +2693,7 @@ public final class Paniolo
    * @return the Order-X PDF/A-3 document
    * @throws IllegalArgumentException if the order content does not fit its profile, an attachment
    *                                  name is used twice, or the layout has a watermark
-   * @throws IllegalStateException    if {@code paniolo-pdf-layout} is missing
+   * @throws IllegalStateException    if {@code paniolo-facturx} is missing
    */
   public byte[] toOrderXPdf(Order order,
                             PdfLayout layout,
@@ -2530,7 +2807,7 @@ public final class Paniolo
    * combined.
    *
    * <p>The rules are the Order-X 1.0 rules of FNFE-MPE and FeRD packaged in
-   * {@code paniolo-facturx-rules}, or the release configured with {@link Builder#orderXRules(Path)}.
+   * {@code paniolo-rules}, or the release configured with {@link Builder#orderXRules(Path)}.
    *
    * @param xmlOrPdf the Order-X XML or PDF; must not be {@code null}
    * @return the findings; never {@code null}
@@ -2716,11 +2993,11 @@ public final class Paniolo
 
   /**
    * Renders a despatch advice as delivery note with the default layout (German labels), a visual
-   * PDF/A-3b document without embedded XML. Requires {@code paniolo-pdf-layout}.
+   * PDF/A-3b document without embedded XML. Requires {@code paniolo-facturx}.
    *
    * @param advice the despatch advice; must not be {@code null}
    * @return the PDF/A-3b document
-   * @throws IllegalStateException if {@code paniolo-pdf-layout} is missing
+   * @throws IllegalStateException if {@code paniolo-facturx} is missing
    * @see #toPdf(DespatchAdvice, PdfLayout)
    */
   public byte[] toPdf(DespatchAdvice advice) {
@@ -2733,13 +3010,13 @@ public final class Paniolo
    * party's letterhead, the delivery customer in the window, despatch and delivery dates, order
    * and shipment numbers, lines with delivered and outstanding quantities, batches and serial
    * numbers, shipment details, and a receipt confirmation to sign. Requires
-   * {@code paniolo-pdf-layout}.
+   * {@code paniolo-facturx}.
    *
    * @param advice the despatch advice; must not be {@code null}
    * @param layout language, logo, fonts, and colors; must not be {@code null}
    * @return the PDF/A-3b document, without embedded XML
    * @throws IllegalArgumentException if the logo or a font of the layout cannot be read
-   * @throws IllegalStateException    if {@code paniolo-pdf-layout} is missing
+   * @throws IllegalStateException    if {@code paniolo-facturx} is missing
    */
   public byte[] toPdf(DespatchAdvice advice,
                       PdfLayout layout) {
@@ -2756,11 +3033,11 @@ public final class Paniolo
 
   /**
    * Creates a PDF/A-3 delivery note with the embedded CIDA XML whose visual part Paniolo renders
-   * itself, with the default layout. Requires {@code paniolo-pdf-layout}.
+   * itself, with the default layout. Requires {@code paniolo-facturx}.
    *
    * @param advice the despatch advice; must not be {@code null}
    * @return the PDF/A-3 delivery note
-   * @throws IllegalStateException if {@code paniolo-pdf-layout} is missing
+   * @throws IllegalStateException if {@code paniolo-facturx} is missing
    * @see #toDespatchAdvicePdf(DespatchAdvice, PdfLayout, List)
    */
   public byte[] toDespatchAdvicePdf(DespatchAdvice advice) {
@@ -2773,7 +3050,7 @@ public final class Paniolo
    * Creates a PDF/A-3 delivery note whose visual part Paniolo renders with
    * {@link #toPdf(DespatchAdvice, PdfLayout)}, and embeds the CIDA XML and further files like
    * {@link #toDespatchAdvicePdf(DespatchAdvice, byte[], List)}. Requires
-   * {@code paniolo-pdf-layout}.
+   * {@code paniolo-facturx}.
    *
    * @param advice      the despatch advice; must not be {@code null}
    * @param layout      language, logo, fonts, and colors; must not be {@code null}
@@ -2781,7 +3058,7 @@ public final class Paniolo
    * @return the PDF/A-3 delivery note
    * @throws IllegalArgumentException if the despatch advice has content CIDA cannot carry, an
    *                                  attachment name is used twice, or the layout has a watermark
-   * @throws IllegalStateException    if {@code paniolo-pdf-layout} is missing
+   * @throws IllegalStateException    if {@code paniolo-facturx} is missing
    */
   public byte[] toDespatchAdvicePdf(DespatchAdvice advice,
                                     PdfLayout layout,
@@ -3114,12 +3391,70 @@ public final class Paniolo
   }
 
   /**
-   * The validator of the XRechnung extension scenario, compiled once per document type.
+   * The validator of a scenario of the configured XRechnung rules, compiled once per document type
+   * and scenario.
    */
-  private InvoiceValidator extensionValidator(ValidationProfile.Syntax type) {
-    return compiled(new ExtensionKey(type),
-                    () -> newValidator(ValidationProfile.xrechnungExtension(rules.get(),
-                                                                                    type)));
+  private InvoiceValidator scenarioValidator(ValidationProfile.Syntax type,
+                                             XrechnungScenario scenario) {
+    if (scenario == XrechnungScenario.STANDARD) {
+      return validator(type);
+    }
+    return compiled(new ScenarioKey(type,
+                                    scenario),
+                    () -> newValidator(ValidationProfile.xrechnung(rules.get(),
+                                                                   type,
+                                                                   scenario)));
+  }
+
+  /**
+   * The specification identifiers the configured XRechnung rules accept, determined once.
+   */
+  private List<XrechnungSpecification> xrechnungSpecifications() {
+    var specifications = xrechnungSpecifications;
+    if (specifications == null) {
+      synchronized (this) {
+        specifications = xrechnungSpecifications;
+        if (specifications == null) {
+          specifications          = List.copyOf(xrechnungSpecificationsSource.get());
+          xrechnungSpecifications = specifications;
+        }
+      }
+    }
+    return specifications;
+  }
+
+  /**
+   * The older packaged XRechnung versions with their identifiers, in the order of
+   * {@link XrechnungRules#LEGACY_VERSIONS}.
+   */
+  private static Map<String, List<XrechnungSpecification>> olderXrechnungSpecifications() {
+    var older = new LinkedHashMap<String, List<XrechnungSpecification>>();
+    for (var version : XrechnungRules.LEGACY_VERSIONS) {
+      older.put(version,
+                XrechnungIdentifiers.PACKAGED.getOrDefault(version,
+                                                           List.of()));
+    }
+    return older;
+  }
+
+  /**
+   * Adds the error {@code XR-SPECIFICATION-UNSUPPORTED} to the result of a document that states
+   * XRechnung with an identifier the configured rules and the older packaged releases do not accept
+   * for its document type.
+   */
+  private ValidationResult unsupportedXrechnung(ValidationProfile.Syntax type,
+                                                String specificationId,
+                                                ValidationResult result) {
+    var messages = new ArrayList<>(result.messages());
+    messages.add(new ValidationMessage(XrechnungIdentifiers.UNSUPPORTED,
+                                       Severity.ERROR,
+                                       XrechnungIdentifiers.explain(specificationId,
+                                                                    type,
+                                                                    xrechnungSpecifications(),
+                                                                    olderXrechnungSpecifications()),
+                                       XrechnungIdentifiers.location(type),
+                                       ValidationMessage.Stage.SCHEMATRON));
+    return result.withMessages(messages);
   }
 
   /**
@@ -3154,7 +3489,8 @@ public final class Paniolo
     }
     var messages = new ArrayList<>(result.messages());
     try {
-      messages.addAll(CalculationCheck.check(invoiceReader(xml).importXml(xml,
+      // Only the read result is needed; importXml would also keep a copy of the XML.
+      messages.addAll(CalculationCheck.check(invoiceReader(xml).fromBytes(xml,
                                                                           ReadMode.LENIENT),
                                              result.messages()));
     } catch (IllegalArgumentException | UncheckedIOException e) {
@@ -3170,12 +3506,17 @@ public final class Paniolo
   }
 
   /**
-   * Validates an invoice by the XRechnung version its specification identifier states: an older
-   * version against the packaged KoSIT release of that version, adding the information
-   * {@code XR-OLDER-VERSION}; the XRechnung extension against the extension scenario; everything
-   * else against the configured XRechnung rules. A document of EN 16931:2026 (e.g. XRechnung 4.0)
-   * is not checked and reported with the error {@code EN16931-2026-NOT-SUPPORTED}: the rules of
-   * EN 16931:2017 would report findings that do not apply to it and miss those that do.
+   * Validates an invoice by the XRechnung version and scenario its specification identifier
+   * states. The identifier is compared exactly with those the configured XRechnung rules accept
+   * (their {@code scenarios.xml}), then with those of the older packaged releases: the matching
+   * scenario of the configured rules, or of the packaged release of an older version with the
+   * information {@code XR-OLDER-VERSION}. An identifier that states XRechnung but matches no
+   * version and scenario for the document type is checked against the configured XRechnung rules
+   * and made invalid with the error {@code XR-SPECIFICATION-UNSUPPORTED}. A document that does not
+   * state XRechnung is checked against the configured XRechnung rules. A document of
+   * EN 16931:2026 (e.g. XRechnung 4.0) is not checked and reported with the error
+   * {@code EN16931-2026-NOT-SUPPORTED}: the rules of EN 16931:2017 would report findings that do
+   * not apply to it and miss those that do.
    */
   private ValidationResult validateXrechnung(ValidationProfile.Syntax type,
                                              String specificationId,
@@ -3188,20 +3529,60 @@ public final class Paniolo
                                                                 "",
                                                                 ValidationMessage.Stage.SCHEMATRON)));
     }
-    boolean extension = isXrechnungExtension(type,
-                                             specificationId);
-    String version = olderXrechnungVersion(specificationId);
-    if (version == null) {
-      return validation.apply(extension ?
-                              extensionValidator(type) :
-                              validator(type));
+    if (!statesXrechnung(specificationId)) {
+      return validation.apply(validator(type));
     }
+    var selected = selectXrechnung(type,
+                                   specificationId);
+    if (selected == null) {
+      return unsupportedXrechnung(type,
+                                  specificationId,
+                                  validation.apply(validator(type)));
+    }
+    return selected.version() == null ?
+           validation.apply(scenarioValidator(type,
+                                              selected.scenario())) :
+           validateOlderXrechnung(type,
+                                  selected.version(),
+                                  selected.scenario(),
+                                  validation);
+  }
+
+  /**
+   * Selects the XRechnung rules of an identifier for a document type: a scenario of the configured
+   * rules (version null) or of an older packaged release; null if none accepts it.
+   */
+  private XrechnungSelection selectXrechnung(ValidationProfile.Syntax type,
+                                             String specificationId) {
+    for (var specification : xrechnungSpecifications()) {
+      if (specification.accepts(specificationId,
+                                type)) {
+        return new XrechnungSelection(null,
+                                      specification.scenario());
+      }
+    }
+    for (var older : olderXrechnungSpecifications().entrySet()) {
+      for (var specification : older.getValue()) {
+        if (specification.accepts(specificationId,
+                                  type)) {
+          return new XrechnungSelection(older.getKey(),
+                                        specification.scenario());
+        }
+      }
+    }
+    return null;
+  }
+
+  private ValidationResult validateOlderXrechnung(ValidationProfile.Syntax type,
+                                                  String version,
+                                                  XrechnungScenario scenario,
+                                                  Function<InvoiceValidator, ValidationResult> validation) {
     var result = validation.apply(compiled(new OlderXrechnungKey(type,
                                                                  version,
-                                                                 extension),
+                                                                 scenario),
                                            () -> newValidator(olderXrechnung(type,
                                                                                      version,
-                                                                                     extension))));
+                                                                                     scenario))));
     var messages = new ArrayList<>(result.messages());
     messages.add(new ValidationMessage("XR-OLDER-VERSION",
                                        Severity.INFO,
@@ -3246,10 +3627,19 @@ public final class Paniolo
                                            String specificationId,
                                            Supplier<Reader> content,
                                            Function<InvoiceValidator, ValidationResult> validation) {
-    if (profile == null || profile == FacturXProfile.XRECHNUNG) {
+    if (profile == FacturXProfile.XRECHNUNG) {
       return validateXrechnung(type,
                                specificationId,
                                validation);
+    }
+    if (profile == null) {
+      var result = validateXrechnung(type,
+                                     specificationId,
+                                     validation);
+      return statesXrechnung(specificationId) ?
+             result :
+             xrechnungRulesInformative(specificationId,
+                                       result);
     }
     if (profile == FacturXProfile.EXTENDED_CTC_FR && type == ValidationProfile.Syntax.CII) {
       return validateExtendedCtcFr(isFrenchDomestic(content.get()),
@@ -3345,7 +3735,8 @@ public final class Paniolo
    */
   private ValidationResult pdfa(byte[] pdf) {
     return PdfaHolder.SUPPORT.map(support -> support.check(pdf,
-                                                           ruleStatistics))
+                                                           ruleStatistics,
+                                                           pdfaScriptCache))
                              .orElseGet(() -> new ValidationResult("PDF/A",
                                                                    List.of(new ValidationMessage("PDFA-NOT-CHECKED",
                                                                                                  Severity.INFO,
@@ -3377,7 +3768,12 @@ public final class Paniolo
 
 
 
-  private record ExtensionKey(ValidationProfile.Syntax type) {
+  private record XrechnungSelection(String version, XrechnungScenario scenario) {
+  }
+
+
+
+  private record ScenarioKey(ValidationProfile.Syntax type, XrechnungScenario scenario) {
   }
 
 
@@ -3387,7 +3783,7 @@ public final class Paniolo
 
 
 
-  private record OlderXrechnungKey(ValidationProfile.Syntax type, String version, boolean extension) {
+  private record OlderXrechnungKey(ValidationProfile.Syntax type, String version, XrechnungScenario scenario) {
   }
 
 
@@ -3479,6 +3875,7 @@ public final class Paniolo
     private boolean calculationCheck;
     private boolean ruleStatistics;
     private UnknownDocumentHandling unknownDocuments = UnknownDocumentHandling.THROW;
+    private PdfaScriptCache         pdfaScriptCache  = PdfaScriptCache.REUSE;
 
     private Builder() {
     }
@@ -3510,6 +3907,35 @@ public final class Paniolo
     public Builder unknownDocuments(UnknownDocumentHandling handling) {
       this.unknownDocuments = Objects.requireNonNull(handling,
                                                      "handling");
+      return this;
+    }
+
+    /**
+     * Selects what the PDF/A check of {@code paniolo-pdfa} does with the rules veraPDF compiles and
+     * caches for the thread that runs the check; see {@link PdfaScriptCache}.
+     *
+     * <pre>{@code
+     * Paniolo paniolo = Paniolo.builder()
+     *                          .pdfaScriptCache(PdfaScriptCache.CLEAR_AFTER_CHECK)
+     *                          .build();
+     * paniolo.validate(pdf);   // the compiled rules are released on this thread afterwards
+     * }</pre>
+     *
+     * <p>{@link PdfaScriptCache#REUSE} (default) keeps them for later checks on the same thread,
+     * which is fastest for a fixed pool of worker threads. {@link PdfaScriptCache#CLEAR_AFTER_CHECK}
+     * releases them on the validating thread after every PDF/A check, also when it fails, at the
+     * cost of compiling them for every check. To release them at the end of a batch instead, keep
+     * {@code REUSE} and call {@link Paniolo#releasePdfaScriptCache()} on the worker thread. The
+     * setting applies to every PDF/A check of the instance ({@code validate} of a PDF,
+     * {@code validateOrder} and {@code validateDespatchAdvice} of a PDF) and never changes the
+     * findings. Without {@code paniolo-pdfa} it has no effect.
+     *
+     * @param cache the strategy; must not be {@code null}
+     * @return this builder
+     */
+    public Builder pdfaScriptCache(PdfaScriptCache cache) {
+      this.pdfaScriptCache = Objects.requireNonNull(cache,
+                                                    "cache");
       return this;
     }
 
@@ -3571,7 +3997,7 @@ public final class Paniolo
 
     /**
      * Uses an extracted KoSIT XRechnung validator configuration instead of the rules packaged in
-     * {@code paniolo-xrechnung-rules}.
+     * {@code paniolo-rules}.
      *
      * <p>Typical use cases: validating against a newer KoSIT release before Paniolo ships it, or
      * against an older one during an XRechnung version change.
@@ -3592,6 +4018,15 @@ public final class Paniolo
      * {@link ValidationException} if it cannot be loaded. Older XRechnung versions (1.2 to 2.3) are
      * still validated against their packaged releases.
      *
+     * <p>The specification identifiers (BT-24) the bundle accepts are read from the {@code match}
+     * expressions of its XRechnung scenarios in {@code scenarios.xml}, the same description the
+     * KoSIT validator selects the scenario by; see
+     * {@link ValidationProfile#xrechnungSpecifications(Path)}. To accept another identifier, e.g. of a
+     * newer XRechnung version, the bundle's {@code scenarios.xml} names it; no change of Paniolo is
+     * needed. These identifiers take precedence over those of the older packaged releases. A
+     * document that states XRechnung with any other identifier is invalid with
+     * {@code XR-SPECIFICATION-UNSUPPORTED}.
+     *
      * @param bundle directory of the extracted KoSIT validator configuration; must not be {@code null}
      * @return this builder
      */
@@ -3603,7 +4038,7 @@ public final class Paniolo
 
     /**
      * Uses an extracted Factur-X / ZUGFeRD release instead of the rules packaged in
-     * {@code paniolo-facturx-rules} (ZUGFeRD 2.5.2 / Factur-X 1.09.2).
+     * {@code paniolo-rules} (ZUGFeRD 2.5.2 / Factur-X 1.09.2).
      *
      * <p>Typical use cases: validating against a newer release before Paniolo ships it, or against an
      * older one during a version change. Download the package from FeRD or FNFE-MPE, extract it, and
@@ -3635,7 +4070,7 @@ public final class Paniolo
 
     /**
      * Uses other CII rules of the French profile EXTENDED-CTC-FR instead of those packaged in
-     * {@code paniolo-facturx-rules} (FNFE-MPE France_RFE 1.4.0.04).
+     * {@code paniolo-rules} (FNFE-MPE France_RFE 1.4.0.04).
      *
      * <p>Download a release of <a href="https://github.com/fnfempe/France_RFE">France_RFE</a> and
      * pass its root directory or its folder {@code FNFE_RFE_INVOICE/CII/EXTENDED-CTC-FR}; see
@@ -3663,7 +4098,7 @@ public final class Paniolo
 
     /**
      * Uses another Order-X release in {@link Paniolo#validateOrder(byte[])} instead of the Order-X 1.0
-     * rules packaged in {@code paniolo-facturx-rules}.
+     * rules packaged in {@code paniolo-rules}.
      *
      * <p>The directory needs per profile the XSDs and the Schematron compiled to SVRL; see
      * {@link ValidationProfile#orderX(Path, String)} for the expected file names. The
@@ -3734,9 +4169,15 @@ public final class Paniolo
       Path configuredFacturX = facturXRules;
       Path configuredFrance  = franceRules;
       Path configuredOrderX  = orderXRules;
+      List<XrechnungSpecification> packaged = XrechnungIdentifiers.packagedCurrent();
       return new Paniolo(configured == null ?
                          XrechnungRules::bundle :
                          () -> configured,
+                         configured != null ?
+                         () -> ValidationProfile.xrechnungSpecifications(configured) :
+                         packaged != null ?
+                         () -> packaged :
+                         () -> ValidationProfile.xrechnungSpecifications(XrechnungRules.bundle()),
                          configuredFacturX == null ?
                          FacturXRules::bundle :
                          () -> configuredFacturX,
@@ -3750,6 +4191,7 @@ public final class Paniolo
                          calculationCheck,
                          ruleStatistics,
                          unknownDocuments,
+                         pdfaScriptCache,
                          configured == null ?
                          "KoSIT XRechnung " + XrechnungRules.VERSION + " (" + XrechnungRules.RELEASE + ")" :
                          "XRechnung rules from " + configured,

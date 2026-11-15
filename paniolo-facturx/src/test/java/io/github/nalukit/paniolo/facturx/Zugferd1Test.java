@@ -21,7 +21,9 @@ import io.github.nalukit.paniolo.Paniolo;
 import io.github.nalukit.paniolo.config.FacturXProfile;
 import io.github.nalukit.paniolo.config.PdfAttachment;
 import io.github.nalukit.paniolo.model.common.CashDiscount;
+import io.github.nalukit.paniolo.model.common.CreditTransfer;
 import io.github.nalukit.paniolo.model.common.ProcessControl;
+import io.github.nalukit.paniolo.model.common.value.PaymentMeansCode;
 import io.github.nalukit.paniolo.validation.Severity;
 import io.github.nalukit.paniolo.xml.ReadMode;
 import io.github.nalukit.paniolo.xml.ReadWarning;
@@ -66,7 +68,7 @@ class Zugferd1Test {
   /**
    * A ZUGFeRD 1.0 PDF: the XML embedded as {@code ZUGFeRD-invoice.xml} next to another attachment.
    */
-  private static byte[] zugferd1Pdf(byte[] xml)
+  static byte[] zugferd1Pdf(byte[] xml)
       throws Exception {
     byte[] embedded = SUPPORT.embed(TestPdfs.pdfA2b(),
                                     xml,
@@ -268,6 +270,56 @@ class Zugferd1Test {
    * ZUGFeRD 1.0 EXTENDED allows lines with a text only and lines without identifier, as the
    * official examples of the ZUGFeRD corpus use them (Mustang issues #594 and #572).
    */
+  /**
+   * Payment means 42 (payment to bank account) with the payee account is valid ZUGFeRD 1.0; the
+   * code and the account are kept as they are.
+   */
+  @Test
+  void readsPaymentToBankAccountWithItsAccount() {
+    String xml = new String(sample("comfort.xml"),
+                            StandardCharsets.UTF_8).replace("<ram:TypeCode>58</ram:TypeCode>",
+                                                            "<ram:TypeCode>42</ram:TypeCode>")
+                                                   .replace("<ram:Information>SEPA-Überweisung</ram:Information>",
+                                                            "<ram:Information>Zahlung auf Bankkonto</ram:Information>");
+    byte[] bytes  = xml.getBytes(StandardCharsets.UTF_8);
+    var    result = PANIOLO.validate(bytes);
+    assertTrue(result.isValid(),
+               () -> result.messages()
+                           .toString());
+    for (var mode : ReadMode.values()) {
+      var read    = PANIOLO.read(bytes,
+                                 mode);
+      var payment = read.invoice()
+                        .paymentInstruction();
+      assertEquals(PaymentMeansCode.CODE_42,
+                   payment.meansCode(),
+                   mode::toString);
+      assertEquals(List.of(new CreditTransfer("DE89370400440532013000",
+                                              "Muster GmbH",
+                                              "COBADEFFXXX")),
+                   payment.creditTransfers(),
+                   mode::toString);
+      assertEquals(List.of(),
+                   read.warnings(),
+                   mode::toString);
+    }
+    assertEquals(PaymentMeansCode.CODE_42,
+                 PANIOLO.importInvoice(bytes,
+                                       ReadMode.LENIENT)
+                        .invoice()
+                        .paymentInstruction()
+                        .meansCode());
+    // The migrated Factur-X EN 16931 document keeps code and account and stays valid.
+    byte[] migrated = PANIOLO.migrateZugferd1(bytes);
+    var    en16931  = PANIOLO.validate(migrated,
+                                       FacturXProfile.EN16931);
+    assertTrue(en16931.isValid(),
+               () -> en16931.messages()
+                            .toString());
+    assertEquals(PANIOLO.read(bytes),
+                 PANIOLO.read(migrated));
+  }
+
   @Test
   void readsTextLinesAndLinesWithoutIdentifier() {
     String xml = new String(sample("comfort.xml"),
@@ -316,13 +368,18 @@ class Zugferd1Test {
   void checksTheXmpOfAZugferd1Pdf()
       throws Exception {
     byte[] pdf = zugferd1Pdf(sample("comfort.xml"));
-    // The Factur-X XMP of a ZUGFeRD 1.0 file is reported.
+    // Factur-X XMP for a ZUGFeRD 1.0 file: the XMP namespace decides the generation, not the file
+    // name, so the file name and the XML root are reported as conflicts with Factur-X.
     var factur = SUPPORT.checkContainer(pdf)
                         .stream()
                         .map(message -> message.ruleId())
                         .toList();
-    assertTrue(factur.contains("FX-EXTENSION-SCHEMA"),
-               factur::toString);
+    for (String rule : List.of("FX-DOCUMENT-FILE-NAME",
+                               "FX-FILE-NAME",
+                               "FX-XML-ROOT")) {
+      assertTrue(factur.contains(rule),
+                 factur::toString);
+    }
     byte[] zugferd1;
     try (PDDocument document = Loader.loadPDF(pdf)) {
       var    metadata = document.getDocumentCatalog()
@@ -349,10 +406,59 @@ class Zugferd1Test {
     for (String rule : List.of("FX-DOCUMENT-TYPE",
                                "FX-DOCUMENT-FILE-NAME",
                                "FX-CONFORMANCE-LEVEL",
-                               "FX-EXTENSION-SCHEMA")) {
+                               "FX-EXTENSION-SCHEMA",
+                               "FX-FILE-NAME",
+                               "FX-VERSION",
+                               "FX-XML-ROOT")) {
       assertFalse(findings.stream()
                           .anyMatch(finding -> finding.startsWith(rule)),
                   findings::toString);
+    }
+    // The extraction keeps ZUGFeRD 1.0 COMFORT away from the Factur-X profiles.
+    var invoice = SUPPORT.extract(zugferd1);
+    assertEquals("ZUGFeRD-invoice.xml",
+                 invoice.fileName());
+    assertEquals(null,
+                 invoice.profile());
+    // ZUGFeRD 1.0 BASIC is not Factur-X BASIC either.
+    byte[] basic = zugferd1Xmp(zugferd1,
+                               xmp -> xmp.replace(">COMFORT<",
+                                                  ">BASIC<"));
+    assertEquals(null,
+                 SUPPORT.extract(basic)
+                        .profile());
+    // ZUGFeRD 1.0 metadata with ZUGFeRD 2.0 or Factur-X XML.
+    byte[] cii = zugferd1Pdf(FacturXValidationTest.sample("basic-wl.xml"));
+    byte[] mixed = zugferd1Xmp(cii,
+                               xmp -> xmp.replace("urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#",
+                                                  "urn:ferd:pdfa:CrossIndustryDocument:invoice:1p0#")
+                                         .replace("factur-x.xml",
+                                                  "ZUGFeRD-invoice.xml")
+                                         .replace(">BASIC WL<",
+                                                  ">BASIC<"));
+    var rules = SUPPORT.checkContainer(mixed)
+                       .stream()
+                       .map(message -> message.ruleId())
+                       .toList();
+    assertTrue(rules.contains("FX-XML-ROOT"),
+               rules::toString);
+  }
+
+  private static byte[] zugferd1Xmp(byte[] pdf,
+                                    java.util.function.UnaryOperator<String> change)
+      throws IOException {
+    try (PDDocument document = Loader.loadPDF(pdf)) {
+      String xmp = change.apply(new String(document.getDocumentCatalog()
+                                                   .getMetadata()
+                                                   .toByteArray(),
+                                           StandardCharsets.UTF_8));
+      var replaced = new PDMetadata(document);
+      replaced.importXMPMetadata(xmp.getBytes(StandardCharsets.UTF_8));
+      document.getDocumentCatalog()
+              .setMetadata(replaced);
+      var out = new ByteArrayOutputStream();
+      document.save(out);
+      return out.toByteArray();
     }
   }
 }

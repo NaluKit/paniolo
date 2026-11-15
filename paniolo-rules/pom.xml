@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>io.github.nalukit</groupId>
+    <artifactId>paniolo-parent</artifactId>
+    <version>${revision}</version>
+  </parent>
+
+  <artifactId>paniolo-rules</artifactId>
+
+  <name>paniolo-rules</name>
+  <description>Official rules packaged for Paniolo: the KoSIT XRechnung validator configuration, the Factur-X / ZUGFeRD
+    schemas and Schematrons of FeRD, the French EXTENDED-CTC-FR rules of FNFE-MPE, and the Order-X rules
+  </description>
+
+  <properties>
+    <!-- Pinned KoSIT release; update all three values together. -->
+    <xrechnung.version>3.0.2</xrechnung.version>
+    <xrechnung.release>2026-08-31</xrechnung.release>
+    <xrechnung.sha256>2530cd107c414511c5d0462ec10f886910395abfca820db82e83d70bf01221a8</xrechnung.sha256>
+    <xrechnung.artifact>xrechnung-${xrechnung.version}-validator-configuration-${xrechnung.release}</xrechnung.artifact>
+
+    <!-- Last KoSIT release of each older XRechnung version, for documents that state that version. -->
+    <xrechnung.legacy12.version>1.2.2</xrechnung.legacy12.version>
+    <xrechnung.legacy12.release>2019-12-30</xrechnung.legacy12.release>
+    <xrechnung.legacy12.sha256>b9624c9f1c936e09ba99642b182b364aade921c95ffb6405e1ae49a4655b1740</xrechnung.legacy12.sha256>
+    <xrechnung.legacy20.version>2.0.1</xrechnung.legacy20.version>
+    <xrechnung.legacy20.release>2020-12-31</xrechnung.legacy20.release>
+    <xrechnung.legacy20.sha256>2a8db484476854c7106196b1c214a3a5a30eea54438b3955d4647a9abeaf4415</xrechnung.legacy20.sha256>
+    <xrechnung.legacy21.version>2.1.1</xrechnung.legacy21.version>
+    <xrechnung.legacy21.release>2021-11-15</xrechnung.legacy21.release>
+    <xrechnung.legacy21.sha256>837e77099cfd0a0b199fe2ebe78269ca29d01d99c038efed946d8a02806ce799</xrechnung.legacy21.sha256>
+    <xrechnung.legacy22.version>2.2.0</xrechnung.legacy22.version>
+    <xrechnung.legacy22.release>2022-11-15</xrechnung.legacy22.release>
+    <xrechnung.legacy22.sha256>cd77d613f58d48df2bbcccbe53b636ac447d65f3914c1cbc3fa3a1edb1955a5b</xrechnung.legacy22.sha256>
+    <xrechnung.legacy23.version>2.3.1</xrechnung.legacy23.version>
+    <xrechnung.legacy23.release>2023-05-12</xrechnung.legacy23.release>
+    <xrechnung.legacy23.sha256>631c975abe8a7aa8258c5192fa68bc2d629cdfca1109379fac1349c079baae7a</xrechnung.legacy23.sha256>
+    <!-- Declared as resource directory so IDE builds, which skip Maven plugins, still copy the archive. -->
+    <xrechnung.resources>${project.build.directory}/generated-resources/xrechnung</xrechnung.resources>
+
+    <!-- Pinned FeRD release; update all four values together with the archive. -->
+    <facturx.version>1.09.2</facturx.version>
+    <facturx.zugferd>2.5.2</facturx.zugferd>
+    <facturx.release>2026-08-04</facturx.release>
+    <facturx.sha256>9ae5c41bd06f48e5d432e5ab2cf7fd42592f1b065dfef984effaf6141f853843</facturx.sha256>
+    <facturx.archive>factur-x-${facturx.version}-zugferd-${facturx.zugferd}.zip</facturx.archive>
+    <!-- ZUGFeRD 1.0 (FeRD, 2014-06-25), no longer published by FeRD; taken from the Mustang project. -->
+    <zugferd1.archive>zugferd-1.0-2014-06-25.zip</zugferd1.archive>
+    <zugferd1.sha256>92d75b9f82bdb2725fc09e58ff4949d9f513cadfc103ca8ffc7200843b26e141</zugferd1.sha256>
+    <!-- Order-X 1.0 (FNFE-MPE and FeRD, 2021-04-13, Apache 2.0); packed by scripts/package-orderx-rules.sh,
+         which compiles the official Schematron to SVRL. -->
+    <orderx.archive>order-x-1.0-2021-04-13.zip</orderx.archive>
+    <orderx.sha256>3eecc226faca82c709354b0c293a32fb39ecfb143618ec03666eff93e7919190</orderx.sha256>
+    <!-- French profile EXTENDED-CTC-FR and rules BR-FR (FNFE-MPE France_RFE, Apache 2.0); the CII
+         files of the release tag, unmodified. Update all four values together with the archive. -->
+    <france.version>1.4.0.04</france.version>
+    <france.release>2026-09-04</france.release>
+    <france.archive>fnfe-france-rfe-${france.version}-cii-extended-ctc-fr.zip</france.archive>
+    <france.sha256>5d9a82d7ac2b7ac6811ec9bee5564ab57ec6c9fe926fadbf3a609a85ea3493dd</france.sha256>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>true</filtering>
+        <includes>
+          <include>**/xrechnung-rules.properties</include>
+          <include>**/facturx-rules.properties</include>
+        </includes>
+      </resource>
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>false</filtering>
+        <excludes>
+          <exclude>**/xrechnung-rules.properties</exclude>
+          <exclude>**/facturx-rules.properties</exclude>
+        </excludes>
+      </resource>
+      <resource>
+        <directory>${xrechnung.resources}</directory>
+        <filtering>false</filtering>
+      </resource>
+    </resources>
+    <plugins>
+      <plugin>
+        <groupId>com.googlecode.maven-download-plugin</groupId>
+        <artifactId>download-maven-plugin</artifactId>
+        <version>${plugin.download.version}</version>
+        <executions>
+          <execution>
+            <id>download-xrechnung-bundle</id>
+            <phase>generate-resources</phase>
+            <goals>
+              <goal>wget</goal>
+            </goals>
+            <configuration>
+              <uri>
+                https://github.com/itplr-kosit/validator-configuration-xrechnung/releases/download/v${xrechnung.release}/${xrechnung.artifact}.zip
+              </uri>
+              <outputDirectory>${xrechnung.resources}/io/github/nalukit/paniolo/rules/xrechnung</outputDirectory>
+              <outputFileName>${xrechnung.artifact}.zip</outputFileName>
+              <sha256>${xrechnung.sha256}</sha256>
+              <unpack>false</unpack>
+            </configuration>
+          </execution>
+          <execution>
+            <id>download-xrechnung-1.2-bundle</id>
+            <phase>generate-resources</phase>
+            <goals>
+              <goal>wget</goal>
+            </goals>
+            <configuration>
+              <uri>
+                https://github.com/itplr-kosit/validator-configuration-xrechnung/releases/download/release-${xrechnung.legacy12.release}/validator-configuration-xrechnung_${xrechnung.legacy12.version}_${xrechnung.legacy12.release}.zip
+              </uri>
+              <outputDirectory>${xrechnung.resources}/io/github/nalukit/paniolo/rules/xrechnung</outputDirectory>
+              <outputFileName>
+                validator-configuration-xrechnung_${xrechnung.legacy12.version}_${xrechnung.legacy12.release}.zip
+              </outputFileName>
+              <sha256>${xrechnung.legacy12.sha256}</sha256>
+              <unpack>false</unpack>
+            </configuration>
+          </execution>
+          <execution>
+            <id>download-xrechnung-2.0-bundle</id>
+            <phase>generate-resources</phase>
+            <goals>
+              <goal>wget</goal>
+            </goals>
+            <configuration>
+              <uri>
+                https://github.com/itplr-kosit/validator-configuration-xrechnung/releases/download/release-${xrechnung.legacy20.release}/validator-configuration-xrechnung_${xrechnung.legacy20.version}_${xrechnung.legacy20.release}.zip
+              </uri>
+              <outputDirectory>${xrechnung.resources}/io/github/nalukit/paniolo/rules/xrechnung</outputDirectory>
+              <outputFileName>
+                validator-configuration-xrechnung_${xrechnung.legacy20.version}_${xrechnung.legacy20.release}.zip
+              </outputFileName>
+              <sha256>${xrechnung.legacy20.sha256}</sha256>
+              <unpack>false</unpack>
+            </configuration>
+          </execution>
+          <execution>
+            <id>download-xrechnung-2.1-bundle</id>
+            <phase>generate-resources</phase>
+            <goals>
+              <goal>wget</goal>
+            </goals>
+            <configuration>
+              <uri>
+                https://github.com/itplr-kosit/validator-configuration-xrechnung/releases/download/release-${xrechnung.legacy21.release}/validator-configuration-xrechnung_${xrechnung.legacy21.version}_${xrechnung.legacy21.release}.zip
+              </uri>
+              <outputDirectory>${xrechnung.resources}/io/github/nalukit/paniolo/rules/xrechnung</outputDirectory>
+              <outputFileName>
+                validator-configuration-xrechnung_${xrechnung.legacy21.version}_${xrechnung.legacy21.release}.zip
+              </outputFileName>
+              <sha256>${xrechnung.legacy21.sha256}</sha256>
+              <unpack>false</unpack>
+            </configuration>
+          </execution>
+          <execution>
+            <id>download-xrechnung-2.2-bundle</id>
+            <phase>generate-resources</phase>
+            <goals>
+              <goal>wget</goal>
+            </goals>
+            <configuration>
+              <uri>
+                https://github.com/itplr-kosit/validator-configuration-xrechnung/releases/download/release-${xrechnung.legacy22.release}/validator-configuration-xrechnung_${xrechnung.legacy22.version}_${xrechnung.legacy22.release}.zip
+              </uri>
+              <outputDirectory>${xrechnung.resources}/io/github/nalukit/paniolo/rules/xrechnung</outputDirectory>
+              <outputFileName>
+                validator-configuration-xrechnung_${xrechnung.legacy22.version}_${xrechnung.legacy22.release}.zip
+              </outputFileName>
+              <sha256>${xrechnung.legacy22.sha256}</sha256>
+              <unpack>false</unpack>
+            </configuration>
+          </execution>
+          <execution>
+            <id>download-xrechnung-2.3-bundle</id>
+            <phase>generate-resources</phase>
+            <goals>
+              <goal>wget</goal>
+            </goals>
+            <configuration>
+              <uri>
+                https://github.com/itplr-kosit/validator-configuration-xrechnung/releases/download/release-${xrechnung.legacy23.release}/validator-configuration-xrechnung_${xrechnung.legacy23.version}_${xrechnung.legacy23.release}.zip
+              </uri>
+              <outputDirectory>${xrechnung.resources}/io/github/nalukit/paniolo/rules/xrechnung</outputDirectory>
+              <outputFileName>
+                validator-configuration-xrechnung_${xrechnung.legacy23.version}_${xrechnung.legacy23.release}.zip
+              </outputFileName>
+              <sha256>${xrechnung.legacy23.sha256}</sha256>
+              <unpack>false</unpack>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

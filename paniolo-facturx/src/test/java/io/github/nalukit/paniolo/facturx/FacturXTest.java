@@ -117,13 +117,17 @@ class FacturXTest {
     assertTrue(result.isValid(),
                () -> result.messages()
                            .toString());
-    var xrechnung = PANIOLO.validate(PANIOLO.extractXml(pdf));
-    assertTrue(xrechnung.messages()
-                        .stream()
-                        .anyMatch(message -> message.ruleId()
-                                                    .equals("BR-DE-15")),
-               () -> xrechnung.messages()
-                              .toString());
+    // The extracted XML states plain EN 16931: the German rules are information only.
+    var xml = PANIOLO.validate(PANIOLO.extractXml(pdf));
+    assertTrue(xml.isValid(),
+               () -> xml.messages()
+                        .toString());
+    assertTrue(xml.messages()
+                  .stream()
+                  .anyMatch(message -> message.ruleId()
+                                              .equals("BR-DE-15") && message.severity() == io.github.nalukit.paniolo.validation.Severity.INFO),
+               () -> xml.messages()
+                        .toString());
   }
 
   @Test

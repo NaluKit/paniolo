@@ -355,13 +355,25 @@ public final class PanioloCli {
 
   @Command(name = "attachments",
            description = { "Lists the files embedded in a PDF apart from the invoice XML: name, MIME type, relationship, size.",
-                           "With --extract, the files are written to a directory." })
+                           "With --extract, the files are written to a directory; a fifth column then names the file written.",
+                           "Attachments with the same file name get a numeric suffix. Existing files and symbolic links are never touched; " +
+                           "the command fails before writing anything unless --overwrite replaces existing regular files." })
   int attachments(
       @Option(names = { "-x",
                         "--extract" }, paramLabel = "DIR", description = "Directory to write the attachments to.") Path directory,
+      @Option(names = "--overwrite", description = "With --extract: replace existing regular files; symbolic links are still refused.") boolean overwrite,
       @Parameters(paramLabel = "FILE", description = "PDF; - for standard input.") Path file) {
+    var attachments = paniolo().attachments(io.read(file));
+    var targets     = directory == null ?
+                      List.<String>of() :
+                      io.extractionNames(directory,
+                                         attachments.stream()
+                                                    .map(PdfAttachment::fileName)
+                                                    .toList(),
+                                         overwrite);
     var list = new StringBuilder();
-    for (PdfAttachment attachment : paniolo().attachments(io.read(file))) {
+    for (int index = 0; index < attachments.size(); index++) {
+      PdfAttachment attachment = attachments.get(index);
       list.append(attachment.fileName())
           .append('\t')
           .append(attachment.mimeType())
@@ -369,12 +381,15 @@ public final class PanioloCli {
           .append(attachment.relationship()
                             .getPdfName())
           .append('\t')
-          .append(attachment.content().length)
-          .append('\n');
+          .append(attachment.content().length);
       if (directory != null) {
-        io.write(directory.resolve(attachment.fileName()),
-                 attachment.content());
+        list.append('\t')
+            .append(targets.get(index));
+        io.writeFile(directory.resolve(targets.get(index)),
+                     attachment.content(),
+                     overwrite);
       }
+      list.append('\n');
     }
     if (!list.isEmpty()) {
       io.write(null,
@@ -434,24 +449,27 @@ public final class PanioloCli {
   }
 
   /**
-   * Validates an invoice, an Order-X order, or a UBL despatch advice, chosen by the root element.
+   * Validates an invoice, an Order-X order, or a UBL despatch advice, chosen by the root element of
+   * the XML or of the main document in a PDF, not by words somewhere in the text.
    */
   ValidationResult validateAny(byte[] document) {
-    String head = new String(document,
-                             0,
-                             Math.min(document.length,
-                                      4096),
-                             StandardCharsets.ISO_8859_1);
-    if (head.contains("SCRDMCCBDACIOMessageStructure")) {
-      return paniolo().validateOrder(document);
+    var entry = Paniolo.isPdf(document) ?
+                InventoryCommand.embedded(paniolo(),
+                                          document) :
+                InventoryCommand.classify(document);
+    String kind = entry == null ?
+                  "UNKNOWN" :
+                  entry.format();
+    switch (kind) {
+      case "ORDER_X":
+        return paniolo().validateOrder(document);
+      case "UBL_DESPATCH_ADVICE":
+        return paniolo().validateDespatchAdvice(document);
+      case "CIDA":
+        throw new IllegalArgumentException("CIDA delivery notes cannot be validated: no schema is published");
+      default:
+        return paniolo().validate(document);
     }
-    if (head.contains("DespatchAdvice-2")) {
-      return paniolo().validateDespatchAdvice(document);
-    }
-    if (head.contains("SCRDMCCBDACIDAMessageStructure")) {
-      throw new IllegalArgumentException("CIDA delivery notes cannot be validated: no schema is published");
-    }
-    return paniolo().validate(document);
   }
 
   /**

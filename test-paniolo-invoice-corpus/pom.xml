@@ -22,10 +22,51 @@
       <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
+    <!-- Only the separate PDF/A run (PdfaCorpusTest) sees it; see the surefire executions below. -->
+    <dependency>
+      <groupId>io.github.nalukit</groupId>
+      <artifactId>paniolo-pdfa</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <executions>
+          <!-- The baseline of the corpus: container and XML, without PDF/A (PDFA-NOT-CHECKED). -->
+          <execution>
+            <id>default-test</id>
+            <configuration>
+              <classpathDependencyExcludes>
+                <classpathDependencyExclude>io.github.nalukit:paniolo-pdfa</classpathDependencyExclude>
+              </classpathDependencyExcludes>
+              <excludes>
+                <exclude>**/PdfaCorpusTest.java</exclude>
+              </excludes>
+            </configuration>
+          </execution>
+          <!-- The additional run: PDF/A of the corpus PDFs with veraPDF and their own expectations. -->
+          <execution>
+            <id>pdfa-corpus</id>
+            <phase>test</phase>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <configuration>
+              <test>PdfaCorpusTest</test>
+              <reportNameSuffix>pdfa</reportNameSuffix>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
 </project>

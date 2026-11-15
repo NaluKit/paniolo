@@ -119,6 +119,65 @@ class InvoiceTest {
                         .payableAmount());
   }
 
+  /**
+   * BR-27 and BR-28 apply outside the Factur-X profiles EXTENDED and EXTENDED-CTC-FR, also to the
+   * sub-lines of the XRechnung extension.
+   */
+  @Test
+  void allowsNegativePricesInExtendedOnly() {
+    var negative = line("1",
+                        "2",
+                        "-100",
+                        VAT);
+    var extended = invoice().processControl(ProcessControl.facturXExtended())
+                            .addLine(negative)
+                            .build();
+    assertEquals(new BigDecimal("-238.00"),
+                 extended.totals()
+                         .payableAmount());
+    var error = assertThrows(IllegalArgumentException.class,
+                             () -> invoice().addLine(negative)
+                                            .build());
+    assertEquals("Line 1: netUnitPrice must not be negative (BR-27); only the Factur-X profiles EXTENDED and EXTENDED-CTC-FR allow negative prices",
+                 error.getMessage());
+    var gross = InvoiceLine.create()
+                           .id("1")
+                           .name("Beratung")
+                           .quantity(BigDecimal.ONE)
+                           .unitCode("HUR")
+                           .netUnitPrice(BigDecimal.ZERO)
+                           .grossPrice(new BigDecimal("-1"))
+                           .tax(VAT)
+                           .build();
+    assertThrows(IllegalArgumentException.class,
+                 () -> invoice().processControl(ProcessControl.en16931())
+                                .addLine(gross)
+                                .build());
+    var parent = InvoiceLine.create()
+                            .id("2")
+                            .name("Paket")
+                            .quantity(BigDecimal.ONE)
+                            .unitCode("HUR")
+                            .netUnitPrice(new BigDecimal("5"))
+                            .tax(VAT)
+                            .addSubLine(line("2.1",
+                                             "1",
+                                             "10",
+                                             VAT))
+                            .addSubLine(line("2.2",
+                                             "1",
+                                             "-5",
+                                             VAT))
+                            .build();
+    var sub = assertThrows(IllegalArgumentException.class,
+                           () -> invoice().processControl(ProcessControl.xrechnungExtension())
+                                          .addLine(parent)
+                                          .build());
+    assertTrue(sub.getMessage()
+                  .startsWith("Line 2.2: netUnitPrice must not be negative (BR-27)"),
+               sub::getMessage);
+  }
+
   @Test
   void roundsLinesBeforeGroupingVatAndNormalizesRateScale() {
     var invoice = invoice().addLine(line("1",
@@ -196,16 +255,31 @@ class InvoiceTest {
   void rejectsMissingAndDuplicateLinesAndInvalidPriceBase() {
     assertThrows(IllegalArgumentException.class,
                  () -> invoice().build());
-    assertThrows(IllegalArgumentException.class,
-                 () -> invoice().addLine(line("1",
-                                              "1",
-                                              "1",
-                                              VAT))
-                                .addLine(line("1",
-                                              "2",
-                                              "2",
-                                              VAT))
-                                .build());
+    // Repeated line identifiers (BT-126) are no violation of EN 16931; lines are kept by position.
+    assertEquals(2,
+                 invoice().addLine(line("1",
+                                        "1",
+                                        "1",
+                                        VAT))
+                          .addLine(line("1",
+                                        "2",
+                                        "2",
+                                        VAT))
+                          .build()
+                          .lines()
+                          .size());
+    // A line without unit is rejected with its identifier and the field (BR-23).
+    var noUnit = assertThrows(NullPointerException.class,
+                              () -> invoice().addLine(InvoiceLine.create()
+                                                                 .id("7")
+                                                                 .name("Test")
+                                                                 .quantity(BigDecimal.ONE)
+                                                                 .netUnitPrice(BigDecimal.ONE)
+                                                                 .tax(VAT)
+                                                                 .build())
+                                             .build());
+    assertEquals("Line 7: unitCode (BT-130)",
+                 noUnit.getMessage());
     assertThrows(IllegalArgumentException.class,
                  () -> InvoiceLine.create()
                                   .id("1")
@@ -422,17 +496,29 @@ class InvoiceTest {
                                 .build());
     assertThrows(IllegalArgumentException.class,
                  () -> invoice().build());
-    // Invoices with lines need complete addresses of seller and buyer.
+    // Invoices with lines need an address of seller and buyer; EN 16931 requires its country only,
+    // city and post code are a matter of the profile (XRechnung).
     assertThrows(IllegalArgumentException.class,
                  () -> invoice().buyer(Party.create()
                                             .name("Kunde")
-                                            .address(Address.ofCountry(Country.DE))
                                             .build())
                                 .addLine(line("1",
                                               "1",
                                               "100",
                                               VAT))
                                 .build());
+    assertEquals(Address.ofCountry(Country.DE),
+                 invoice().buyer(Party.create()
+                                      .name("Kunde")
+                                      .address(Address.ofCountry(Country.DE))
+                                      .build())
+                          .addLine(line("1",
+                                        "1",
+                                        "100",
+                                        VAT))
+                          .build()
+                          .buyer()
+                          .address());
     // BR-08: the seller always needs an address.
     assertThrows(IllegalArgumentException.class,
                  () -> invoice().seller(Party.create()
@@ -444,11 +530,27 @@ class InvoiceTest {
 
   @Test
   void buildersValidateOnBuild() {
-    assertThrows(IllegalArgumentException.class,
+    // Only the country is required (BR-09); a value that is set must not be blank.
+    assertThrows(NullPointerException.class,
                  () -> Address.create()
                               .street("S")
                               .city("C")
                               .build());
+    assertThrows(IllegalArgumentException.class,
+                 () -> Address.create()
+                              .street(" ")
+                              .city("C")
+                              .country(Country.DE)
+                              .build());
+    var withoutStreet = Address.create()
+                               .city("C")
+                               .postalCode("12345")
+                               .country(Country.DE)
+                               .build();
+    assertNull(withoutStreet.street());
+    assertFalse(withoutStreet.isCountryOnly());
+    assertTrue(Address.ofCountry(Country.DE)
+                      .isCountryOnly());
     // A party without address exists only as buyer of a Factur-X MINIMUM invoice.
     assertThrows(IllegalArgumentException.class,
                  () -> Party.requireAddress(Party.create()
@@ -564,12 +666,14 @@ class InvoiceTest {
                                  .paymentCard(card)
                                  .build()
                                  .hasCardWithCreditTransfer());
-    assertThrows(IllegalArgumentException.class,
-                 () -> PaymentInstruction.create()
-                                         .meansCode(PaymentMeansCode.CODE_58)
-                                         .addCreditTransfer(account)
-                                         .directDebit(mandate)
-                                         .build());
+    // A mandate next to the account is excluded by XRechnung (BR-DE-23) only; the model keeps it.
+    assertEquals(mandate,
+                 PaymentInstruction.create()
+                                   .meansCode(PaymentMeansCode.CODE_58)
+                                   .addCreditTransfer(account)
+                                   .directDebit(mandate)
+                                   .build()
+                                   .directDebit());
     assertThrows(IllegalArgumentException.class,
                  () -> PaymentInstruction.create()
                                          .meansCode(PaymentMeansCode.CODE_54)
@@ -578,11 +682,28 @@ class InvoiceTest {
                  () -> PaymentInstruction.create()
                                          .meansCode(PaymentMeansCode.CODE_59)
                                          .build());
-    assertThrows(IllegalArgumentException.class,
-                 () -> PaymentInstruction.create()
-                                         .meansCode(PaymentMeansCode.CODE_10)
-                                         .addCreditTransfer(account)
-                                         .build());
+    // EN 16931 forbids accounts, cards and mandates for no code: mutually defined (ZZZ) and the
+    // other codes may carry any of them.
+    var mutuallyDefined = PaymentInstruction.create()
+                                            .meansCode(PaymentMeansCode.CODE_ZZZ)
+                                            .addCreditTransfer(account)
+                                            .paymentCard(card)
+                                            .directDebit(mandate)
+                                            .build();
+    assertEquals(List.of(account),
+                 mutuallyDefined.creditTransfers());
+    assertEquals(card,
+                 mutuallyDefined.paymentCard());
+    assertEquals(mandate,
+                 mutuallyDefined.directDebit());
+    assertNotNull(PaymentInstruction.create()
+                                    .meansCode(PaymentMeansCode.CODE_49)
+                                    .directDebit(mandate)
+                                    .build());
+    assertNotNull(PaymentInstruction.create()
+                                    .meansCode(PaymentMeansCode.CODE_10)
+                                    .addCreditTransfer(account)
+                                    .build());
     assertNotNull(PaymentInstruction.create()
                                     .meansCode(PaymentMeansCode.CODE_54)
                                     .paymentCard(card)
@@ -594,6 +715,22 @@ class InvoiceTest {
     assertNotNull(PaymentInstruction.create()
                                     .meansCode(PaymentMeansCode.CODE_10)
                                     .build());
+    // Payment to bank account may name the account (EN 16931 requires it for 30 and 58 only).
+    assertEquals(List.of(account),
+                 PaymentInstruction.create()
+                                   .meansCode(PaymentMeansCode.CODE_42)
+                                   .addCreditTransfer(account)
+                                   .build()
+                                   .creditTransfers());
+    assertNotNull(PaymentInstruction.create()
+                                    .meansCode(PaymentMeansCode.CODE_42)
+                                    .build());
+    assertThrows(IllegalArgumentException.class,
+                 () -> PaymentInstruction.create()
+                                         .meansCode(PaymentMeansCode.CODE_42)
+                                         .addCreditTransfer(account)
+                                         .directDebit(mandate)
+                                         .build());
   }
 
   @Test

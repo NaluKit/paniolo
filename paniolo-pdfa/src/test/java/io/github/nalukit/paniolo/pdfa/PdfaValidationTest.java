@@ -67,6 +67,25 @@ class PdfaValidationTest {
                        .toList());
   }
 
+  @ParameterizedTest
+  @EnumSource(value = FacturXProfile.class,
+              names = { "MINIMUM",
+                        "BASIC_WL",
+                        "EXTENDED_CTC_FR" },
+              mode = EnumSource.Mode.EXCLUDE)
+  void renderedFacturXPassesAllStages(FacturXProfile profile) {
+    byte[] pdf = PANIOLO.toFacturX(FacturXInvoices.invoice(profile,
+                                                           InvoiceTypeCode.CODE_380)
+                                                  .build(),
+                                   profile);
+    var result = PANIOLO.validate(pdf);
+    assertTrue(result.isValid(),
+               () -> result.messages()
+                           .toString());
+    assertEquals(List.of(),
+                 result.messages(ValidationMessage.Stage.PDF_A));
+  }
+
   @Test
   void reportsPdfaPartOtherThanThree() {
     var findings = PDFA.validate(TestPdfs.pdfA2b());

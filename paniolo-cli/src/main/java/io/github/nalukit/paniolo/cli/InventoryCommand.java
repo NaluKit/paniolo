@@ -17,12 +17,15 @@
  */
 package io.github.nalukit.paniolo.cli;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 import io.github.nalukit.paniolo.Paniolo;
 import io.github.nalukit.paniolo.config.FacturXProfile;
 import io.github.nalukit.paniolo.config.PdfAttachment;
 import io.github.nalukit.paniolo.validation.ValidationResult;
+import io.github.nalukit.paniolo.xml.cii.CiiDespatchAdviceWriter;
+import io.github.nalukit.paniolo.xml.cii.OrderXWriter;
+import io.github.nalukit.paniolo.xml.cii.ZugferdV1InvoiceReader;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
@@ -277,29 +280,42 @@ final class InventoryCommand
   }
 
   /**
-   * The document XML of a PDF: the invoice XML, otherwise the first embedded XML file of a known
-   * format, e.g. the Order-X XML; or null.
+   * The document XML of a PDF: the invoice XML, the Order-X XML, the despatch advice XML, otherwise
+   * the first other embedded XML file of a known format; or null. The documents are classified as
+   * they are, without reading them into the model.
    */
-  private static Entry embedded(Paniolo paniolo,
-                                byte[] pdf) {
-    try {
-      return classify(paniolo.extractXml(pdf));
-    } catch (IllegalArgumentException e) {
-      // No invoice: look at the other embedded files.
+  static Entry embedded(Paniolo paniolo,
+                        byte[] pdf) {
+    List<java.util.function.Function<byte[], byte[]>> extractors = List.of(paniolo::extractXml,
+                                                                           paniolo::extractOrderXml,
+                                                                           paniolo::extractDespatchAdviceXml);
+    for (var extractor : extractors) {
+      try {
+        var entry = classify(extractor.apply(pdf));
+        if (known(entry)) {
+          return entry;
+        }
+      } catch (IllegalArgumentException e) {
+        // Not this family: try the next one.
+      }
     }
     for (PdfAttachment attachment : paniolo.attachments(pdf)) {
       if (attachment.fileName()
                     .toLowerCase(Locale.ROOT)
                     .endsWith(".xml")) {
         var entry = classify(attachment.content());
-        if (!entry.format()
-                  .equals("UNKNOWN") && !entry.format()
-                                              .equals("MALFORMED")) {
+        if (known(entry)) {
           return entry;
         }
       }
     }
     return null;
+  }
+
+  private static boolean known(Entry entry) {
+    return !entry.format()
+                 .equals("UNKNOWN") && !entry.format()
+                                             .equals("MALFORMED");
   }
 
   /**
@@ -325,6 +341,16 @@ final class InventoryCommand
   /**
    * Reads the root element, the specification identifier, and the type code of document XML.
    */
+  private static final String CBC = "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2";
+
+  private static String ublTypeCode(String kind) {
+    return switch (kind) {
+      case "UBL_INVOICE" -> "InvoiceTypeCode";
+      case "UBL_CREDIT_NOTE" -> "CreditNoteTypeCode";
+      default -> "DespatchAdviceTypeCode";
+    };
+  }
+
   static Entry classify(byte[] xml) {
     var factory = XMLInputFactory.newFactory();
     factory.setProperty(XMLInputFactory.SUPPORT_DTD,
@@ -336,59 +362,84 @@ final class InventoryCommand
       try {
         String root          = null;
         String namespace     = null;
+        String kind          = "UNKNOWN";
         String specification = null;
         String typeCode      = null;
-        boolean context      = false;
-        boolean document     = false;
+        // The names of the open elements below the root element.
+        var path   = new java.util.ArrayList<String>();
+        var spaces = new java.util.ArrayList<String>();
         while (reader.hasNext()) {
-          if (reader.next() != XMLStreamConstants.START_ELEMENT) {
+          int event = reader.next();
+          if (event == XMLStreamConstants.END_ELEMENT) {
+            if (!path.isEmpty()) {
+              path.remove(path.size() - 1);
+              spaces.remove(spaces.size() - 1);
+            }
+            continue;
+          }
+          if (event != XMLStreamConstants.START_ELEMENT) {
             continue;
           }
           String name = reader.getLocalName();
           if (root == null) {
             root      = name;
             namespace = reader.getNamespaceURI();
+            kind      = format(root,
+                               namespace);
             continue;
           }
-          switch (name) {
-            // CII, ZUGFeRD 1.0, Order-X, CIDA: ExchangedDocumentContext/GuidelineSpecifiedDocumentContextParameter/ID
-            case "GuidelineSpecifiedDocumentContextParameter" -> context = true;
-            case "ExchangedDocument", "HeaderExchangedDocument" -> document = true;
-            case "ID" -> {
-              if (context && specification == null) {
-                specification = reader.getElementText()
+          path.add(name);
+          String ns = reader.getNamespaceURI();
+          spaces.add(ns);
+          // Only the elements at their place in the document state the metadata: not a foreign
+          // extension, not a referenced document nested in the invoice.
+          String found = null;
+          boolean isSpecification = false;
+          if (kind.startsWith("UBL_")) {
+            // direct children of the root element, in the namespace of the basic components
+            if (path.size() == 1 && CBC.equals(ns)) {
+              isSpecification = name.equals("CustomizationID");
+              if (isSpecification || name.equals(ublTypeCode(kind))) {
+                found = reader.getElementText()
+                              .strip();
+              }
+            }
+          } else if (!kind.equals("UNKNOWN") && java.util.Objects.equals(spaces.get(0),
+                                                                        namespace)) {
+            // CII, ZUGFeRD 1.0, Order-X, CIDA: the context or document element below the root element
+            // is in the namespace of the root element; the elements in it are checked by their path.
+            if (path.size() == 3 && name.equals("ID") && path.get(0)
+                                                             .endsWith("ExchangedDocumentContext") && path.get(1)
+                                                                                                          .equals("GuidelineSpecifiedDocumentContextParameter") && java.util.Objects.equals(spaces.get(1),
+                                                                                                                                                                                         ns)) {
+              isSpecification = true;
+              found           = reader.getElementText()
                                       .strip();
-                context       = false;
-              }
+            } else if (path.size() == 2 && name.equals("TypeCode") && (path.get(0)
+                                                                           .equals("ExchangedDocument") || path.get(0)
+                                                                                                               .equals("HeaderExchangedDocument"))) {
+              found = reader.getElementText()
+                            .strip();
             }
-            case "TypeCode" -> {
-              if (document && typeCode == null) {
-                typeCode = reader.getElementText()
-                                 .strip();
-              }
-            }
-            // UBL
-            case "CustomizationID" -> {
-              if (specification == null) {
-                specification = reader.getElementText()
-                                      .strip();
-              }
-            }
-            case "InvoiceTypeCode", "CreditNoteTypeCode", "DespatchAdviceTypeCode" -> {
-              if (typeCode == null) {
-                typeCode = reader.getElementText()
-                                 .strip();
-              }
-            }
-            default -> {
+          }
+          if (found != null) {
+            // getElementText has consumed the end of the element.
+            path.remove(path.size() - 1);
+            spaces.remove(spaces.size() - 1);
+            if (isSpecification) {
+              specification = specification == null ?
+                              found :
+                              specification;
+            } else {
+              typeCode = typeCode == null ?
+                         found :
+                         typeCode;
             }
           }
           if (specification != null && typeCode != null) {
             break;
           }
         }
-        String kind = format(root,
-                             namespace);
         return new Entry(kind,
                          profile(kind,
                                  specification),
@@ -428,20 +479,16 @@ final class InventoryCommand
     String ns = namespace == null ?
                 "" :
                 namespace;
-    return switch (root) {
-      case "CrossIndustryInvoice" -> "CII";
-      case "CrossIndustryDocument" -> "ZUGFERD_1";
-      case "SCRDMCCBDACIOMessageStructure" -> "ORDER_X";
-      case "SCRDMCCBDACIDAMessageStructure" -> "CIDA";
-      case "Invoice" -> ns.startsWith("urn:oasis:names:specification:ubl:schema:xsd:Invoice-2") ?
-                        "UBL_INVOICE" :
-                        "UNKNOWN";
-      case "CreditNote" -> ns.startsWith("urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2") ?
-                           "UBL_CREDIT_NOTE" :
-                           "UNKNOWN";
-      case "DespatchAdvice" -> ns.startsWith("urn:oasis:names:specification:ubl:schema:xsd:DespatchAdvice-2") ?
-                               "UBL_DESPATCH_ADVICE" :
-                               "UNKNOWN";
+    // The namespace belongs to the name: the same local name in another namespace is not a known format.
+    return switch (ns + " " + root) {
+      case "urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100 CrossIndustryInvoice" -> "CII";
+      case ZugferdV1InvoiceReader.RSM + " CrossIndustryDocument" -> "ZUGFERD_1";
+      case OrderXWriter.RSM + " SCRDMCCBDACIOMessageStructure" -> "ORDER_X";
+      // The reader of despatch advices also takes the CIDA root without namespace.
+      case CiiDespatchAdviceWriter.RSM + " SCRDMCCBDACIDAMessageStructure", " SCRDMCCBDACIDAMessageStructure" -> "CIDA";
+      case "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2 Invoice" -> "UBL_INVOICE";
+      case "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2 CreditNote" -> "UBL_CREDIT_NOTE";
+      case "urn:oasis:names:specification:ubl:schema:xsd:DespatchAdvice-2 DespatchAdvice" -> "UBL_DESPATCH_ADVICE";
       default -> "UNKNOWN";
     };
   }

@@ -149,6 +149,94 @@ final class Io {
   }
 
   /**
+   * Chooses the file name of every attachment in a directory before anything is written: names
+   * that repeat, ignoring case and Unicode normalization (see {@link #collisionKey}), get a
+   * numeric suffix before the extension. An existing target is refused, a symbolic link always, a regular file unless {@code overwrite} is set.
+   */
+  List<String> extractionNames(Path directory,
+                               List<String> names,
+                               boolean overwrite) {
+    var used   = new java.util.HashSet<String>();
+    var result = new ArrayList<String>();
+    for (String name : names) {
+      String candidate = name;
+      int    dot       = name.lastIndexOf('.');
+      String stem      = dot > 0 ?
+                         name.substring(0,
+                                        dot) :
+                         name;
+      String extension = dot > 0 ?
+                         name.substring(dot) :
+                         "";
+      for (int count = 2; !used.add(collisionKey(candidate)); count++) {
+        candidate = stem + "-" + count + extension;
+      }
+      Path target = directory.resolve(candidate);
+      if (!directory.equals(target.getParent())) {
+        throw new UncheckedIOException("Refusing to write outside " + directory + ": " + name,
+                                       new IOException("path"));
+      }
+      if (Files.isSymbolicLink(target)) {
+        throw new UncheckedIOException("Refusing to write " + target + ": it is a symbolic link",
+                                       new IOException("symbolic link"));
+      }
+      if (Files.exists(target,
+                       java.nio.file.LinkOption.NOFOLLOW_LINKS) && !(overwrite && Files.isRegularFile(target,
+                                                                                                        java.nio.file.LinkOption.NOFOLLOW_LINKS))) {
+        throw new UncheckedIOException(target + " exists already; use --overwrite to replace a regular file",
+                                       new IOException("exists"));
+      }
+      result.add(candidate);
+    }
+    return result;
+  }
+
+  /**
+   * Names that a file system may treat as the same file. The key is deliberately coarse, so two names
+   * of one key never share a file on any system: compatibility decomposition (\u00e9 as one or two
+   * characters, ligatures, full-width letters) and full case folding, which upper-cases first so that
+   * multi-character and final forms agree ({@code \u00df} and {@code ss}, {@code \u03c2} and
+   * {@code \u03c3}). Applied everywhere, so the result does not depend on the machine.
+   */
+  static String collisionKey(String name) {
+    var form = java.text.Normalizer.Form.NFKD;
+    return java.text.Normalizer.normalize(java.text.Normalizer.normalize(name,
+                                                                         form)
+                                                              .toUpperCase(java.util.Locale.ROOT)
+                                                              .toLowerCase(java.util.Locale.ROOT),
+                                          form);
+  }
+
+  /**
+   * Writes a file that must not follow a symbolic link and, without {@code overwrite}, must not
+   * exist.
+   */
+  void writeFile(Path path,
+                 byte[] content,
+                 boolean overwrite) {
+    try {
+      Files.createDirectories(path.toAbsolutePath()
+                                  .getParent());
+      if (overwrite) {
+        Files.write(path,
+                    content,
+                    java.nio.file.StandardOpenOption.CREATE,
+                    java.nio.file.StandardOpenOption.TRUNCATE_EXISTING,
+                    java.nio.file.StandardOpenOption.WRITE,
+                    java.nio.file.LinkOption.NOFOLLOW_LINKS);
+      } else {
+        Files.write(path,
+                    content,
+                    java.nio.file.StandardOpenOption.CREATE_NEW,
+                    java.nio.file.StandardOpenOption.WRITE);
+      }
+    } catch (IOException e) {
+      throw new UncheckedIOException("Cannot write " + path + ": " + e.getMessage(),
+                                     e);
+    }
+  }
+
+  /**
    * Writes text as UTF-8, followed by a line break if it does not end with one.
    */
   void write(Path path,

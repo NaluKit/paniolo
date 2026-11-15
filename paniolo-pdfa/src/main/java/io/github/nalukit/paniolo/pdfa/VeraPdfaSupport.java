@@ -17,6 +17,7 @@
  */
 package io.github.nalukit.paniolo.pdfa;
 
+import io.github.nalukit.paniolo.config.PdfaScriptCache;
 import io.github.nalukit.paniolo.spi.PdfaSupport;
 import io.github.nalukit.paniolo.validation.PdfaStatistics;
 import io.github.nalukit.paniolo.validation.Severity;
@@ -29,6 +30,7 @@ import org.verapdf.gf.foundry.VeraGreenfieldFoundryProvider;
 import org.verapdf.pdfa.Foundries;
 import org.verapdf.pdfa.flavours.PDFAFlavour;
 import org.verapdf.pdfa.results.TestAssertion;
+import org.verapdf.pdfa.validation.validators.JavaScriptEvaluator;
 
 import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
@@ -36,15 +38,25 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 /**
  * PDF/A validation with veraPDF, registered for {@link java.util.ServiceLoader}. The document is
  * validated against the PDF/A flavour its XMP metadata declares; Factur-X requires part 3.
- * Stateless and thread-safe.
+ * Thread-safe; checks run in parallel without a shared lock.
+ *
+ * <p>veraPDF compiles the JavaScript test of each PDF/A rule to a class with its own class loader
+ * and caches it per thread ({@code JavaScriptEvaluator}), keyed by the rule text. The caches belong
+ * to the thread that ran the check. {@link #check(byte[], boolean, PdfaScriptCache)} with
+ * {@link PdfaScriptCache#CLEAR_AFTER_CHECK} releases them after every check, and
+ * {@link #releaseThreadCaches()} at any time; both act on the calling thread only. They also clear
+ * the rules compiled by other veraPDF validations on the same thread, which compile them again
+ * when needed.
  */
 public final class VeraPdfaSupport
     implements PdfaSupport {
   private static final System.Logger LOGGER = System.getLogger(VeraPdfaSupport.class.getName());
+  private final        Consumer<PDFAFlavour> afterValidation;
 
   static {
     VeraGreenfieldFoundryProvider.initialise();
@@ -54,6 +66,25 @@ public final class VeraPdfaSupport
    * Creates the implementation; {@link java.util.ServiceLoader} calls it.
    */
   public VeraPdfaSupport() {
+    this(flavour -> {
+    });
+  }
+
+  /**
+   * For tests: runs a step after veraPDF validated the document, when its rules are compiled.
+   */
+  VeraPdfaSupport(Consumer<PDFAFlavour> afterValidation) {
+    this.afterValidation = afterValidation;
+  }
+
+  /**
+   * Releases the JavaScript rules veraPDF compiled and cached for the calling thread
+   * ({@code JavaScriptEvaluator.clearScripts()}); later checks on the thread compile them again.
+   * Safe to call with empty caches. The caches of other threads are not affected.
+   */
+  @Override
+  public void releaseThreadCaches() {
+    JavaScriptEvaluator.clearScripts();
   }
 
   private static PDFAFlavour declaredFlavour(byte[] pdf)
@@ -195,6 +226,7 @@ public final class VeraPdfaSupport
                               .createValidator(flavour,
                                                false)
                               .validate(parser);
+        afterValidation.accept(flavour);
         findings.addAll(failures(result.getTestAssertions(),
                                  flavour));
         if (statistics) {

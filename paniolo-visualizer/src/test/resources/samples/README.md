@@ -7,4 +7,4 @@ licensed under the Apache License, Version 2.0, taken unmodified.
 
 `invoice-extended-display.xml` carries the EXTENDED information the views show (further parties,
 logistics service charges, financial adjustments, product and reference details); it is the invoice of
-`ExtendedDisplayLayoutTest` in `paniolo-pdf-layout`, written with Paniolo.
+`ExtendedDisplayLayoutTest` in `paniolo-facturx`, written with Paniolo.

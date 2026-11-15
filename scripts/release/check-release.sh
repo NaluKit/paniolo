@@ -19,10 +19,15 @@
 
 #
 # Checks that a Paniolo release is described consistently: release version, Git tag, Maven
-# version, SECURITY.md, README, versioned API reference and website.
+# version, SECURITY.md, CHANGELOG.md, README, versioned API reference and, optionally, website.
 #
 #   scripts/release/check-release.sh <version>
-#       Static checks of the working tree. Run them on the release branch before merging.
+#       Static checks of the working tree. The CI build runs them for every pull request
+#       against main, so a release is checked before it is merged.
+#
+#   scripts/release/check-release.sh <version> --site <dir>
+#       Additionally checks the Paniolo pages of the website. The website is maintained in the
+#       repository NaluKit/nalukit-web-site; <dir> is its directory src/content/paniolo.
 #
 #   scripts/release/check-release.sh <version> --artifacts [--repository <url>]
 #       Additionally builds the quickstart of docs/api/<version>.md as a new project, with an
@@ -35,7 +40,7 @@
 set -euo pipefail
 
 usage() {
-  echo "usage: $0 <version> [--artifacts] [--repository <url>]" >&2
+  echo "usage: $0 <version> [--site <dir>] [--artifacts] [--repository <url>]" >&2
   exit 2
 }
 
@@ -44,9 +49,11 @@ VERSION=$1
 shift
 ARTIFACTS=false
 REPOSITORY=
+SITE=
 while [[ $# -gt 0 ]]; do
   case $1 in
     --artifacts) ARTIFACTS=true ;;
+    --site) [[ $# -ge 2 ]] || usage; SITE=$2; shift ;;
     --repository) [[ $# -ge 2 ]] || usage; REPOSITORY=$2; shift ;;
     *) usage ;;
   esac
@@ -56,6 +63,7 @@ done
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 REFERENCE="docs/api/$VERSION.md"
 FAILURES=0
+COMMIT=
 
 ok() { echo "  ok    $*"; }
 fail() { echo "  FAIL  $*"; FAILURES=$((FAILURES + 1)); }
@@ -113,6 +121,28 @@ else
   fail "SECURITY.md has no row '| \`$LINE\` | Yes |' in 'Supported versions'"
 fi
 
+echo "CHANGELOG.md"
+if [[ ! -f $ROOT/CHANGELOG.md ]]; then
+  fail "CHANGELOG.md is missing"
+else
+  if grep -Eq "^## \[${VERSION//./\\.}\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$" "$ROOT/CHANGELOG.md"; then
+    ok "section '## [$VERSION] - <date>'"
+  else
+    fail "CHANGELOG.md has no section '## [$VERSION] - YYYY-MM-DD'"
+  fi
+  if grep -Fxq "[$VERSION]: https://github.com/NaluKit/paniolo/releases/tag/$VERSION" "$ROOT/CHANGELOG.md"; then
+    ok "link to the release $VERSION"
+  else
+    fail "CHANGELOG.md has no link '[$VERSION]: https://github.com/NaluKit/paniolo/releases/tag/$VERSION'"
+  fi
+  UNRELEASED=$(grep -E '^\[Unreleased\]: ' "$ROOT/CHANGELOG.md" || true)
+  if [[ -z $UNRELEASED || $UNRELEASED == "[Unreleased]: https://github.com/NaluKit/paniolo/compare/$VERSION...HEAD" ]]; then
+    ok "[Unreleased] compares with $VERSION"
+  else
+    fail "CHANGELOG.md [Unreleased] link does not compare with $VERSION: ${UNRELEASED#*: }"
+  fi
+fi
+
 echo "Versioned API reference"
 if [[ -f $ROOT/$REFERENCE ]]; then
   ok "$REFERENCE exists"
@@ -146,7 +176,7 @@ else
   fail "$REFERENCE is missing"
 fi
 
-echo "README and website"
+echo "README"
 for f in $REFERENCE README.md; do
   [[ -f $ROOT/$f ]] || continue
   while IFS=: read -r file line found; do
@@ -168,13 +198,36 @@ if grep -Fq "SECURITY.md" "$ROOT/README.md"; then
 else
   fail "README does not link SECURITY.md"
 fi
-for page in docs/site/api.html docs/site/formats.html; do
-  if grep -Fq "$VERSION" "$ROOT/$page" && ! grep -Eq "SNAPSHOT|0\.0\.0-" "$ROOT/$page"; then
-    ok "$page shows $VERSION"
-  else
-    fail "$page does not show $VERSION or still shows a SNAPSHOT / local coordinate"
-  fi
-done
+
+echo "Website"
+if [[ -z $SITE ]]; then
+  echo "  skip  maintained in NaluKit/nalukit-web-site; pass --site <dir> to check it"
+elif [[ ! -d $SITE ]]; then
+  fail "website directory '$SITE' does not exist"
+else
+  for page in api.html formats.html quickstart.html; do
+    if [[ ! -f $SITE/$page ]]; then
+      fail "$page is missing in $SITE"
+      continue
+    fi
+    # every page names release and source commit in its sidebar: <p class="pn-meta">1.0.0<br><code>7b7f6401ef2d</code></p>
+    META=$(grep -Eo '<p class="pn-meta">[^<]+<br><code>[0-9a-f]+</code>' "$SITE/$page" | head -n 1 || true)
+    SHOWN=$(echo "$META" | sed -E 's/.*pn-meta">([^<]+)<br>.*/\1/')
+    SHOWN_COMMIT=$(echo "$META" | sed -E 's/.*<code>([0-9a-f]+)<\/code>.*/\1/')
+    if [[ -z $META ]]; then
+      fail "$page shows no release and commit (<p class=\"pn-meta\">)"
+    elif [[ $SHOWN != "$VERSION" ]]; then
+      fail "$page shows release '$SHOWN', expected '$VERSION'"
+    elif [[ -n $COMMIT && $COMMIT != "$SHOWN_COMMIT"* ]]; then
+      fail "$page shows commit $SHOWN_COMMIT, $REFERENCE names $COMMIT"
+    else
+      ok "$page shows $VERSION, commit $SHOWN_COMMIT"
+    fi
+    if grep -Eq "SNAPSHOT|0\.0\.0-" "$SITE/$page"; then
+      fail "$page still shows a SNAPSHOT or a local 0.0.0-<commit> coordinate"
+    fi
+  done
+fi
 
 if [[ $ARTIFACTS == true && $FAILURES -gt 0 ]]; then
   echo "Quickstart against published artifacts"

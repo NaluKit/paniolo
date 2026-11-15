@@ -31,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Checks generated documents against the official Factur-X schema and Schematron packaged in
- * paniolo-facturx-rules, or against the extracted FeRD / FNFE-MPE release named by
+ * paniolo-rules, or against the extracted FeRD / FNFE-MPE release named by
  * {@code PANIOLO_FACTURX_RULES}.
  */
 class OfficialFacturXRulesTest {

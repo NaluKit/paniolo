@@ -129,13 +129,19 @@ class FacturXValidationTest {
                                      .getBytes(StandardCharsets.UTF_8));
     assertEquals("Factur-X BASIC",
                  legacy.profileName());
-    // Plain EN 16931 standalone XML is still checked against XRechnung.
+    // Plain EN 16931 standalone XML reports the XRechnung rules as information only.
     var en16931 = PANIOLO.validate(PANIOLO.toXml(FacturXInvoices.invoice(FacturXProfile.EN16931,
                                                                          InvoiceTypeCode.CODE_380)
                                                                 .buyerReference(null)
                                                                 .build(),
                                                  InvoiceSyntax.CII));
+    assertTrue(en16931.isValid(),
+               () -> en16931.messages()
+                            .toString());
     assertTrue(rules(en16931).contains("BR-DE-15"),
+               () -> en16931.messages()
+                            .toString());
+    assertTrue(rules(en16931).contains("XR-NOT-STATED"),
                () -> en16931.messages()
                             .toString());
   }

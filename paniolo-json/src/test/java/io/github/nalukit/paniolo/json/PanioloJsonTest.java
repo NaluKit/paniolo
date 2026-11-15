@@ -43,12 +43,19 @@ import io.github.nalukit.paniolo.model.order.OrderTypeCode;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -213,7 +220,7 @@ class PanioloJsonTest {
 
   @Test
   void writesEveryCodeAsItsCode() {
-    var mapper = PanioloJson.configure(com.fasterxml.jackson.databind.json.JsonMapper.builder())
+    var mapper = PanioloJson.configure(tools.jackson.databind.json.JsonMapper.builder())
                             .build();
     for (Enum<?>[] values : new Enum<?>[][] { UnitCode.values(),
                                               CurrencyCode.values(),
@@ -260,11 +267,18 @@ class PanioloJsonTest {
                unknownProperty::getMessage);
     var model = assertThrows(IllegalArgumentException.class,
                              () -> JSON.read(json.replace("\"postalCode\":\"10115\",",
-                                                          ""),
+                                                          "\"postalCode\":\" \","),
                                              Invoice.class));
     assertTrue(model.getMessage()
-                    .contains("Address"),
+                    .contains("postalCode must not be blank (Address)"),
                model::getMessage);
+    // A missing post code is allowed; EN 16931 requires the country of an address only.
+    assertNull(JSON.read(json.replace("\"postalCode\":\"10115\",",
+                                      ""),
+                         Invoice.class)
+                   .seller()
+                   .address()
+                   .postalCode());
     assertThrows(IllegalArgumentException.class,
                  () -> JSON.read("{",
                                  Invoice.class));
@@ -320,5 +334,132 @@ class PanioloJsonTest {
     assertEquals(invoice,
                  JSON.read(JSON.toJson(invoice),
                            Invoice.class));
+  }
+
+  private static String fixture(String name) {
+    try (InputStream input = PanioloJsonTest.class.getResourceAsStream("/json/" + name)) {
+      return new String(input.readAllBytes(),
+                        StandardCharsets.UTF_8);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+
+  @Test
+  void loadsAndWritesStoredJsonUnchanged() {
+    // Written by Paniolo 1.0.0-rc01 (Jackson 2): codes, decimals with scale, dates, Base64.
+    String stored  = fixture("invoice.json");
+    var    invoice = JSON.read(stored,
+                               Invoice.class);
+    assertEquals(invoice(),
+                 invoice);
+    assertEquals(stored,
+                 JSON.toJson(invoice));
+    assertEquals(new BigDecimal("100.10"),
+                 invoice.lines()
+                        .getFirst()
+                        .netUnitPrice());
+    assertEquals(new BigDecimal("0.00"),
+                 invoice.paidAmount());
+    assertArrayEquals(new byte[] { 1,
+                                   2,
+                                   3 },
+                      invoice.supportingDocuments()
+                             .getFirst()
+                             .attachment()
+                             .content());
+  }
+
+  @Test
+  void readsNullListsAndNullPrimitivesAsDefaults() {
+    String stored = fixture("invoice.json")
+        .replace("\"notes\":[],",
+                 "\"notes\":null,")
+        .replace("\"cashDiscounts\":[],",
+                 "")
+        .replace("\"adjustments\":[],\"supportingDocuments\"",
+                 "\"adjustments\":[{\"charge\":null,\"amount\":5.00,\"reason\":\"Rabatt\",\"tax\":{\"code\":\"S\",\"rate\":19}}],\"supportingDocuments\"");
+    var invoice = JSON.read(stored,
+                            Invoice.class);
+    assertTrue(invoice.notes()
+                      .isEmpty());
+    assertTrue(invoice.cashDiscounts()
+                      .isEmpty());
+    // A null primitive is its default value, as with Paniolo 1.0.0-rc01: false is an allowance.
+    assertFalse(invoice.adjustments()
+                       .getFirst()
+                       .charge());
+  }
+
+  @Test
+  void namesTheLocationOfAnError() {
+    String stored = fixture("invoice.json");
+    var unknownUnit = assertThrows(IllegalArgumentException.class,
+                                   () -> JSON.read(stored.replace("\"HUR\"",
+                                                                  "\"NO-UNIT\""),
+                                                   Invoice.class));
+    assertTrue(unknownUnit.getMessage()
+                          .startsWith("Invalid Paniolo JSON: Unknown unit code: NO-UNIT at ") &&
+               unknownUnit.getMessage()
+                          .contains("[\"lines\"]") &&
+               unknownUnit.getMessage()
+                          .contains("[\"unitCode\"]"),
+               unknownUnit::getMessage);
+    var unknownProperty = assertThrows(IllegalArgumentException.class,
+                                       () -> JSON.read(stored.replace("\"number\":",
+                                                                      "\"nummer\":\"R-2026-1\",\"number\":"),
+                                                       Invoice.class));
+    assertTrue(unknownProperty.getMessage()
+                              .contains("[\"nummer\"]"),
+               unknownProperty::getMessage);
+    var trailing = assertThrows(IllegalArgumentException.class,
+                                () -> JSON.read(stored + "\n{}",
+                                                Invoice.class));
+    assertTrue(trailing.getMessage()
+                       .startsWith("Invalid Paniolo JSON: ") &&
+               trailing.getMessage()
+                       .contains("line 2, column"),
+               trailing::getMessage);
+    var malformed = assertThrows(IllegalArgumentException.class,
+                                 () -> JSON.read("{\n\"number\": ",
+                                                 Invoice.class));
+    assertTrue(malformed.getMessage()
+                        .contains("line 2"),
+               malformed::getMessage);
+    var notAString = assertThrows(IllegalArgumentException.class,
+                                  () -> JSON.read(stored.replace("\"typeCode\":\"380\"",
+                                                                 "\"typeCode\":380"),
+                                                  Invoice.class));
+    assertTrue(notAString.getMessage()
+                         .contains("A invoice type code must be a string") &&
+               notAString.getMessage()
+                         .contains("[\"typeCode\"]"),
+               notAString::getMessage);
+    var model = assertThrows(IllegalArgumentException.class,
+                             () -> JSON.read(stored.replace("\"postalCode\":\"10115\",",
+                                                            "\"postalCode\":\" \",")
+                                                   .getBytes(StandardCharsets.UTF_8),
+                                             Invoice.class));
+    assertEquals("postalCode must not be blank (Address)",
+                 model.getMessage());
+  }
+
+  @Test
+  void reportsAFailingStreamAsIoError() {
+    var failing = new InputStream() {
+      @Override
+      public int read()
+          throws IOException {
+        throw new IOException("disk gone");
+      }
+    };
+    var error = assertThrows(UncheckedIOException.class,
+                             () -> JSON.read(failing,
+                                             Invoice.class));
+    assertEquals("disk gone",
+                 error.getCause()
+                      .getMessage());
+    assertInstanceOf(IOException.class,
+                     error.getCause());
   }
 }

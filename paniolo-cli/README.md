@@ -4,7 +4,7 @@
 line for validating, reading, writing, and converting invoices, orders, and despatch advices
 in shell scripts, CI pipelines, or cron jobs without writing Java. It includes the optional PDF, JSON, and visualization modules
 ([`paniolo-facturx`](../paniolo-facturx/README.md), [`paniolo-pdfa`](../paniolo-pdfa/README.md),
-[`paniolo-json`](../paniolo-json/README.md), [`paniolo-pdf-layout`](../paniolo-pdf-layout/README.md),
+[`paniolo-json`](../paniolo-json/README.md),
 [`paniolo-visualizer`](../paniolo-visualizer/README.md)) and is based on [picocli](https://picocli.info)
 (Apache License 2.0). It requires Java 21.
 
@@ -21,18 +21,23 @@ The build creates an executable jar with all dependencies:
 
 ```sh
 mvn install -pl paniolo-cli -am -DskipTests
-java -jar paniolo-cli/target/paniolo-cli-1.0.0-rc01-all.jar --help
+java -jar paniolo-cli/target/paniolo-cli-HEAD-SNAPSHOT-all.jar --help
 ```
 
 For daily use, put a small wrapper on the `PATH`, e.g. `~/bin/paniolo`:
 
 ```sh
 #!/bin/sh
-exec java -jar /opt/paniolo/paniolo-cli-1.0.0-rc01-all.jar "$@"
+exec java -jar /opt/paniolo/paniolo-cli-1.0.0-rc02-all.jar "$@"
 ```
 
+The default source build uses `HEAD-SNAPSHOT`; replace the wrapper's file name with the version
+you built or downloaded. To build a different version, add `-Drevision=<version>` to Maven.
+The examples below describe the current source; the released API is documented in the
+[versioned reference](../docs/api/1.0.0-rc02.md).
+
 The build attaches this jar with the classifier `all`; the plain artifact `paniolo-cli` contains
-only the CLI classes. The release `1.0.0-rc01` is available as a download from GitHub Packages (see
+only the CLI classes. The release `1.0.0-rc02` is available as a download from GitHub Packages (see
 below); see also the [installation status](../README.md#installation).
 
 Unlike the library modules, `paniolo-cli` is **not published to Maven Central**. The CI workflow
@@ -54,9 +59,9 @@ GitHub token with the `read:packages` scope in a `<server>` entry with the id of
 | `to-facturx FILE --pdf PDF --profile PROFILE [--attach FILE]...`                                                                                                | `toFacturX(invoice, pdfA, profile, attachments)`                                           |
 | `to-facturx FILE --profile PROFILE [layout options]`                                                                                                            | `toFacturX(invoice, profile, layout, attachments)`: renders the page                       |
 | `embed-xml XML --pdf PDF --profile PROFILE [--attach FILE]...`                                                                                                  | `embedXml(pdfA, xml, profile, attachments)`: XML byte for byte, findings on stderr, exit 1 if invalid |
-| `to-pdf FILE [--lang de\|en\|fr] [--logo FILE [--logo-position LEFT\|RIGHT]] [--no-sender-address] [--font FILE [--bold-font FILE]] [--accent RGB] [--footer TEXT] [--watermark TEXT]` | `toPdf(invoice, layout)` of [`paniolo-pdf-layout`](../paniolo-pdf-layout/README.md)        |
+| `to-pdf FILE [--lang de\|en\|fr] [--logo FILE [--logo-position LEFT\|RIGHT]] [--no-sender-address] [--font FILE [--bold-font FILE]] [--accent RGB] [--footer TEXT] [--watermark TEXT]` | `toPdf(invoice, layout)` of [`paniolo-facturx`](../paniolo-facturx/docs/pdf-layout.md)        |
 | `extract-xml PDF`                                                                                                                                               | `extractXml(pdf)`                                                                          |
-| `attachments PDF [--extract DIR]`                                                                                                                               | `attachments(pdf)`                                                                         |
+| `attachments PDF [--extract DIR [--overwrite]]`                                                                                                                               | `attachments(pdf)`                                                                         |
 | `producer PDF`                                                                                                                                                  | `producer(pdf)`                                                                            |
 | `migrate-zugferd1 FILE [--profile PROFILE]`                                                                                                                     | `migrateZugferd1(document[, profile])`                                                     |
 | `visualize FILE [--lang de\|en\|fr] [--validate \| --report FILE]`                                                                                              | `PanioloVisualizer.toHtml(...)` of [`paniolo-visualizer`](../paniolo-visualizer/README.md) |
@@ -81,18 +86,22 @@ case-insensitive (`--profile en16931`).
   accept the [Paniolo JSON](../paniolo-json/README.md) of the model or any document the facade can
   read. `to-xml` converts between UBL and CII through the model. `read` followed by `to-xml`
   writes the loaded model again; unsupported input fields and original XML formatting are not
-  preserved. The Java facade's `importInvoice` / `export` methods are not exposed as CLI commands.
+  preserved. For `to-facturx`, the invoice's specification identifier (BT-24) must match
+  `--profile`; choosing a profile does not rewrite the identifier. The Java facade's `importInvoice` / `export` methods are not exposed as CLI commands.
 - **Output**: results go to standard output unless `-o FILE` is given. `-` as input file reads
   standard input, so commands can be piped.
 - **Validation profile**: automatic invoice validation uses the facade's rules. Standalone
-  EN 16931 and Peppol invoices can be checked against additional XRechnung requirements; see
-  [validating XML](../README.md#validating-xml). `--syntax` also selects EN 16931 and XRechnung;
-  `--profile EN16931` selects the Factur-X EN 16931 rules for CII XML.
+  EN 16931 and Peppol invoices are checked with additional XRechnung rules, whose findings are
+  information unless BT-24 states XRechnung; Peppol rules keep their severity when BT-24 states
+  Peppol. See [validating XML](../README.md#validating-xml). `--syntax` explicitly selects
+  EN 16931 and XRechnung with their unchanged severities; `--profile EN16931` selects the
+  Factur-X EN 16931 rules for CII XML.
 - **Rules**: `--rules`, `--facturx-rules`, `--extended-ctc-fr-rules`, `--order-x-rules`, and
   `--despatch-advice-rules` configure the facade like the methods of `Paniolo.builder()`.
 - **Calculation check**: `--calculation-check` adds the optional recalculation of the amounts
   (`Paniolo.Builder.calculationCheck(true)`) to `validate` and `visualize --validate`; its
-  `PANIOLO-CALC-` findings are warnings or information and do not change the exit code.
+  `PANIOLO-CALC-` findings are warnings or information and do not change validity. They can change
+  the exit code when `--fail-on-warnings` or `--reject-rule` rejects them.
 - **Unknown documents**: `--unknown-documents THROW|REPORT_INVALID` selects what `validate` does with
   a document whose type it cannot detect (`Paniolo.Builder.unknownDocuments`). `THROW` (default)
   lists it as `error` with exit code `3`; `REPORT_INVALID`, the Mustang compatible mode, as
@@ -129,9 +138,9 @@ result per file. `--format` selects the output:
   `WARNING`).
 - `json`: one JSON object per file and line (JSON Lines) with `file`, `profile`, `valid`, the
   counts per severity, `durationMillis`, and `messages`; easy to process with `jq`.
-- `xml`: the [Paniolo validation report](../paniolo-validation/README.md) of `ValidationResult.toXml()`;
+- `xml`: the [Paniolo validation report](../paniolo/docs/validation.md) of `ValidationResult.toXml()`;
   one file only.
-- `pdf`: the same report rendered as PDF/A-3b with `toReportPdf` (needs `paniolo-pdf-layout`, part
+- `pdf`: the same report rendered as PDF/A-3b with `toReportPdf` (needs `paniolo-facturx`, part
   of the CLI); one file only, `--lang de|en|fr` (default `de`). Write it with `-o report.pdf`.
 
 `--quiet` prints nothing, so only the exit code counts.
@@ -247,8 +256,8 @@ paniolo to-xml invoice-ubl.xml --syntax CII -o invoice-cii.xml
 paniolo read invoice.xml -o invoice.json
 paniolo to-xml invoice.json --syntax UBL -o invoice.xml
 
-# Create a Factur-X PDF with a time sheet and check it, incl. PDF/A
-paniolo to-facturx invoice.json --pdf layout.pdf --profile EN16931 --attach timesheet.pdf -o factur-x.pdf
+# Create a hybrid XRechnung PDF from the XRechnung JSON above and check it, incl. PDF/A
+paniolo to-facturx invoice.json --pdf layout.pdf --profile XRECHNUNG --attach timesheet.pdf -o factur-x.pdf
 paniolo validate factur-x.pdf
 
 # Embed XML of another system unchanged; findings on stderr, exit code 1 if invalid

@@ -1,0 +1,2933 @@
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes
+# Parameters: (lines = 100, syntax = UBL)
+
+# Run progress: 0,00% complete, ETA 00:09:36
+# Fork: 1 of 1
+# Warmup Iteration   1: 1,018 ms/op
+# Warmup Iteration   2: 0,942 ms/op
+# Warmup Iteration   3: 0,946 ms/op
+Iteration   1: 0,914 ms/op
+                 gc.alloc.rate:      2482,337 MB/sec
+                 gc.alloc.rate.norm: 2378749,336 B/op
+                 gc.count:           10,000 counts
+                 gc.time:            6,000 ms
+
+Iteration   2: 0,917 ms/op
+                 gc.alloc.rate:      2474,965 MB/sec
+                 gc.alloc.rate.norm: 2378715,174 B/op
+                 gc.count:           10,000 counts
+                 gc.time:            7,000 ms
+
+Iteration   3: 0,911 ms/op
+                 gc.alloc.rate:      2490,529 MB/sec
+                 gc.alloc.rate.norm: 2378715,156 B/op
+                 gc.count:           10,000 counts
+                 gc.time:            7,000 ms
+
+Iteration   4: 0,915 ms/op
+                 gc.alloc.rate:      2480,314 MB/sec
+                 gc.alloc.rate.norm: 2378715,166 B/op
+                 gc.count:           10,000 counts
+                 gc.time:            6,000 ms
+
+Iteration   5: 0,916 ms/op
+                 gc.alloc.rate:      2475,357 MB/sec
+                 gc.alloc.rate.norm: 2378715,178 B/op
+                 gc.count:           11,000 counts
+                 gc.time:            7,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes":
+  0,914 ±(99.9%) 0,009 ms/op [Average]
+  (min, avg, max) = (0,911, 0,914, 0,917), stdev = 0,002
+  CI (99.9%): [0,905, 0,923] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes:gc.alloc.rate":
+  2480,701 ±(99.9%) 24,420 MB/sec [Average]
+  (min, avg, max) = (2474,965, 2480,701, 2490,529), stdev = 6,342
+  CI (99.9%): [2456,281, 2505,121] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes:gc.alloc.rate.norm":
+  2378722,002 ±(99.9%) 58,838 B/op [Average]
+  (min, avg, max) = (2378715,156, 2378722,002, 2378749,336), stdev = 15,280
+  CI (99.9%): [2378663,164, 2378780,840] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes:gc.count":
+  51,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (10,000, 10,200, 11,000), stdev = 0,447
+  CI (99.9%): [51,000, 51,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes:gc.time":
+  33,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (6,000, 6,600, 7,000), stdev = 0,548
+  CI (99.9%): [33,000, 33,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes
+# Parameters: (lines = 100, syntax = CII)
+
+# Run progress: 2,78% complete, ETA 00:10:10
+# Fork: 1 of 1
+# Warmup Iteration   1: 1,593 ms/op
+# Warmup Iteration   2: 1,444 ms/op
+# Warmup Iteration   3: 1,426 ms/op
+Iteration   1: 1,437 ms/op
+                 gc.alloc.rate:      2466,656 MB/sec
+                 gc.alloc.rate.norm: 3717816,367 B/op
+                 gc.count:           15,000 counts
+                 gc.time:            9,000 ms
+
+Iteration   2: 1,423 ms/op
+                 gc.alloc.rate:      2492,156 MB/sec
+                 gc.alloc.rate.norm: 3717625,776 B/op
+                 gc.count:           15,000 counts
+                 gc.time:            10,000 ms
+
+Iteration   3: 1,414 ms/op
+                 gc.alloc.rate:      2507,697 MB/sec
+                 gc.alloc.rate.norm: 3717436,897 B/op
+                 gc.count:           16,000 counts
+                 gc.time:            11,000 ms
+
+Iteration   4: 1,420 ms/op
+                 gc.alloc.rate:      2496,669 MB/sec
+                 gc.alloc.rate.norm: 3717436,925 B/op
+                 gc.count:           15,000 counts
+                 gc.time:            10,000 ms
+
+Iteration   5: 1,410 ms/op
+                 gc.alloc.rate:      2514,759 MB/sec
+                 gc.alloc.rate.norm: 3717436,880 B/op
+                 gc.count:           15,000 counts
+                 gc.time:            11,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes":
+  1,421 ±(99.9%) 0,041 ms/op [Average]
+  (min, avg, max) = (1,410, 1,421, 1,437), stdev = 0,011
+  CI (99.9%): [1,380, 1,462] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes:gc.alloc.rate":
+  2495,587 ±(99.9%) 71,111 MB/sec [Average]
+  (min, avg, max) = (2466,656, 2495,587, 2514,759), stdev = 18,467
+  CI (99.9%): [2424,476, 2566,699] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes:gc.alloc.rate.norm":
+  3717550,569 ±(99.9%) 653,096 B/op [Average]
+  (min, avg, max) = (3717436,880, 3717550,569, 3717816,367), stdev = 169,607
+  CI (99.9%): [3716897,473, 3718203,665] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes:gc.count":
+  76,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (15,000, 15,200, 16,000), stdev = 0,447
+  CI (99.9%): [76,000, 76,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes:gc.time":
+  51,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (9,000, 10,200, 11,000), stdev = 0,837
+  CI (99.9%): [51,000, 51,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes
+# Parameters: (lines = 1000, syntax = UBL)
+
+# Run progress: 5,56% complete, ETA 00:09:50
+# Fork: 1 of 1
+# Warmup Iteration   1: 8,791 ms/op
+# Warmup Iteration   2: 8,301 ms/op
+# Warmup Iteration   3: 8,336 ms/op
+Iteration   1: 8,230 ms/op
+                 gc.alloc.rate:      2472,494 MB/sec
+                 gc.alloc.rate.norm: 21337463,279 B/op
+                 gc.count:           12,000 counts
+                 gc.time:            12,000 ms
+
+Iteration   2: 8,055 ms/op
+                 gc.alloc.rate:      2526,195 MB/sec
+                 gc.alloc.rate.norm: 21337332,755 B/op
+                 gc.count:           12,000 counts
+                 gc.time:            12,000 ms
+
+Iteration   3: 8,059 ms/op
+                 gc.alloc.rate:      2524,865 MB/sec
+                 gc.alloc.rate.norm: 21337162,988 B/op
+                 gc.count:           13,000 counts
+                 gc.time:            13,000 ms
+
+Iteration   4: 8,153 ms/op
+                 gc.alloc.rate:      2495,582 MB/sec
+                 gc.alloc.rate.norm: 21336925,789 B/op
+                 gc.count:           12,000 counts
+                 gc.time:            13,000 ms
+
+Iteration   5: 8,013 ms/op
+                 gc.alloc.rate:      2539,129 MB/sec
+                 gc.alloc.rate.norm: 21336424,159 B/op
+                 gc.count:           13,000 counts
+                 gc.time:            13,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes":
+  8,102 ±(99.9%) 0,339 ms/op [Average]
+  (min, avg, max) = (8,013, 8,102, 8,230), stdev = 0,088
+  CI (99.9%): [7,763, 8,441] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes:gc.alloc.rate":
+  2511,653 ±(99.9%) 104,264 MB/sec [Average]
+  (min, avg, max) = (2472,494, 2511,653, 2539,129), stdev = 27,077
+  CI (99.9%): [2407,389, 2615,917] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes:gc.alloc.rate.norm":
+  21337061,794 ±(99.9%) 1575,856 B/op [Average]
+  (min, avg, max) = (21336424,159, 21337061,794, 21337463,279), stdev = 409,245
+  CI (99.9%): [21335485,938, 21338637,650] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes:gc.count":
+  62,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (12,000, 12,400, 13,000), stdev = 0,548
+  CI (99.9%): [62,000, 62,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes:gc.time":
+  63,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (12,000, 12,600, 13,000), stdev = 0,548
+  CI (99.9%): [63,000, 63,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes
+# Parameters: (lines = 1000, syntax = CII)
+
+# Run progress: 8,33% complete, ETA 00:09:40
+# Fork: 1 of 1
+# Warmup Iteration   1: 13,872 ms/op
+# Warmup Iteration   2: 12,763 ms/op
+# Warmup Iteration   3: 12,504 ms/op
+Iteration   1: 12,926 ms/op
+                 gc.alloc.rate:      2573,227 MB/sec
+                 gc.alloc.rate.norm: 34879260,800 B/op
+                 gc.count:           10,000 counts
+                 gc.time:            9,000 ms
+
+Iteration   2: 12,525 ms/op
+                 gc.alloc.rate:      2655,663 MB/sec
+                 gc.alloc.rate.norm: 34879186,087 B/op
+                 gc.count:           11,000 counts
+                 gc.time:            10,000 ms
+
+Iteration   3: 12,559 ms/op
+                 gc.alloc.rate:      2648,324 MB/sec
+                 gc.alloc.rate.norm: 34878856,800 B/op
+                 gc.count:           11,000 counts
+                 gc.time:            12,000 ms
+
+Iteration   4: 12,622 ms/op
+                 gc.alloc.rate:      2635,295 MB/sec
+                 gc.alloc.rate.norm: 34878816,906 B/op
+                 gc.count:           11,000 counts
+                 gc.time:            10,000 ms
+
+Iteration   5: 12,470 ms/op
+                 gc.alloc.rate:      2667,164 MB/sec
+                 gc.alloc.rate.norm: 34878699,130 B/op
+                 gc.count:           11,000 counts
+                 gc.time:            11,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes":
+  12,620 ±(99.9%) 0,691 ms/op [Average]
+  (min, avg, max) = (12,470, 12,620, 12,926), stdev = 0,179
+  CI (99.9%): [11,930, 13,311] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes:gc.alloc.rate":
+  2635,935 ±(99.9%) 142,143 MB/sec [Average]
+  (min, avg, max) = (2573,227, 2635,935, 2667,164), stdev = 36,914
+  CI (99.9%): [2493,791, 2778,078] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes:gc.alloc.rate.norm":
+  34878963,945 ±(99.9%) 944,581 B/op [Average]
+  (min, avg, max) = (34878699,130, 34878963,945, 34879260,800), stdev = 245,305
+  CI (99.9%): [34878019,364, 34879908,525] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes:gc.count":
+  54,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (10,000, 10,800, 11,000), stdev = 0,447
+  CI (99.9%): [54,000, 54,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes:gc.time":
+  52,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (9,000, 10,400, 12,000), stdev = 1,140
+  CI (99.9%): [52,000, 52,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes
+# Parameters: (lines = 5000, syntax = UBL)
+
+# Run progress: 11,11% complete, ETA 00:09:25
+# Fork: 1 of 1
+# Warmup Iteration   1: 43,695 ms/op
+# Warmup Iteration   2: 42,257 ms/op
+# Warmup Iteration   3: 41,157 ms/op
+Iteration   1: 41,310 ms/op
+                 gc.alloc.rate:      2438,972 MB/sec
+                 gc.alloc.rate.norm: 105652828,735 B/op
+                 gc.count:           6,000 counts
+                 gc.time:            15,000 ms
+
+Iteration   2: 40,838 ms/op
+                 gc.alloc.rate:      2467,116 MB/sec
+                 gc.alloc.rate.norm: 105652808,640 B/op
+                 gc.count:           6,000 counts
+                 gc.time:            25,000 ms
+
+Iteration   3: 40,595 ms/op
+                 gc.alloc.rate:      2481,906 MB/sec
+                 gc.alloc.rate.norm: 105652543,040 B/op
+                 gc.count:           5,000 counts
+                 gc.time:            17,000 ms
+
+Iteration   4: 41,184 ms/op
+                 gc.alloc.rate:      2446,368 MB/sec
+                 gc.alloc.rate.norm: 105652430,857 B/op
+                 gc.count:           6,000 counts
+                 gc.time:            24,000 ms
+
+Iteration   5: 40,587 ms/op
+                 gc.alloc.rate:      2482,331 MB/sec
+                 gc.alloc.rate.norm: 105652136,160 B/op
+                 gc.count:           5,000 counts
+                 gc.time:            20,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes":
+  40,903 ±(99.9%) 1,282 ms/op [Average]
+  (min, avg, max) = (40,587, 40,903, 41,310), stdev = 0,333
+  CI (99.9%): [39,621, 42,185] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes:gc.alloc.rate":
+  2463,339 ±(99.9%) 77,048 MB/sec [Average]
+  (min, avg, max) = (2438,972, 2463,339, 2482,331), stdev = 20,009
+  CI (99.9%): [2386,291, 2540,386] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes:gc.alloc.rate.norm":
+  105652549,486 ±(99.9%) 1106,170 B/op [Average]
+  (min, avg, max) = (105652136,160, 105652549,486, 105652828,735), stdev = 287,269
+  CI (99.9%): [105651443,317, 105653655,656] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes:gc.count":
+  28,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (5,000, 5,600, 6,000), stdev = 0,548
+  CI (99.9%): [28,000, 28,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes:gc.time":
+  101,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (15,000, 20,200, 25,000), stdev = 4,324
+  CI (99.9%): [101,000, 101,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes
+# Parameters: (lines = 5000, syntax = CII)
+
+# Run progress: 13,89% complete, ETA 00:09:27
+# Fork: 1 of 1
+# Warmup Iteration   1: 70,627 ms/op
+# Warmup Iteration   2: 68,896 ms/op
+# Warmup Iteration   3: 69,731 ms/op
+Iteration   1: 68,754 ms/op
+                 gc.alloc.rate:      2388,707 MB/sec
+                 gc.alloc.rate.norm: 172221637,867 B/op
+                 gc.count:           31,000 counts
+                 gc.time:            76,000 ms
+
+Iteration   2: 69,187 ms/op
+                 gc.alloc.rate:      2373,766 MB/sec
+                 gc.alloc.rate.norm: 172221150,345 B/op
+                 gc.count:           40,000 counts
+                 gc.time:            103,000 ms
+
+Iteration   3: 69,431 ms/op
+                 gc.alloc.rate:      2365,367 MB/sec
+                 gc.alloc.rate.norm: 172218952,828 B/op
+                 gc.count:           37,000 counts
+                 gc.time:            99,000 ms
+
+Iteration   4: 70,054 ms/op
+                 gc.alloc.rate:      2344,312 MB/sec
+                 gc.alloc.rate.norm: 172218294,345 B/op
+                 gc.count:           40,000 counts
+                 gc.time:            115,000 ms
+
+Iteration   5: 69,342 ms/op
+                 gc.alloc.rate:      2368,365 MB/sec
+                 gc.alloc.rate.norm: 172218279,467 B/op
+                 gc.count:           39,000 counts
+                 gc.time:            127,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes":
+  69,354 ±(99.9%) 1,810 ms/op [Average]
+  (min, avg, max) = (68,754, 69,354, 70,054), stdev = 0,470
+  CI (99.9%): [67,544, 71,164] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes:gc.alloc.rate":
+  2368,104 ±(99.9%) 61,796 MB/sec [Average]
+  (min, avg, max) = (2344,312, 2368,104, 2388,707), stdev = 16,048
+  CI (99.9%): [2306,308, 2429,899] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes:gc.alloc.rate.norm":
+  172219662,970 ±(99.9%) 6210,176 B/op [Average]
+  (min, avg, max) = (172218279,467, 172219662,970, 172221637,867), stdev = 1612,763
+  CI (99.9%): [172213452,794, 172225873,147] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes:gc.count":
+  187,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (31,000, 37,400, 40,000), stdev = 3,782
+  CI (99.9%): [187,000, 187,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.importBytes:gc.time":
+  520,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (76,000, 104,000, 127,000), stdev = 19,105
+  CI (99.9%): [520,000, 520,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes
+# Parameters: (lines = 100, syntax = UBL)
+
+# Run progress: 16,67% complete, ETA 00:09:29
+# Fork: 1 of 1
+# Warmup Iteration   1: 0,974 ms/op
+# Warmup Iteration   2: 0,897 ms/op
+# Warmup Iteration   3: 0,888 ms/op
+Iteration   1: 0,880 ms/op
+                 gc.alloc.rate:      2475,040 MB/sec
+                 gc.alloc.rate.norm: 2282814,123 B/op
+                 gc.count:           11,000 counts
+                 gc.time:            7,000 ms
+
+Iteration   2: 0,877 ms/op
+                 gc.alloc.rate:      2481,739 MB/sec
+                 gc.alloc.rate.norm: 2282787,038 B/op
+                 gc.count:           10,000 counts
+                 gc.time:            7,000 ms
+
+Iteration   3: 0,871 ms/op
+                 gc.alloc.rate:      2498,873 MB/sec
+                 gc.alloc.rate.norm: 2282787,017 B/op
+                 gc.count:           10,000 counts
+                 gc.time:            6,000 ms
+
+Iteration   4: 0,875 ms/op
+                 gc.alloc.rate:      2487,914 MB/sec
+                 gc.alloc.rate.norm: 2282787,036 B/op
+                 gc.count:           10,000 counts
+                 gc.time:            7,000 ms
+
+Iteration   5: 0,876 ms/op
+                 gc.alloc.rate:      2484,064 MB/sec
+                 gc.alloc.rate.norm: 2282787,034 B/op
+                 gc.count:           10,000 counts
+                 gc.time:            5,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes":
+  0,876 ±(99.9%) 0,012 ms/op [Average]
+  (min, avg, max) = (0,871, 0,876, 0,880), stdev = 0,003
+  CI (99.9%): [0,864, 0,888] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes:gc.alloc.rate":
+  2485,526 ±(99.9%) 33,913 MB/sec [Average]
+  (min, avg, max) = (2475,040, 2485,526, 2498,873), stdev = 8,807
+  CI (99.9%): [2451,613, 2519,439] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes:gc.alloc.rate.norm":
+  2282792,449 ±(99.9%) 46,654 B/op [Average]
+  (min, avg, max) = (2282787,017, 2282792,449, 2282814,123), stdev = 12,116
+  CI (99.9%): [2282745,795, 2282839,103] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes:gc.count":
+  51,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (10,000, 10,200, 11,000), stdev = 0,447
+  CI (99.9%): [51,000, 51,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes:gc.time":
+  32,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (5,000, 6,400, 7,000), stdev = 0,894
+  CI (99.9%): [32,000, 32,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes
+# Parameters: (lines = 100, syntax = CII)
+
+# Run progress: 19,44% complete, ETA 00:09:03
+# Fork: 1 of 1
+# Warmup Iteration   1: 1,579 ms/op
+# Warmup Iteration   2: 1,436 ms/op
+# Warmup Iteration   3: 1,421 ms/op
+Iteration   1: 1,437 ms/op
+                 gc.alloc.rate:      2346,246 MB/sec
+                 gc.alloc.rate.norm: 3535394,332 B/op
+                 gc.count:           14,000 counts
+                 gc.time:            8,000 ms
+
+Iteration   2: 1,432 ms/op
+                 gc.alloc.rate:      2354,461 MB/sec
+                 gc.alloc.rate.norm: 3535240,263 B/op
+                 gc.count:           15,000 counts
+                 gc.time:            9,000 ms
+
+Iteration   3: 1,452 ms/op
+                 gc.alloc.rate:      2321,055 MB/sec
+                 gc.alloc.rate.norm: 3535069,426 B/op
+                 gc.count:           14,000 counts
+                 gc.time:            8,000 ms
+
+Iteration   4: 1,434 ms/op
+                 gc.alloc.rate:      2351,579 MB/sec
+                 gc.alloc.rate.norm: 3535011,056 B/op
+                 gc.count:           14,000 counts
+                 gc.time:            9,000 ms
+
+Iteration   5: 1,413 ms/op
+                 gc.alloc.rate:      2385,632 MB/sec
+                 gc.alloc.rate.norm: 3534988,894 B/op
+                 gc.count:           15,000 counts
+                 gc.time:            10,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes":
+  1,434 ±(99.9%) 0,054 ms/op [Average]
+  (min, avg, max) = (1,413, 1,434, 1,452), stdev = 0,014
+  CI (99.9%): [1,379, 1,488] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes:gc.alloc.rate":
+  2351,795 ±(99.9%) 88,813 MB/sec [Average]
+  (min, avg, max) = (2321,055, 2351,795, 2385,632), stdev = 23,064
+  CI (99.9%): [2262,982, 2440,607] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes:gc.alloc.rate.norm":
+  3535140,794 ±(99.9%) 664,654 B/op [Average]
+  (min, avg, max) = (3534988,894, 3535140,794, 3535394,332), stdev = 172,609
+  CI (99.9%): [3534476,140, 3535805,448] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes:gc.count":
+  72,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (14,000, 14,400, 15,000), stdev = 0,548
+  CI (99.9%): [72,000, 72,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes:gc.time":
+  44,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (8,000, 8,800, 10,000), stdev = 0,837
+  CI (99.9%): [44,000, 44,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes
+# Parameters: (lines = 1000, syntax = UBL)
+
+# Run progress: 22,22% complete, ETA 00:08:39
+# Fork: 1 of 1
+# Warmup Iteration   1: 8,969 ms/op
+# Warmup Iteration   2: 8,228 ms/op
+# Warmup Iteration   3: 8,082 ms/op
+Iteration   1: 8,156 ms/op
+                 gc.alloc.rate:      2386,819 MB/sec
+                 gc.alloc.rate.norm: 20414612,878 B/op
+                 gc.count:           12,000 counts
+                 gc.time:            10,000 ms
+
+Iteration   2: 8,054 ms/op
+                 gc.alloc.rate:      2417,117 MB/sec
+                 gc.alloc.rate.norm: 20414487,807 B/op
+                 gc.count:           12,000 counts
+                 gc.time:            12,000 ms
+
+Iteration   3: 8,072 ms/op
+                 gc.alloc.rate:      2411,749 MB/sec
+                 gc.alloc.rate.norm: 20414316,530 B/op
+                 gc.count:           12,000 counts
+                 gc.time:            10,000 ms
+
+Iteration   4: 8,094 ms/op
+                 gc.alloc.rate:      2405,155 MB/sec
+                 gc.alloc.rate.norm: 20414079,516 B/op
+                 gc.count:           11,000 counts
+                 gc.time:            11,000 ms
+
+Iteration   5: 8,018 ms/op
+                 gc.alloc.rate:      2427,773 MB/sec
+                 gc.alloc.rate.norm: 20413558,208 B/op
+                 gc.count:           12,000 counts
+                 gc.time:            10,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes":
+  8,079 ±(99.9%) 0,198 ms/op [Average]
+  (min, avg, max) = (8,018, 8,079, 8,156), stdev = 0,051
+  CI (99.9%): [7,881, 8,277] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes:gc.alloc.rate":
+  2409,723 ±(99.9%) 58,717 MB/sec [Average]
+  (min, avg, max) = (2386,819, 2409,723, 2427,773), stdev = 15,249
+  CI (99.9%): [2351,006, 2468,439] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes:gc.alloc.rate.norm":
+  20414210,988 ±(99.9%) 1602,407 B/op [Average]
+  (min, avg, max) = (20413558,208, 20414210,988, 20414612,878), stdev = 416,140
+  CI (99.9%): [20412608,581, 20415813,395] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes:gc.count":
+  59,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (11,000, 11,800, 12,000), stdev = 0,447
+  CI (99.9%): [59,000, 59,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes:gc.time":
+  53,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (10,000, 10,600, 12,000), stdev = 0,894
+  CI (99.9%): [53,000, 53,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes
+# Parameters: (lines = 1000, syntax = CII)
+
+# Run progress: 25,00% complete, ETA 00:08:19
+# Fork: 1 of 1
+# Warmup Iteration   1: 13,386 ms/op
+# Warmup Iteration   2: 12,554 ms/op
+# Warmup Iteration   3: 12,407 ms/op
+Iteration   1: 12,545 ms/op
+                 gc.alloc.rate:      2509,434 MB/sec
+                 gc.alloc.rate.norm: 33011115,400 B/op
+                 gc.count:           13,000 counts
+                 gc.time:            11,000 ms
+
+Iteration   2: 12,555 ms/op
+                 gc.alloc.rate:      2507,359 MB/sec
+                 gc.alloc.rate.norm: 33011016,700 B/op
+                 gc.count:           12,000 counts
+                 gc.time:            10,000 ms
+
+Iteration   3: 12,357 ms/op
+                 gc.alloc.rate:      2547,517 MB/sec
+                 gc.alloc.rate.norm: 33010700,270 B/op
+                 gc.count:           13,000 counts
+                 gc.time:            11,000 ms
+
+Iteration   4: 12,603 ms/op
+                 gc.alloc.rate:      2497,896 MB/sec
+                 gc.alloc.rate.norm: 33010659,900 B/op
+                 gc.count:           12,000 counts
+                 gc.time:            10,000 ms
+
+Iteration   5: 12,581 ms/op
+                 gc.alloc.rate:      2502,177 MB/sec
+                 gc.alloc.rate.norm: 33010555,400 B/op
+                 gc.count:           12,000 counts
+                 gc.time:            10,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes":
+  12,528 ±(99.9%) 0,378 ms/op [Average]
+  (min, avg, max) = (12,357, 12,528, 12,603), stdev = 0,098
+  CI (99.9%): [12,150, 12,906] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes:gc.alloc.rate":
+  2512,876 ±(99.9%) 76,558 MB/sec [Average]
+  (min, avg, max) = (2497,896, 2512,876, 2547,517), stdev = 19,882
+  CI (99.9%): [2436,318, 2589,434] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes:gc.alloc.rate.norm":
+  33010809,534 ±(99.9%) 934,098 B/op [Average]
+  (min, avg, max) = (33010555,400, 33010809,534, 33011115,400), stdev = 242,582
+  CI (99.9%): [33009875,436, 33011743,632] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes:gc.count":
+  62,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (12,000, 12,400, 13,000), stdev = 0,548
+  CI (99.9%): [62,000, 62,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes:gc.time":
+  52,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (10,000, 10,400, 11,000), stdev = 0,548
+  CI (99.9%): [52,000, 52,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes
+# Parameters: (lines = 5000, syntax = UBL)
+
+# Run progress: 27,78% complete, ETA 00:07:59
+# Fork: 1 of 1
+# Warmup Iteration   1: 42,617 ms/op
+# Warmup Iteration   2: 41,956 ms/op
+# Warmup Iteration   3: 41,826 ms/op
+Iteration   1: 40,942 ms/op
+                 gc.alloc.rate:      2353,625 MB/sec
+                 gc.alloc.rate.norm: 101047167,673 B/op
+                 gc.count:           6,000 counts
+                 gc.time:            19,000 ms
+
+Iteration   2: 40,243 ms/op
+                 gc.alloc.rate:      2394,486 MB/sec
+                 gc.alloc.rate.norm: 101047130,880 B/op
+                 gc.count:           6,000 counts
+                 gc.time:            21,000 ms
+
+Iteration   3: 40,319 ms/op
+                 gc.alloc.rate:      2389,966 MB/sec
+                 gc.alloc.rate.norm: 101046871,200 B/op
+                 gc.count:           5,000 counts
+                 gc.time:            12,000 ms
+
+Iteration   4: 40,141 ms/op
+                 gc.alloc.rate:      2400,581 MB/sec
+                 gc.alloc.rate.norm: 101046748,480 B/op
+                 gc.count:           5,000 counts
+                 gc.time:            10,000 ms
+
+Iteration   5: 39,800 ms/op
+                 gc.alloc.rate:      2421,057 MB/sec
+                 gc.alloc.rate.norm: 101046447,686 B/op
+                 gc.count:           5,000 counts
+                 gc.time:            10,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes":
+  40,289 ±(99.9%) 1,599 ms/op [Average]
+  (min, avg, max) = (39,800, 40,289, 40,942), stdev = 0,415
+  CI (99.9%): [38,690, 41,888] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes:gc.alloc.rate":
+  2391,943 ±(99.9%) 94,339 MB/sec [Average]
+  (min, avg, max) = (2353,625, 2391,943, 2421,057), stdev = 24,500
+  CI (99.9%): [2297,604, 2486,282] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes:gc.alloc.rate.norm":
+  101046873,184 ±(99.9%) 1138,604 B/op [Average]
+  (min, avg, max) = (101046447,686, 101046873,184, 101047167,673), stdev = 295,692
+  CI (99.9%): [101045734,580, 101048011,788] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes:gc.count":
+  27,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (5,000, 5,400, 6,000), stdev = 0,548
+  CI (99.9%): [27,000, 27,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes:gc.time":
+  72,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (10,000, 14,400, 21,000), stdev = 5,225
+  CI (99.9%): [72,000, 72,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes
+# Parameters: (lines = 5000, syntax = CII)
+
+# Run progress: 30,56% complete, ETA 00:07:46
+# Fork: 1 of 1
+# Warmup Iteration   1: 67,894 ms/op
+# Warmup Iteration   2: 64,033 ms/op
+# Warmup Iteration   3: 63,310 ms/op
+Iteration   1: 61,762 ms/op
+                 gc.alloc.rate:      2515,756 MB/sec
+                 gc.alloc.rate.norm: 162934515,879 B/op
+                 gc.count:           5,000 counts
+                 gc.time:            16,000 ms
+
+Iteration   2: 62,650 ms/op
+                 gc.alloc.rate:      2480,042 MB/sec
+                 gc.alloc.rate.norm: 162933269,000 B/op
+                 gc.count:           5,000 counts
+                 gc.time:            18,000 ms
+
+Iteration   3: 61,908 ms/op
+                 gc.alloc.rate:      2509,766 MB/sec
+                 gc.alloc.rate.norm: 162931504,485 B/op
+                 gc.count:           5,000 counts
+                 gc.time:            12,000 ms
+
+Iteration   4: 61,759 ms/op
+                 gc.alloc.rate:      2515,842 MB/sec
+                 gc.alloc.rate.norm: 162931498,424 B/op
+                 gc.count:           5,000 counts
+                 gc.time:            18,000 ms
+
+Iteration   5: 62,338 ms/op
+                 gc.alloc.rate:      2492,426 MB/sec
+                 gc.alloc.rate.norm: 162931519,273 B/op
+                 gc.count:           4,000 counts
+                 gc.time:            13,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes":
+  62,083 ±(99.9%) 1,523 ms/op [Average]
+  (min, avg, max) = (61,759, 62,083, 62,650), stdev = 0,396
+  CI (99.9%): [60,560, 63,606] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes:gc.alloc.rate":
+  2502,767 ±(99.9%) 61,249 MB/sec [Average]
+  (min, avg, max) = (2480,042, 2502,767, 2515,842), stdev = 15,906
+  CI (99.9%): [2441,518, 2564,015] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes:gc.alloc.rate.norm":
+  162932461,412 ±(99.9%) 5309,043 B/op [Average]
+  (min, avg, max) = (162931498,424, 162932461,412, 162934515,879), stdev = 1378,742
+  CI (99.9%): [162927152,369, 162937770,455] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes:gc.count":
+  24,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (4,000, 4,800, 5,000), stdev = 0,447
+  CI (99.9%): [24,000, 24,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readBytes:gc.time":
+  77,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (12,000, 15,400, 18,000), stdev = 2,793
+  CI (99.9%): [77,000, 77,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString
+# Parameters: (lines = 100, syntax = UBL)
+
+# Run progress: 33,33% complete, ETA 00:07:35
+# Fork: 1 of 1
+# Warmup Iteration   1: 1,052 ms/op
+# Warmup Iteration   2: 0,957 ms/op
+# Warmup Iteration   3: 0,946 ms/op
+Iteration   1: 0,943 ms/op
+                 gc.alloc.rate:      2600,796 MB/sec
+                 gc.alloc.rate.norm: 2572190,480 B/op
+                 gc.count:           10,000 counts
+                 gc.time:            6,000 ms
+
+Iteration   2: 0,934 ms/op
+                 gc.alloc.rate:      2627,442 MB/sec
+                 gc.alloc.rate.norm: 2572126,607 B/op
+                 gc.count:           11,000 counts
+                 gc.time:            7,000 ms
+
+Iteration   3: 0,933 ms/op
+                 gc.alloc.rate:      2627,753 MB/sec
+                 gc.alloc.rate.norm: 2572123,234 B/op
+                 gc.count:           11,000 counts
+                 gc.time:            6,000 ms
+
+Iteration   4: 0,938 ms/op
+                 gc.alloc.rate:      2613,950 MB/sec
+                 gc.alloc.rate.norm: 2572123,249 B/op
+                 gc.count:           11,000 counts
+                 gc.time:            7,000 ms
+
+Iteration   5: 0,933 ms/op
+                 gc.alloc.rate:      2629,967 MB/sec
+                 gc.alloc.rate.norm: 2572123,230 B/op
+                 gc.count:           10,000 counts
+                 gc.time:            6,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString":
+  0,936 ±(99.9%) 0,017 ms/op [Average]
+  (min, avg, max) = (0,933, 0,936, 0,943), stdev = 0,004
+  CI (99.9%): [0,919, 0,953] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString:gc.alloc.rate":
+  2619,981 ±(99.9%) 47,950 MB/sec [Average]
+  (min, avg, max) = (2600,796, 2619,981, 2629,967), stdev = 12,452
+  CI (99.9%): [2572,032, 2667,931] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString:gc.alloc.rate.norm":
+  2572137,360 ±(99.9%) 114,482 B/op [Average]
+  (min, avg, max) = (2572123,230, 2572137,360, 2572190,480), stdev = 29,731
+  CI (99.9%): [2572022,878, 2572251,842] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString:gc.count":
+  53,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (10,000, 10,600, 11,000), stdev = 0,548
+  CI (99.9%): [53,000, 53,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString:gc.time":
+  32,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (6,000, 6,400, 7,000), stdev = 0,548
+  CI (99.9%): [32,000, 32,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString
+# Parameters: (lines = 100, syntax = CII)
+
+# Run progress: 36,11% complete, ETA 00:07:13
+# Fork: 1 of 1
+# Warmup Iteration   1: 1,579 ms/op
+# Warmup Iteration   2: 1,451 ms/op
+# Warmup Iteration   3: 1,444 ms/op
+Iteration   1: 1,443 ms/op
+                 gc.alloc.rate:      2717,667 MB/sec
+                 gc.alloc.rate.norm: 4112156,438 B/op
+                 gc.count:           17,000 counts
+                 gc.time:            10,000 ms
+
+Iteration   2: 1,442 ms/op
+                 gc.alloc.rate:      2719,255 MB/sec
+                 gc.alloc.rate.norm: 4112001,704 B/op
+                 gc.count:           17,000 counts
+                 gc.time:            10,000 ms
+
+Iteration   3: 1,434 ms/op
+                 gc.alloc.rate:      2733,549 MB/sec
+                 gc.alloc.rate.norm: 4111781,373 B/op
+                 gc.count:           16,000 counts
+                 gc.time:            10,000 ms
+
+Iteration   4: 1,438 ms/op
+                 gc.alloc.rate:      2726,108 MB/sec
+                 gc.alloc.rate.norm: 4111716,989 B/op
+                 gc.count:           17,000 counts
+                 gc.time:            9,000 ms
+
+Iteration   5: 1,430 ms/op
+                 gc.alloc.rate:      2741,584 MB/sec
+                 gc.alloc.rate.norm: 4111716,953 B/op
+                 gc.count:           17,000 counts
+                 gc.time:            10,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString":
+  1,438 ±(99.9%) 0,021 ms/op [Average]
+  (min, avg, max) = (1,430, 1,438, 1,443), stdev = 0,005
+  CI (99.9%): [1,417, 1,458] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString:gc.alloc.rate":
+  2727,633 ±(99.9%) 38,577 MB/sec [Average]
+  (min, avg, max) = (2717,667, 2727,633, 2741,584), stdev = 10,018
+  CI (99.9%): [2689,055, 2766,210] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString:gc.alloc.rate.norm":
+  4111874,691 ±(99.9%) 755,485 B/op [Average]
+  (min, avg, max) = (4111716,953, 4111874,691, 4112156,438), stdev = 196,197
+  CI (99.9%): [4111119,206, 4112630,176] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString:gc.count":
+  84,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (16,000, 16,800, 17,000), stdev = 0,447
+  CI (99.9%): [84,000, 84,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString:gc.time":
+  49,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (9,000, 9,800, 10,000), stdev = 0,447
+  CI (99.9%): [49,000, 49,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString
+# Parameters: (lines = 1000, syntax = UBL)
+
+# Run progress: 38,89% complete, ETA 00:06:52
+# Fork: 1 of 1
+# Warmup Iteration   1: 8,966 ms/op
+# Warmup Iteration   2: 8,176 ms/op
+# Warmup Iteration   3: 8,222 ms/op
+Iteration   1: 8,370 ms/op
+                 gc.alloc.rate:      2641,624 MB/sec
+                 gc.alloc.rate.norm: 23184434,933 B/op
+                 gc.count:           13,000 counts
+                 gc.time:            11,000 ms
+
+Iteration   2: 8,278 ms/op
+                 gc.alloc.rate:      2670,828 MB/sec
+                 gc.alloc.rate.norm: 23184311,374 B/op
+                 gc.count:           13,000 counts
+                 gc.time:            11,000 ms
+
+Iteration   3: 8,307 ms/op
+                 gc.alloc.rate:      2661,618 MB/sec
+                 gc.alloc.rate.norm: 23184147,339 B/op
+                 gc.count:           13,000 counts
+                 gc.time:            11,000 ms
+
+Iteration   4: 8,339 ms/op
+                 gc.alloc.rate:      2651,342 MB/sec
+                 gc.alloc.rate.norm: 23183914,788 B/op
+                 gc.count:           13,000 counts
+                 gc.time:            12,000 ms
+
+Iteration   5: 8,248 ms/op
+                 gc.alloc.rate:      2680,530 MB/sec
+                 gc.alloc.rate.norm: 23183459,148 B/op
+                 gc.count:           14,000 counts
+                 gc.time:            11,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString":
+  8,308 ±(99.9%) 0,185 ms/op [Average]
+  (min, avg, max) = (8,248, 8,308, 8,370), stdev = 0,048
+  CI (99.9%): [8,123, 8,494] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString:gc.alloc.rate":
+  2661,188 ±(99.9%) 59,247 MB/sec [Average]
+  (min, avg, max) = (2641,624, 2661,188, 2680,530), stdev = 15,386
+  CI (99.9%): [2601,942, 2720,435] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString:gc.alloc.rate.norm":
+  23184053,517 ±(99.9%) 1482,988 B/op [Average]
+  (min, avg, max) = (23183459,148, 23184053,517, 23184434,933), stdev = 385,127
+  CI (99.9%): [23182570,528, 23185536,505] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString:gc.count":
+  66,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (13,000, 13,200, 14,000), stdev = 0,447
+  CI (99.9%): [66,000, 66,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString:gc.time":
+  56,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (11,000, 11,200, 12,000), stdev = 0,447
+  CI (99.9%): [56,000, 56,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString
+# Parameters: (lines = 1000, syntax = CII)
+
+# Run progress: 41,67% complete, ETA 00:06:32
+# Fork: 1 of 1
+# Warmup Iteration   1: 13,944 ms/op
+# Warmup Iteration   2: 12,974 ms/op
+# Warmup Iteration   3: 12,870 ms/op
+Iteration   1: 12,986 ms/op
+                 gc.alloc.rate:      2835,889 MB/sec
+                 gc.alloc.rate.norm: 38616764,800 B/op
+                 gc.count:           14,000 counts
+                 gc.time:            7,000 ms
+
+Iteration   2: 12,854 ms/op
+                 gc.alloc.rate:      2864,996 MB/sec
+                 gc.alloc.rate.norm: 38616719,282 B/op
+                 gc.count:           14,000 counts
+                 gc.time:            6,000 ms
+
+Iteration   3: 12,840 ms/op
+                 gc.alloc.rate:      2868,117 MB/sec
+                 gc.alloc.rate.norm: 38616366,974 B/op
+                 gc.count:           14,000 counts
+                 gc.time:            6,000 ms
+
+Iteration   4: 12,965 ms/op
+                 gc.alloc.rate:      2840,439 MB/sec
+                 gc.alloc.rate.norm: 38616334,142 B/op
+                 gc.count:           14,000 counts
+                 gc.time:            6,000 ms
+
+Iteration   5: 12,775 ms/op
+                 gc.alloc.rate:      2882,498 MB/sec
+                 gc.alloc.rate.norm: 38616209,936 B/op
+                 gc.count:           15,000 counts
+                 gc.time:            7,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString":
+  12,884 ±(99.9%) 0,342 ms/op [Average]
+  (min, avg, max) = (12,775, 12,884, 12,986), stdev = 0,089
+  CI (99.9%): [12,542, 13,226] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString:gc.alloc.rate":
+  2858,388 ±(99.9%) 75,751 MB/sec [Average]
+  (min, avg, max) = (2835,889, 2858,388, 2882,498), stdev = 19,672
+  CI (99.9%): [2782,637, 2934,139] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString:gc.alloc.rate.norm":
+  38616479,027 ±(99.9%) 953,658 B/op [Average]
+  (min, avg, max) = (38616209,936, 38616479,027, 38616764,800), stdev = 247,662
+  CI (99.9%): [38615525,369, 38617432,685] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString:gc.count":
+  71,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (14,000, 14,200, 15,000), stdev = 0,447
+  CI (99.9%): [71,000, 71,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString:gc.time":
+  32,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (6,000, 6,400, 7,000), stdev = 0,548
+  CI (99.9%): [32,000, 32,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString
+# Parameters: (lines = 5000, syntax = UBL)
+
+# Run progress: 44,44% complete, ETA 00:06:12
+# Fork: 1 of 1
+# Warmup Iteration   1: 43,466 ms/op
+# Warmup Iteration   2: 42,996 ms/op
+# Warmup Iteration   3: 41,933 ms/op
+Iteration   1: 41,475 ms/op
+                 gc.alloc.rate:      2641,103 MB/sec
+                 gc.alloc.rate.norm: 114864934,531 B/op
+                 gc.count:           7,000 counts
+                 gc.time:            15,000 ms
+
+Iteration   2: 41,498 ms/op
+                 gc.alloc.rate:      2639,585 MB/sec
+                 gc.alloc.rate.norm: 114864919,020 B/op
+                 gc.count:           6,000 counts
+                 gc.time:            13,000 ms
+
+Iteration   3: 42,051 ms/op
+                 gc.alloc.rate:      2604,846 MB/sec
+                 gc.alloc.rate.norm: 114864648,333 B/op
+                 gc.count:           7,000 counts
+                 gc.time:            18,000 ms
+
+Iteration   4: 41,734 ms/op
+                 gc.alloc.rate:      2624,690 MB/sec
+                 gc.alloc.rate.norm: 114864552,667 B/op
+                 gc.count:           6,000 counts
+                 gc.time:            14,000 ms
+
+Iteration   5: 41,876 ms/op
+                 gc.alloc.rate:      2615,705 MB/sec
+                 gc.alloc.rate.norm: 114864265,167 B/op
+                 gc.count:           6,000 counts
+                 gc.time:            12,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString":
+  41,727 ±(99.9%) 0,950 ms/op [Average]
+  (min, avg, max) = (41,475, 41,727, 42,051), stdev = 0,247
+  CI (99.9%): [40,777, 42,677] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString:gc.alloc.rate":
+  2625,186 ±(99.9%) 59,795 MB/sec [Average]
+  (min, avg, max) = (2604,846, 2625,186, 2641,103), stdev = 15,529
+  CI (99.9%): [2565,391, 2684,981] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString:gc.alloc.rate.norm":
+  114864663,944 ±(99.9%) 1071,854 B/op [Average]
+  (min, avg, max) = (114864265,167, 114864663,944, 114864934,531), stdev = 278,357
+  CI (99.9%): [114863592,089, 114865735,798] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString:gc.count":
+  32,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (6,000, 6,400, 7,000), stdev = 0,548
+  CI (99.9%): [32,000, 32,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString:gc.time":
+  72,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (12,000, 14,400, 18,000), stdev = 2,302
+  CI (99.9%): [72,000, 72,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString
+# Parameters: (lines = 5000, syntax = CII)
+
+# Run progress: 47,22% complete, ETA 00:05:56
+# Fork: 1 of 1
+# Warmup Iteration   1: 71,376 ms/op
+# Warmup Iteration   2: 64,692 ms/op
+# Warmup Iteration   3: 62,474 ms/op
+Iteration   1: 61,972 ms/op
+                 gc.alloc.rate:      2935,935 MB/sec
+                 gc.alloc.rate.norm: 190795730,667 B/op
+                 gc.count:           6,000 counts
+                 gc.time:            4,000 ms
+
+Iteration   2: 61,713 ms/op
+                 gc.alloc.rate:      2948,240 MB/sec
+                 gc.alloc.rate.norm: 190795648,485 B/op
+                 gc.count:           7,000 counts
+                 gc.time:            4,000 ms
+
+Iteration   3: 61,607 ms/op
+                 gc.alloc.rate:      2953,293 MB/sec
+                 gc.alloc.rate.norm: 190793112,485 B/op
+                 gc.count:           5,000 counts
+                 gc.time:            3,000 ms
+
+Iteration   4: 61,611 ms/op
+                 gc.alloc.rate:      2953,076 MB/sec
+                 gc.alloc.rate.norm: 190793106,424 B/op
+                 gc.count:           6,000 counts
+                 gc.time:            4,000 ms
+
+Iteration   5: 62,245 ms/op
+                 gc.alloc.rate:      2922,991 MB/sec
+                 gc.alloc.rate.norm: 190793129,455 B/op
+                 gc.count:           5,000 counts
+                 gc.time:            2,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString":
+  61,830 ±(99.9%) 1,061 ms/op [Average]
+  (min, avg, max) = (61,607, 61,830, 62,245), stdev = 0,276
+  CI (99.9%): [60,768, 62,891] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString:gc.alloc.rate":
+  2942,707 ±(99.9%) 50,383 MB/sec [Average]
+  (min, avg, max) = (2922,991, 2942,707, 2953,293), stdev = 13,084
+  CI (99.9%): [2892,324, 2993,090] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString:gc.alloc.rate.norm":
+  190794145,503 ±(99.9%) 5428,884 B/op [Average]
+  (min, avg, max) = (190793106,424, 190794145,503, 190795730,667), stdev = 1409,864
+  CI (99.9%): [190788716,619, 190799574,387] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString:gc.count":
+  29,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (5,000, 5,800, 7,000), stdev = 0,837
+  CI (99.9%): [29,000, 29,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.readString:gc.time":
+  17,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (2,000, 3,400, 4,000), stdev = 0,894
+  CI (99.9%): [17,000, 17,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes
+# Parameters: (lines = 100, syntax = UBL)
+
+# Run progress: 50,00% complete, ETA 00:05:41
+# Fork: 1 of 1
+# Warmup Iteration   1: 16,137 ms/op
+# Warmup Iteration   2: 14,686 ms/op
+# Warmup Iteration   3: 14,318 ms/op
+Iteration   1: 14,315 ms/op
+                 gc.alloc.rate:      1268,283 MB/sec
+                 gc.alloc.rate.norm: 19038449,829 B/op
+                 gc.count:           8,000 counts
+                 gc.time:            5,000 ms
+
+Iteration   2: 14,309 ms/op
+                 gc.alloc.rate:      1268,769 MB/sec
+                 gc.alloc.rate.norm: 19038205,277 B/op
+                 gc.count:           8,000 counts
+                 gc.time:            6,000 ms
+
+Iteration   3: 14,231 ms/op
+                 gc.alloc.rate:      1275,763 MB/sec
+                 gc.alloc.rate.norm: 19037740,958 B/op
+                 gc.count:           7,000 counts
+                 gc.time:            4,000 ms
+
+Iteration   4: 14,235 ms/op
+                 gc.alloc.rate:      1275,366 MB/sec
+                 gc.alloc.rate.norm: 19037893,390 B/op
+                 gc.count:           8,000 counts
+                 gc.time:            6,000 ms
+
+Iteration   5: 14,182 ms/op
+                 gc.alloc.rate:      1280,082 MB/sec
+                 gc.alloc.rate.norm: 19037364,901 B/op
+                 gc.count:           7,000 counts
+                 gc.time:            4,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes":
+  14,255 ±(99.9%) 0,218 ms/op [Average]
+  (min, avg, max) = (14,182, 14,255, 14,315), stdev = 0,057
+  CI (99.9%): [14,036, 14,473] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes:gc.alloc.rate":
+  1273,653 ±(99.9%) 19,389 MB/sec [Average]
+  (min, avg, max) = (1268,283, 1273,653, 1280,082), stdev = 5,035
+  CI (99.9%): [1254,264, 1293,041] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes:gc.alloc.rate.norm":
+  19037930,871 ±(99.9%) 1613,609 B/op [Average]
+  (min, avg, max) = (19037364,901, 19037930,871, 19038449,829), stdev = 419,049
+  CI (99.9%): [19036317,262, 19039544,480] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes:gc.count":
+  38,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (7,000, 7,600, 8,000), stdev = 0,548
+  CI (99.9%): [38,000, 38,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes:gc.time":
+  25,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (4,000, 5,000, 6,000), stdev = 1,000
+  CI (99.9%): [25,000, 25,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes
+# Parameters: (lines = 100, syntax = CII)
+
+# Run progress: 52,78% complete, ETA 00:05:21
+# Fork: 1 of 1
+# Warmup Iteration   1: 14,826 ms/op
+# Warmup Iteration   2: 13,554 ms/op
+# Warmup Iteration   3: 13,302 ms/op
+Iteration   1: 13,254 ms/op
+                 gc.alloc.rate:      1687,531 MB/sec
+                 gc.alloc.rate.norm: 23454889,053 B/op
+                 gc.count:           9,000 counts
+                 gc.time:            6,000 ms
+
+Iteration   2: 13,240 ms/op
+                 gc.alloc.rate:      1689,280 MB/sec
+                 gc.alloc.rate.norm: 23454493,895 B/op
+                 gc.count:           8,000 counts
+                 gc.time:            5,000 ms
+
+Iteration   3: 13,247 ms/op
+                 gc.alloc.rate:      1688,436 MB/sec
+                 gc.alloc.rate.norm: 23453961,316 B/op
+                 gc.count:           9,000 counts
+                 gc.time:            7,000 ms
+
+Iteration   4: 13,230 ms/op
+                 gc.alloc.rate:      1690,538 MB/sec
+                 gc.alloc.rate.norm: 23454075,053 B/op
+                 gc.count:           8,000 counts
+                 gc.time:            6,000 ms
+
+Iteration   5: 13,308 ms/op
+                 gc.alloc.rate:      1680,170 MB/sec
+                 gc.alloc.rate.norm: 23447662,993 B/op
+                 gc.count:           9,000 counts
+                 gc.time:            6,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes":
+  13,256 ±(99.9%) 0,117 ms/op [Average]
+  (min, avg, max) = (13,230, 13,256, 13,308), stdev = 0,030
+  CI (99.9%): [13,139, 13,373] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes:gc.alloc.rate":
+  1687,191 ±(99.9%) 15,703 MB/sec [Average]
+  (min, avg, max) = (1680,170, 1687,191, 1690,538), stdev = 4,078
+  CI (99.9%): [1671,488, 1702,894] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes:gc.alloc.rate.norm":
+  23453016,462 ±(99.9%) 11609,930 B/op [Average]
+  (min, avg, max) = (23447662,993, 23453016,462, 23454889,053), stdev = 3015,062
+  CI (99.9%): [23441406,532, 23464626,392] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes:gc.count":
+  43,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (8,000, 8,600, 9,000), stdev = 0,548
+  CI (99.9%): [43,000, 43,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes:gc.time":
+  30,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (5,000, 6,000, 7,000), stdev = 0,707
+  CI (99.9%): [30,000, 30,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes
+# Parameters: (lines = 1000, syntax = UBL)
+
+# Run progress: 55,56% complete, ETA 00:05:00
+# Fork: 1 of 1
+# Warmup Iteration   1: 145,306 ms/op
+# Warmup Iteration   2: 142,846 ms/op
+# Warmup Iteration   3: 143,652 ms/op
+Iteration   1: 143,580 ms/op
+                 gc.alloc.rate:      1189,542 MB/sec
+                 gc.alloc.rate.norm: 179100298,286 B/op
+                 gc.count:           7,000 counts
+                 gc.time:            12,000 ms
+
+Iteration   2: 143,665 ms/op
+                 gc.alloc.rate:      1188,854 MB/sec
+                 gc.alloc.rate.norm: 179100830,933 B/op
+                 gc.count:           8,000 counts
+                 gc.time:            12,000 ms
+
+Iteration   3: 143,191 ms/op
+                 gc.alloc.rate:      1192,784 MB/sec
+                 gc.alloc.rate.norm: 179099693,867 B/op
+                 gc.count:           7,000 counts
+                 gc.time:            11,000 ms
+
+Iteration   4: 143,662 ms/op
+                 gc.alloc.rate:      1188,867 MB/sec
+                 gc.alloc.rate.norm: 179098766,286 B/op
+                 gc.count:           8,000 counts
+                 gc.time:            11,000 ms
+
+Iteration   5: 143,144 ms/op
+                 gc.alloc.rate:      1193,136 MB/sec
+                 gc.alloc.rate.norm: 179095974,933 B/op
+                 gc.count:           8,000 counts
+                 gc.time:            11,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes":
+  143,448 ±(99.9%) 0,998 ms/op [Average]
+  (min, avg, max) = (143,144, 143,448, 143,665), stdev = 0,259
+  CI (99.9%): [142,450, 144,446] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes:gc.alloc.rate":
+  1190,636 ±(99.9%) 8,250 MB/sec [Average]
+  (min, avg, max) = (1188,854, 1190,636, 1193,136), stdev = 2,143
+  CI (99.9%): [1182,386, 1198,887] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes:gc.alloc.rate.norm":
+  179099112,861 ±(99.9%) 7372,067 B/op [Average]
+  (min, avg, max) = (179095974,933, 179099112,861, 179100830,933), stdev = 1914,502
+  CI (99.9%): [179091740,794, 179106484,928] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes:gc.count":
+  38,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (7,000, 7,600, 8,000), stdev = 0,548
+  CI (99.9%): [38,000, 38,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes:gc.time":
+  57,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (11,000, 11,400, 12,000), stdev = 0,548
+  CI (99.9%): [57,000, 57,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes
+# Parameters: (lines = 1000, syntax = CII)
+
+# Run progress: 58,33% complete, ETA 00:04:42
+# Fork: 1 of 1
+# Warmup Iteration   1: 154,938 ms/op
+# Warmup Iteration   2: 152,152 ms/op
+# Warmup Iteration   3: 152,384 ms/op
+Iteration   1: 151,071 ms/op
+                 gc.alloc.rate:      1389,493 MB/sec
+                 gc.alloc.rate.norm: 220117653,714 B/op
+                 gc.count:           9,000 counts
+                 gc.time:            14,000 ms
+
+Iteration   2: 151,699 ms/op
+                 gc.alloc.rate:      1383,734 MB/sec
+                 gc.alloc.rate.norm: 220116801,143 B/op
+                 gc.count:           9,000 counts
+                 gc.time:            15,000 ms
+
+Iteration   3: 151,418 ms/op
+                 gc.alloc.rate:      1386,308 MB/sec
+                 gc.alloc.rate.norm: 220116639,429 B/op
+                 gc.count:           8,000 counts
+                 gc.time:            14,000 ms
+
+Iteration   4: 150,800 ms/op
+                 gc.alloc.rate:      1391,979 MB/sec
+                 gc.alloc.rate.norm: 220117048,000 B/op
+                 gc.count:           9,000 counts
+                 gc.time:            14,000 ms
+
+Iteration   5: 151,175 ms/op
+                 gc.alloc.rate:      1388,494 MB/sec
+                 gc.alloc.rate.norm: 220114117,714 B/op
+                 gc.count:           9,000 counts
+                 gc.time:            15,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes":
+  151,233 ±(99.9%) 1,316 ms/op [Average]
+  (min, avg, max) = (150,800, 151,233, 151,699), stdev = 0,342
+  CI (99.9%): [149,916, 152,549] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes:gc.alloc.rate":
+  1388,002 ±(99.9%) 12,081 MB/sec [Average]
+  (min, avg, max) = (1383,734, 1388,002, 1391,979), stdev = 3,137
+  CI (99.9%): [1375,920, 1400,083] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes:gc.alloc.rate.norm":
+  220116452,000 ±(99.9%) 5239,301 B/op [Average]
+  (min, avg, max) = (220114117,714, 220116452,000, 220117653,714), stdev = 1360,630
+  CI (99.9%): [220111212,699, 220121691,301] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes:gc.count":
+  44,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (8,000, 8,800, 9,000), stdev = 0,447
+  CI (99.9%): [44,000, 44,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes:gc.time":
+  72,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (14,000, 14,400, 15,000), stdev = 0,548
+  CI (99.9%): [72,000, 72,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes
+# Parameters: (lines = 5000, syntax = UBL)
+
+# Run progress: 61,11% complete, ETA 00:04:23
+# Fork: 1 of 1
+# Warmup Iteration   1: 907,303 ms/op
+# Warmup Iteration   2: 905,438 ms/op
+# Warmup Iteration   3: 891,606 ms/op
+Iteration   1: 893,530 ms/op
+                 gc.alloc.rate:      952,087 MB/sec
+                 gc.alloc.rate.norm: 892080496,000 B/op
+                 gc.count:           7,000 counts
+                 gc.time:            34,000 ms
+
+Iteration   2: 889,295 ms/op
+                 gc.alloc.rate:      956,622 MB/sec
+                 gc.alloc.rate.norm: 892080584,000 B/op
+                 gc.count:           3,000 counts
+                 gc.time:            22,000 ms
+
+Iteration   3: 890,279 ms/op
+                 gc.alloc.rate:      955,567 MB/sec
+                 gc.alloc.rate.norm: 892081232,000 B/op
+                 gc.count:           4,000 counts
+                 gc.time:            25,000 ms
+
+Iteration   4: 891,884 ms/op
+                 gc.alloc.rate:      953,848 MB/sec
+                 gc.alloc.rate.norm: 892075442,667 B/op
+                 gc.count:           4,000 counts
+                 gc.time:            29,000 ms
+
+Iteration   5: 894,341 ms/op
+                 gc.alloc.rate:      951,218 MB/sec
+                 gc.alloc.rate.norm: 892074549,333 B/op
+                 gc.count:           3,000 counts
+                 gc.time:            20,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes":
+  891,866 ±(99.9%) 8,173 ms/op [Average]
+  (min, avg, max) = (889,295, 891,866, 894,341), stdev = 2,122
+  CI (99.9%): [883,693, 900,039] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes:gc.alloc.rate":
+  953,868 ±(99.9%) 8,753 MB/sec [Average]
+  (min, avg, max) = (951,218, 953,868, 956,622), stdev = 2,273
+  CI (99.9%): [945,116, 962,621] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes:gc.alloc.rate.norm":
+  892078460,800 ±(99.9%) 12288,663 B/op [Average]
+  (min, avg, max) = (892074549,333, 892078460,800, 892081232,000), stdev = 3191,327
+  CI (99.9%): [892066172,137, 892090749,463] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes:gc.count":
+  21,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (3,000, 4,200, 7,000), stdev = 1,643
+  CI (99.9%): [21,000, 21,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes:gc.time":
+  130,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (20,000, 26,000, 34,000), stdev = 5,612
+  CI (99.9%): [130,000, 130,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes
+# Parameters: (lines = 5000, syntax = CII)
+
+# Run progress: 63,89% complete, ETA 00:04:08
+# Fork: 1 of 1
+# Warmup Iteration   1: 1401,522 ms/op
+# Warmup Iteration   2: 1389,504 ms/op
+# Warmup Iteration   3: 1402,645 ms/op
+Iteration   1: 1400,126 ms/op
+                 gc.alloc.rate:      754,963 MB/sec
+                 gc.alloc.rate.norm: 1108430464,000 B/op
+                 gc.count:           6,000 counts
+                 gc.time:            31,000 ms
+
+Iteration   2: 1385,262 ms/op
+                 gc.alloc.rate:      763,056 MB/sec
+                 gc.alloc.rate.norm: 1108424704,000 B/op
+                 gc.count:           6,000 counts
+                 gc.time:            34,000 ms
+
+Iteration   3: 1412,475 ms/op
+                 gc.alloc.rate:      748,362 MB/sec
+                 gc.alloc.rate.norm: 1108425140,000 B/op
+                 gc.count:           3,000 counts
+                 gc.time:            24,000 ms
+
+Iteration   4: 1383,639 ms/op
+                 gc.alloc.rate:      763,959 MB/sec
+                 gc.alloc.rate.norm: 1108424900,000 B/op
+                 gc.count:           3,000 counts
+                 gc.time:            22,000 ms
+
+Iteration   5: 1437,551 ms/op
+                 gc.alloc.rate:      735,302 MB/sec
+                 gc.alloc.rate.norm: 1108422464,000 B/op
+                 gc.count:           4,000 counts
+                 gc.time:            28,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes":
+  1403,811 ±(99.9%) 85,629 ms/op [Average]
+  (min, avg, max) = (1383,639, 1403,811, 1437,551), stdev = 22,238
+  CI (99.9%): [1318,182, 1489,439] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes:gc.alloc.rate":
+  753,128 ±(99.9%) 45,550 MB/sec [Average]
+  (min, avg, max) = (735,302, 753,128, 763,959), stdev = 11,829
+  CI (99.9%): [707,578, 798,678] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes:gc.alloc.rate.norm":
+  1108425534,400 ±(99.9%) 11386,435 B/op [Average]
+  (min, avg, max) = (1108422464,000, 1108425534,400, 1108430464,000), stdev = 2957,021
+  CI (99.9%): [1108414147,965, 1108436920,835] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes:gc.count":
+  22,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (3,000, 4,400, 6,000), stdev = 1,517
+  CI (99.9%): [22,000, 22,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytes:gc.time":
+  139,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (22,000, 27,800, 34,000), stdev = 4,919
+  CI (99.9%): [139,000, 139,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck
+# Parameters: (lines = 100, syntax = UBL)
+
+# Run progress: 66,67% complete, ETA 00:03:53
+# Fork: 1 of 1
+# Warmup Iteration   1: 17,043 ms/op
+# Warmup Iteration   2: 15,393 ms/op
+# Warmup Iteration   3: 15,266 ms/op
+Iteration   1: 15,027 ms/op
+                 gc.alloc.rate:      1356,087 MB/sec
+                 gc.alloc.rate.norm: 21368080,119 B/op
+                 gc.count:           8,000 counts
+                 gc.time:            6,000 ms
+
+Iteration   2: 15,075 ms/op
+                 gc.alloc.rate:      1351,583 MB/sec
+                 gc.alloc.rate.norm: 21366493,493 B/op
+                 gc.count:           8,000 counts
+                 gc.time:            6,000 ms
+
+Iteration   3: 14,993 ms/op
+                 gc.alloc.rate:      1358,707 MB/sec
+                 gc.alloc.rate.norm: 21362054,341 B/op
+                 gc.count:           8,000 counts
+                 gc.time:            5,000 ms
+
+Iteration   4: 15,080 ms/op
+                 gc.alloc.rate:      1350,863 MB/sec
+                 gc.alloc.rate.norm: 21361454,627 B/op
+                 gc.count:           8,000 counts
+                 gc.time:            5,000 ms
+
+Iteration   5: 15,014 ms/op
+                 gc.alloc.rate:      1356,768 MB/sec
+                 gc.alloc.rate.norm: 21361445,134 B/op
+                 gc.count:           8,000 counts
+                 gc.time:            7,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck":
+  15,038 ±(99.9%) 0,147 ms/op [Average]
+  (min, avg, max) = (14,993, 15,038, 15,080), stdev = 0,038
+  CI (99.9%): [14,890, 15,185] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.alloc.rate":
+  1354,801 ±(99.9%) 13,149 MB/sec [Average]
+  (min, avg, max) = (1350,863, 1354,801, 1358,707), stdev = 3,415
+  CI (99.9%): [1341,653, 1367,950] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.alloc.rate.norm":
+  21363905,543 ±(99.9%) 12117,622 B/op [Average]
+  (min, avg, max) = (21361445,134, 21363905,543, 21368080,119), stdev = 3146,908
+  CI (99.9%): [21351787,920, 21376023,165] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.count":
+  40,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (8,000, 8,000, 8,000), stdev = 0,001
+  CI (99.9%): [40,000, 40,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.time":
+  29,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (5,000, 5,800, 7,000), stdev = 0,837
+  CI (99.9%): [29,000, 29,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck
+# Parameters: (lines = 100, syntax = CII)
+
+# Run progress: 69,44% complete, ETA 00:03:33
+# Fork: 1 of 1
+# Warmup Iteration   1: 16,868 ms/op
+# Warmup Iteration   2: 15,115 ms/op
+# Warmup Iteration   3: 14,936 ms/op
+Iteration   1: 14,943 ms/op
+                 gc.alloc.rate:      1726,754 MB/sec
+                 gc.alloc.rate.norm: 27057141,452 B/op
+                 gc.count:           10,000 counts
+                 gc.time:            7,000 ms
+
+Iteration   2: 14,873 ms/op
+                 gc.alloc.rate:      1734,386 MB/sec
+                 gc.alloc.rate.norm: 27050864,882 B/op
+                 gc.count:           11,000 counts
+                 gc.time:            8,000 ms
+
+Iteration   3: 14,788 ms/op
+                 gc.alloc.rate:      1744,069 MB/sec
+                 gc.alloc.rate.norm: 27045597,118 B/op
+                 gc.count:           11,000 counts
+                 gc.time:            8,000 ms
+
+Iteration   4: 14,767 ms/op
+                 gc.alloc.rate:      1746,464 MB/sec
+                 gc.alloc.rate.norm: 27044789,839 B/op
+                 gc.count:           10,000 counts
+                 gc.time:            7,000 ms
+
+Iteration   5: 14,796 ms/op
+                 gc.alloc.rate:      1743,048 MB/sec
+                 gc.alloc.rate.norm: 27044703,235 B/op
+                 gc.count:           11,000 counts
+                 gc.time:            8,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck":
+  14,834 ±(99.9%) 0,281 ms/op [Average]
+  (min, avg, max) = (14,767, 14,834, 14,943), stdev = 0,073
+  CI (99.9%): [14,552, 15,115] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.alloc.rate":
+  1738,944 ±(99.9%) 31,579 MB/sec [Average]
+  (min, avg, max) = (1726,754, 1738,944, 1746,464), stdev = 8,201
+  CI (99.9%): [1707,365, 1770,523] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.alloc.rate.norm":
+  27048619,305 ±(99.9%) 20808,057 B/op [Average]
+  (min, avg, max) = (27044703,235, 27048619,305, 27057141,452), stdev = 5403,786
+  CI (99.9%): [27027811,248, 27069427,363] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.count":
+  53,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (10,000, 10,600, 11,000), stdev = 0,548
+  CI (99.9%): [53,000, 53,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.time":
+  38,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (7,000, 7,600, 8,000), stdev = 0,548
+  CI (99.9%): [38,000, 38,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck
+# Parameters: (lines = 1000, syntax = UBL)
+
+# Run progress: 72,22% complete, ETA 00:03:13
+# Fork: 1 of 1
+# Warmup Iteration   1: 157,657 ms/op
+# Warmup Iteration   2: 152,421 ms/op
+# Warmup Iteration   3: 151,714 ms/op
+Iteration   1: 151,801 ms/op
+                 gc.alloc.rate:      1255,742 MB/sec
+                 gc.alloc.rate.norm: 199892969,714 B/op
+                 gc.count:           6,000 counts
+                 gc.time:            9,000 ms
+
+Iteration   2: 152,242 ms/op
+                 gc.alloc.rate:      1252,039 MB/sec
+                 gc.alloc.rate.norm: 199881786,286 B/op
+                 gc.count:           7,000 counts
+                 gc.time:            12,000 ms
+
+Iteration   3: 151,028 ms/op
+                 gc.alloc.rate:      1262,095 MB/sec
+                 gc.alloc.rate.norm: 199879145,143 B/op
+                 gc.count:           7,000 counts
+                 gc.time:            11,000 ms
+
+Iteration   4: 150,775 ms/op
+                 gc.alloc.rate:      1264,206 MB/sec
+                 gc.alloc.rate.norm: 199879083,429 B/op
+                 gc.count:           6,000 counts
+                 gc.time:            9,000 ms
+
+Iteration   5: 150,492 ms/op
+                 gc.alloc.rate:      1266,566 MB/sec
+                 gc.alloc.rate.norm: 199876984,000 B/op
+                 gc.count:           7,000 counts
+                 gc.time:            9,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck":
+  151,268 ±(99.9%) 2,815 ms/op [Average]
+  (min, avg, max) = (150,492, 151,268, 152,242), stdev = 0,731
+  CI (99.9%): [148,453, 154,082] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.alloc.rate":
+  1260,129 ±(99.9%) 23,312 MB/sec [Average]
+  (min, avg, max) = (1252,039, 1260,129, 1266,566), stdev = 6,054
+  CI (99.9%): [1236,817, 1283,442] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.alloc.rate.norm":
+  199881993,714 ±(99.9%) 24520,240 B/op [Average]
+  (min, avg, max) = (199876984,000, 199881993,714, 199892969,714), stdev = 6367,829
+  CI (99.9%): [199857473,474, 199906513,955] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.count":
+  33,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (6,000, 6,600, 7,000), stdev = 0,548
+  CI (99.9%): [33,000, 33,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.time":
+  50,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (9,000, 10,000, 12,000), stdev = 1,414
+  CI (99.9%): [50,000, 50,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck
+# Parameters: (lines = 1000, syntax = CII)
+
+# Run progress: 75,00% complete, ETA 00:02:53
+# Fork: 1 of 1
+# Warmup Iteration   1: 178,565 ms/op
+# Warmup Iteration   2: 170,124 ms/op
+# Warmup Iteration   3: 169,895 ms/op
+Iteration   1: 169,093 ms/op
+                 gc.alloc.rate:      1429,736 MB/sec
+                 gc.alloc.rate.norm: 253543060,667 B/op
+                 gc.count:           7,000 counts
+                 gc.time:            12,000 ms
+
+Iteration   2: 169,458 ms/op
+                 gc.alloc.rate:      1426,822 MB/sec
+                 gc.alloc.rate.norm: 253542995,333 B/op
+                 gc.count:           7,000 counts
+                 gc.time:            10,000 ms
+
+Iteration   3: 169,153 ms/op
+                 gc.alloc.rate:      1429,341 MB/sec
+                 gc.alloc.rate.norm: 253534478,667 B/op
+                 gc.count:           7,000 counts
+                 gc.time:            10,000 ms
+
+Iteration   4: 168,732 ms/op
+                 gc.alloc.rate:      1432,900 MB/sec
+                 gc.alloc.rate.norm: 253531460,000 B/op
+                 gc.count:           8,000 counts
+                 gc.time:            12,000 ms
+
+Iteration   5: 168,453 ms/op
+                 gc.alloc.rate:      1435,253 MB/sec
+                 gc.alloc.rate.norm: 253531567,333 B/op
+                 gc.count:           7,000 counts
+                 gc.time:            10,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck":
+  168,978 ±(99.9%) 1,504 ms/op [Average]
+  (min, avg, max) = (168,453, 168,978, 169,458), stdev = 0,391
+  CI (99.9%): [167,474, 170,482] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.alloc.rate":
+  1430,810 ±(99.9%) 12,671 MB/sec [Average]
+  (min, avg, max) = (1426,822, 1430,810, 1435,253), stdev = 3,291
+  CI (99.9%): [1418,139, 1443,482] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.alloc.rate.norm":
+  253536712,400 ±(99.9%) 22684,895 B/op [Average]
+  (min, avg, max) = (253531460,000, 253536712,400, 253543060,667), stdev = 5891,195
+  CI (99.9%): [253514027,505, 253559397,295] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.count":
+  36,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (7,000, 7,200, 8,000), stdev = 0,447
+  CI (99.9%): [36,000, 36,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.time":
+  54,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (10,000, 10,800, 12,000), stdev = 1,095
+  CI (99.9%): [54,000, 54,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck
+# Parameters: (lines = 5000, syntax = UBL)
+
+# Run progress: 77,78% complete, ETA 00:02:34
+# Fork: 1 of 1
+# Warmup Iteration   1: 957,550 ms/op
+# Warmup Iteration   2: 933,435 ms/op
+# Warmup Iteration   3: 1028,896 ms/op
+Iteration   1: 967,283 ms/op
+                 gc.alloc.rate:      980,200 MB/sec
+                 gc.alloc.rate.norm: 994231722,667 B/op
+                 gc.count:           4,000 counts
+                 gc.time:            21,000 ms
+
+Iteration   2: 953,303 ms/op
+                 gc.alloc.rate:      995,308 MB/sec
+                 gc.alloc.rate.norm: 994965504,000 B/op
+                 gc.count:           5,000 counts
+                 gc.time:            27,000 ms
+
+Iteration   3: 964,617 ms/op
+                 gc.alloc.rate:      983,643 MB/sec
+                 gc.alloc.rate.norm: 994965754,667 B/op
+                 gc.count:           4,000 counts
+                 gc.time:            27,000 ms
+
+Iteration   4: 958,671 ms/op
+                 gc.alloc.rate:      989,745 MB/sec
+                 gc.alloc.rate.norm: 994964693,333 B/op
+                 gc.count:           5,000 counts
+                 gc.time:            27,000 ms
+
+Iteration   5: 955,573 ms/op
+                 gc.alloc.rate:      992,856 MB/sec
+                 gc.alloc.rate.norm: 994875722,667 B/op
+                 gc.count:           7,000 counts
+                 gc.time:            36,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck":
+  959,889 ±(99.9%) 22,823 ms/op [Average]
+  (min, avg, max) = (953,303, 959,889, 967,283), stdev = 5,927
+  CI (99.9%): [937,066, 982,712] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.alloc.rate":
+  988,350 ±(99.9%) 24,295 MB/sec [Average]
+  (min, avg, max) = (980,200, 988,350, 995,308), stdev = 6,309
+  CI (99.9%): [964,056, 1012,645] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.alloc.rate.norm":
+  994800679,467 ±(99.9%) 1233800,665 B/op [Average]
+  (min, avg, max) = (994231722,667, 994800679,467, 994965754,667), stdev = 320414,114
+  CI (99.9%): [993566878,802, 996034480,131] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.count":
+  25,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (4,000, 5,000, 7,000), stdev = 1,225
+  CI (99.9%): [25,000, 25,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.time":
+  138,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (21,000, 27,600, 36,000), stdev = 5,367
+  CI (99.9%): [138,000, 138,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck
+# Parameters: (lines = 5000, syntax = CII)
+
+# Run progress: 80,56% complete, ETA 00:02:16
+# Fork: 1 of 1
+# Warmup Iteration   1: 1551,007 ms/op
+# Warmup Iteration   2: 1522,891 ms/op
+# Warmup Iteration   3: 1540,749 ms/op
+Iteration   1: 1530,479 ms/op
+                 gc.alloc.rate:      792,486 MB/sec
+                 gc.alloc.rate.norm: 1271848848,000 B/op
+                 gc.count:           7,000 counts
+                 gc.time:            35,000 ms
+
+Iteration   2: 1529,207 ms/op
+                 gc.alloc.rate:      793,175 MB/sec
+                 gc.alloc.rate.norm: 1271884496,000 B/op
+                 gc.count:           5,000 counts
+                 gc.time:            40,000 ms
+
+Iteration   3: 1536,221 ms/op
+                 gc.alloc.rate:      790,162 MB/sec
+                 gc.alloc.rate.norm: 1272873832,000 B/op
+                 gc.count:           4,000 counts
+                 gc.time:            28,000 ms
+
+Iteration   4: 1506,586 ms/op
+                 gc.alloc.rate:      806,060 MB/sec
+                 gc.alloc.rate.norm: 1273434212,000 B/op
+                 gc.count:           7,000 counts
+                 gc.time:            32,000 ms
+
+Iteration   5: 1516,584 ms/op
+                 gc.alloc.rate:      800,737 MB/sec
+                 gc.alloc.rate.norm: 1273429696,000 B/op
+                 gc.count:           5,000 counts
+                 gc.time:            28,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck":
+  1523,815 ±(99.9%) 46,229 ms/op [Average]
+  (min, avg, max) = (1506,586, 1523,815, 1536,221), stdev = 12,006
+  CI (99.9%): [1477,586, 1570,045] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.alloc.rate":
+  796,524 ±(99.9%) 25,592 MB/sec [Average]
+  (min, avg, max) = (790,162, 796,524, 806,060), stdev = 6,646
+  CI (99.9%): [770,932, 822,116] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.alloc.rate.norm":
+  1272694216,800 ±(99.9%) 3038765,824 B/op [Average]
+  (min, avg, max) = (1271848848,000, 1272694216,800, 1273434212,000), stdev = 789157,835
+  CI (99.9%): [1269655450,976, 1275732982,624] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.count":
+  28,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (4,000, 5,600, 7,000), stdev = 1,342
+  CI (99.9%): [28,000, 28,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.time":
+  163,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (28,000, 32,600, 40,000), stdev = 5,079
+  CI (99.9%): [163,000, 163,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString
+# Parameters: (lines = 100, syntax = UBL)
+
+# Run progress: 83,33% complete, ETA 00:01:59
+# Fork: 1 of 1
+# Warmup Iteration   1: 16,628 ms/op
+# Warmup Iteration   2: 15,331 ms/op
+# Warmup Iteration   3: 15,452 ms/op
+Iteration   1: 15,357 ms/op
+                 gc.alloc.rate:      1199,657 MB/sec
+                 gc.alloc.rate.norm: 19319438,840 B/op
+                 gc.count:           8,000 counts
+                 gc.time:            5,000 ms
+
+Iteration   2: 15,107 ms/op
+                 gc.alloc.rate:      1219,500 MB/sec
+                 gc.alloc.rate.norm: 19319138,165 B/op
+                 gc.count:           7,000 counts
+                 gc.time:            4,000 ms
+
+Iteration   3: 15,074 ms/op
+                 gc.alloc.rate:      1222,190 MB/sec
+                 gc.alloc.rate.norm: 19318839,278 B/op
+                 gc.count:           7,000 counts
+                 gc.time:            6,000 ms
+
+Iteration   4: 15,352 ms/op
+                 gc.alloc.rate:      1200,009 MB/sec
+                 gc.alloc.rate.norm: 19318366,840 B/op
+                 gc.count:           7,000 counts
+                 gc.time:            5,000 ms
+
+Iteration   5: 15,197 ms/op
+                 gc.alloc.rate:      1212,231 MB/sec
+                 gc.alloc.rate.norm: 19318536,970 B/op
+                 gc.count:           8,000 counts
+                 gc.time:            5,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString":
+  15,217 ±(99.9%) 0,512 ms/op [Average]
+  (min, avg, max) = (15,074, 15,217, 15,357), stdev = 0,133
+  CI (99.9%): [14,705, 15,729] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString:gc.alloc.rate":
+  1210,717 ±(99.9%) 40,754 MB/sec [Average]
+  (min, avg, max) = (1199,657, 1210,717, 1222,190), stdev = 10,584
+  CI (99.9%): [1169,963, 1251,471] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString:gc.alloc.rate.norm":
+  19318864,019 ±(99.9%) 1678,827 B/op [Average]
+  (min, avg, max) = (19318366,840, 19318864,019, 19319438,840), stdev = 435,986
+  CI (99.9%): [19317185,191, 19320542,846] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString:gc.count":
+  37,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (7,000, 7,400, 8,000), stdev = 0,548
+  CI (99.9%): [37,000, 37,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString:gc.time":
+  25,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (4,000, 5,000, 6,000), stdev = 0,707
+  CI (99.9%): [25,000, 25,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString
+# Parameters: (lines = 100, syntax = CII)
+
+# Run progress: 86,11% complete, ETA 00:01:38
+# Fork: 1 of 1
+# Warmup Iteration   1: 15,574 ms/op
+# Warmup Iteration   2: 14,376 ms/op
+# Warmup Iteration   3: 14,345 ms/op
+Iteration   1: 14,135 ms/op
+                 gc.alloc.rate:      1620,347 MB/sec
+                 gc.alloc.rate.norm: 24017657,465 B/op
+                 gc.count:           10,000 counts
+                 gc.time:            7,000 ms
+
+Iteration   2: 14,179 ms/op
+                 gc.alloc.rate:      1615,514 MB/sec
+                 gc.alloc.rate.norm: 24020995,887 B/op
+                 gc.count:           9,000 counts
+                 gc.time:            7,000 ms
+
+Iteration   3: 14,279 ms/op
+                 gc.alloc.rate:      1604,311 MB/sec
+                 gc.alloc.rate.norm: 24022070,468 B/op
+                 gc.count:           10,000 counts
+                 gc.time:            8,000 ms
+
+Iteration   4: 14,311 ms/op
+                 gc.alloc.rate:      1600,747 MB/sec
+                 gc.alloc.rate.norm: 24021754,326 B/op
+                 gc.count:           10,000 counts
+                 gc.time:            8,000 ms
+
+Iteration   5: 14,037 ms/op
+                 gc.alloc.rate:      1631,934 MB/sec
+                 gc.alloc.rate.norm: 24021462,266 B/op
+                 gc.count:           10,000 counts
+                 gc.time:            7,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString":
+  14,188 ±(99.9%) 0,427 ms/op [Average]
+  (min, avg, max) = (14,037, 14,188, 14,311), stdev = 0,111
+  CI (99.9%): [13,762, 14,615] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString:gc.alloc.rate":
+  1614,570 ±(99.9%) 48,405 MB/sec [Average]
+  (min, avg, max) = (1600,747, 1614,570, 1631,934), stdev = 12,571
+  CI (99.9%): [1566,165, 1662,976] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString:gc.alloc.rate.norm":
+  24020788,082 ±(99.9%) 6908,825 B/op [Average]
+  (min, avg, max) = (24017657,465, 24020788,082, 24022070,468), stdev = 1794,200
+  CI (99.9%): [24013879,258, 24027696,907] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString:gc.count":
+  49,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (9,000, 9,800, 10,000), stdev = 0,447
+  CI (99.9%): [49,000, 49,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString:gc.time":
+  37,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (7,000, 7,400, 8,000), stdev = 0,548
+  CI (99.9%): [37,000, 37,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString
+# Parameters: (lines = 1000, syntax = UBL)
+
+# Run progress: 88,89% complete, ETA 00:01:18
+# Fork: 1 of 1
+# Warmup Iteration   1: 148,977 ms/op
+# Warmup Iteration   2: 147,022 ms/op
+# Warmup Iteration   3: 147,005 ms/op
+Iteration   1: 147,214 ms/op
+                 gc.alloc.rate:      1178,068 MB/sec
+                 gc.alloc.rate.norm: 181862509,714 B/op
+                 gc.count:           7,000 counts
+                 gc.time:            9,000 ms
+
+Iteration   2: 146,755 ms/op
+                 gc.alloc.rate:      1181,760 MB/sec
+                 gc.alloc.rate.norm: 181862480,000 B/op
+                 gc.count:           8,000 counts
+                 gc.time:            11,000 ms
+
+Iteration   3: 146,699 ms/op
+                 gc.alloc.rate:      1182,210 MB/sec
+                 gc.alloc.rate.norm: 181861132,571 B/op
+                 gc.count:           7,000 counts
+                 gc.time:            8,000 ms
+
+Iteration   4: 147,443 ms/op
+                 gc.alloc.rate:      1176,230 MB/sec
+                 gc.alloc.rate.norm: 181859426,857 B/op
+                 gc.count:           7,000 counts
+                 gc.time:            10,000 ms
+
+Iteration   5: 146,313 ms/op
+                 gc.alloc.rate:      1185,285 MB/sec
+                 gc.alloc.rate.norm: 181857851,429 B/op
+                 gc.count:           8,000 counts
+                 gc.time:            11,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString":
+  146,885 ±(99.9%) 1,720 ms/op [Average]
+  (min, avg, max) = (146,313, 146,885, 147,443), stdev = 0,447
+  CI (99.9%): [145,165, 148,605] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString:gc.alloc.rate":
+  1180,711 ±(99.9%) 13,794 MB/sec [Average]
+  (min, avg, max) = (1176,230, 1180,711, 1185,285), stdev = 3,582
+  CI (99.9%): [1166,916, 1194,505] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString:gc.alloc.rate.norm":
+  181860680,114 ±(99.9%) 7788,364 B/op [Average]
+  (min, avg, max) = (181857851,429, 181860680,114, 181862509,714), stdev = 2022,613
+  CI (99.9%): [181852891,751, 181868468,478] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString:gc.count":
+  37,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (7,000, 7,400, 8,000), stdev = 0,548
+  CI (99.9%): [37,000, 37,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString:gc.time":
+  49,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (8,000, 9,800, 11,000), stdev = 1,304
+  CI (99.9%): [49,000, 49,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString
+# Parameters: (lines = 1000, syntax = CII)
+
+# Run progress: 91,67% complete, ETA 00:00:59
+# Fork: 1 of 1
+# Warmup Iteration   1: 164,138 ms/op
+# Warmup Iteration   2: 160,216 ms/op
+# Warmup Iteration   3: 159,677 ms/op
+Iteration   1: 160,771 ms/op
+                 gc.alloc.rate:      1338,849 MB/sec
+                 gc.alloc.rate.norm: 225714940,308 B/op
+                 gc.count:           9,000 counts
+                 gc.time:            15,000 ms
+
+Iteration   2: 159,234 ms/op
+                 gc.alloc.rate:      1351,762 MB/sec
+                 gc.alloc.rate.norm: 225713876,308 B/op
+                 gc.count:           8,000 counts
+                 gc.time:            12,000 ms
+
+Iteration   3: 159,332 ms/op
+                 gc.alloc.rate:      1350,937 MB/sec
+                 gc.alloc.rate.norm: 225713679,385 B/op
+                 gc.count:           9,000 counts
+                 gc.time:            15,000 ms
+
+Iteration   4: 159,956 ms/op
+                 gc.alloc.rate:      1345,667 MB/sec
+                 gc.alloc.rate.norm: 225713904,615 B/op
+                 gc.count:           8,000 counts
+                 gc.time:            12,000 ms
+
+Iteration   5: 159,877 ms/op
+                 gc.alloc.rate:      1346,304 MB/sec
+                 gc.alloc.rate.norm: 225712536,000 B/op
+                 gc.count:           9,000 counts
+                 gc.time:            14,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString":
+  159,834 ±(99.9%) 2,363 ms/op [Average]
+  (min, avg, max) = (159,234, 159,834, 160,771), stdev = 0,614
+  CI (99.9%): [157,470, 162,197] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString:gc.alloc.rate":
+  1346,704 ±(99.9%) 19,864 MB/sec [Average]
+  (min, avg, max) = (1338,849, 1346,704, 1351,762), stdev = 5,159
+  CI (99.9%): [1326,840, 1366,567] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString:gc.alloc.rate.norm":
+  225713787,323 ±(99.9%) 3294,782 B/op [Average]
+  (min, avg, max) = (225712536,000, 225713787,323, 225714940,308), stdev = 855,644
+  CI (99.9%): [225710492,541, 225717082,105] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString:gc.count":
+  43,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (8,000, 8,600, 9,000), stdev = 0,548
+  CI (99.9%): [43,000, 43,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString:gc.time":
+  68,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (12,000, 13,600, 15,000), stdev = 1,517
+  CI (99.9%): [68,000, 68,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString
+# Parameters: (lines = 5000, syntax = UBL)
+
+# Run progress: 94,44% complete, ETA 00:00:39
+# Fork: 1 of 1
+# Warmup Iteration   1: 924,598 ms/op
+# Warmup Iteration   2: 933,854 ms/op
+# Warmup Iteration   3: 925,208 ms/op
+Iteration   1: 908,813 ms/op
+                 gc.alloc.rate:      950,571 MB/sec
+                 gc.alloc.rate.norm: 905886117,333 B/op
+                 gc.count:           4,000 counts
+                 gc.time:            27,000 ms
+
+Iteration   2: 907,742 ms/op
+                 gc.alloc.rate:      951,694 MB/sec
+                 gc.alloc.rate.norm: 905890904,000 B/op
+                 gc.count:           4,000 counts
+                 gc.time:            28,000 ms
+
+Iteration   3: 899,698 ms/op
+                 gc.alloc.rate:      960,198 MB/sec
+                 gc.alloc.rate.norm: 905890768,000 B/op
+                 gc.count:           3,000 counts
+                 gc.time:            21,000 ms
+
+Iteration   4: 898,970 ms/op
+                 gc.alloc.rate:      960,981 MB/sec
+                 gc.alloc.rate.norm: 905890965,333 B/op
+                 gc.count:           4,000 counts
+                 gc.time:            28,000 ms
+
+Iteration   5: 895,166 ms/op
+                 gc.alloc.rate:      965,052 MB/sec
+                 gc.alloc.rate.norm: 905889296,000 B/op
+                 gc.count:           3,000 counts
+                 gc.time:            22,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString":
+  902,078 ±(99.9%) 22,825 ms/op [Average]
+  (min, avg, max) = (895,166, 902,078, 908,813), stdev = 5,928
+  CI (99.9%): [879,252, 924,903] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString:gc.alloc.rate":
+  957,699 ±(99.9%) 24,197 MB/sec [Average]
+  (min, avg, max) = (950,571, 957,699, 965,052), stdev = 6,284
+  CI (99.9%): [933,502, 981,896] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString:gc.alloc.rate.norm":
+  905889610,133 ±(99.9%) 7973,168 B/op [Average]
+  (min, avg, max) = (905886117,333, 905889610,133, 905890965,333), stdev = 2070,606
+  CI (99.9%): [905881636,965, 905897583,302] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString:gc.count":
+  18,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (3,000, 3,600, 4,000), stdev = 0,548
+  CI (99.9%): [18,000, 18,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString:gc.time":
+  126,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (21,000, 25,200, 28,000), stdev = 3,421
+  CI (99.9%): [126,000, 126,000] (assumes normal distribution)
+
+
+# JMH version: 1.37
+# VM version: JDK 21.0.12.1, OpenJDK 64-Bit Server VM, 21.0.12.1+1-LTS
+# VM invoker: /Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java
+# VM options: <none>
+# Blackhole mode: compiler (auto-detected, use -Djmh.blackhole.autoDetect=false to disable)
+# Warmup: 3 iterations, 2 s each
+# Measurement: 5 iterations, 2 s each
+# Timeout: 10 min per iteration
+# Threads: 1 thread, will synchronize iterations
+# Benchmark mode: Average time, time/op
+# Benchmark: io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString
+# Parameters: (lines = 5000, syntax = CII)
+
+# Run progress: 97,22% complete, ETA 00:00:19
+# Fork: 1 of 1
+# Warmup Iteration   1: 1457,766 ms/op
+# Warmup Iteration   2: 1456,049 ms/op
+# Warmup Iteration   3: 1448,183 ms/op
+Iteration   1: 1456,305 ms/op
+                 gc.alloc.rate:      746,125 MB/sec
+                 gc.alloc.rate.norm: 1139403968,000 B/op
+                 gc.count:           7,000 counts
+                 gc.time:            31,000 ms
+
+Iteration   2: 1445,497 ms/op
+                 gc.alloc.rate:      751,689 MB/sec
+                 gc.alloc.rate.norm: 1139398192,000 B/op
+                 gc.count:           10,000 counts
+                 gc.time:            36,000 ms
+
+Iteration   3: 1461,894 ms/op
+                 gc.alloc.rate:      743,262 MB/sec
+                 gc.alloc.rate.norm: 1139398652,000 B/op
+                 gc.count:           13,000 counts
+                 gc.time:            35,000 ms
+
+Iteration   4: 1440,468 ms/op
+                 gc.alloc.rate:      754,320 MB/sec
+                 gc.alloc.rate.norm: 1139399748,000 B/op
+                 gc.count:           7,000 counts
+                 gc.time:            33,000 ms
+
+Iteration   5: 1442,585 ms/op
+                 gc.alloc.rate:      753,209 MB/sec
+                 gc.alloc.rate.norm: 1139398676,000 B/op
+                 gc.count:           10,000 counts
+                 gc.time:            33,000 ms
+
+
+
+Result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString":
+  1449,350 ±(99.9%) 35,772 ms/op [Average]
+  (min, avg, max) = (1440,468, 1449,350, 1461,894), stdev = 9,290
+  CI (99.9%): [1413,577, 1485,122] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString:gc.alloc.rate":
+  749,721 ±(99.9%) 18,451 MB/sec [Average]
+  (min, avg, max) = (743,262, 749,721, 754,320), stdev = 4,792
+  CI (99.9%): [731,271, 768,172] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString:gc.alloc.rate.norm":
+  1139399847,200 ±(99.9%) 9138,839 B/op [Average]
+  (min, avg, max) = (1139398192,000, 1139399847,200, 1139403968,000), stdev = 2373,327
+  CI (99.9%): [1139390708,361, 1139408986,039] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString:gc.count":
+  47,000 ±(99.9%) 0,001 counts [Sum]
+  (min, avg, max) = (7,000, 9,400, 13,000), stdev = 2,510
+  CI (99.9%): [47,000, 47,000] (assumes normal distribution)
+
+Secondary result "io.github.nalukit.paniolo.benchmark.LargeXmlBenchmark.validateString:gc.time":
+  168,000 ±(99.9%) 0,001 ms [Sum]
+  (min, avg, max) = (31,000, 33,600, 36,000), stdev = 1,949
+  CI (99.9%): [168,000, 168,000] (assumes normal distribution)
+
+
+# Run complete. Total time: 00:12:03
+
+REMEMBER: The numbers below are just data. To gain reusable insights, you need to follow up on
+why the numbers are the way they are. Use profilers (see -prof, -lprof), design factorial
+experiments, perform baseline and negative tests that provide experimental control, make sure
+the benchmarking environment is safe on JVM/OS/HW level, ask for reviews from the domain experts.
+Do not assume the numbers tell you what you want them to tell.
+
+NOTE: Current JVM experimentally supports Compiler Blackholes, and they are in use. Please exercise
+extra caution when trusting the results, look into the generated code to check the benchmark still
+works, and factor in a small probability of new VM bugs. Additionally, while comparisons between
+different JVMs are already problematic, the performance difference caused by different Blackhole
+modes can be very significant. Please make sure you use the consistent Blackhole mode for comparisons.
+
+Benchmark                                                               (lines)  (syntax)  Mode  Cnt           Score         Error   Units
+LargeXmlBenchmark.importBytes                                               100       UBL  avgt    5           0,914 ±       0,009   ms/op
+LargeXmlBenchmark.importBytes:gc.alloc.rate                                 100       UBL  avgt    5        2480,701 ±      24,420  MB/sec
+LargeXmlBenchmark.importBytes:gc.alloc.rate.norm                            100       UBL  avgt    5     2378722,002 ±      58,838    B/op
+LargeXmlBenchmark.importBytes:gc.count                                      100       UBL  avgt    5          51,000                counts
+LargeXmlBenchmark.importBytes:gc.time                                       100       UBL  avgt    5          33,000                    ms
+LargeXmlBenchmark.importBytes                                               100       CII  avgt    5           1,421 ±       0,041   ms/op
+LargeXmlBenchmark.importBytes:gc.alloc.rate                                 100       CII  avgt    5        2495,587 ±      71,111  MB/sec
+LargeXmlBenchmark.importBytes:gc.alloc.rate.norm                            100       CII  avgt    5     3717550,569 ±     653,096    B/op
+LargeXmlBenchmark.importBytes:gc.count                                      100       CII  avgt    5          76,000                counts
+LargeXmlBenchmark.importBytes:gc.time                                       100       CII  avgt    5          51,000                    ms
+LargeXmlBenchmark.importBytes                                              1000       UBL  avgt    5           8,102 ±       0,339   ms/op
+LargeXmlBenchmark.importBytes:gc.alloc.rate                                1000       UBL  avgt    5        2511,653 ±     104,264  MB/sec
+LargeXmlBenchmark.importBytes:gc.alloc.rate.norm                           1000       UBL  avgt    5    21337061,794 ±    1575,856    B/op
+LargeXmlBenchmark.importBytes:gc.count                                     1000       UBL  avgt    5          62,000                counts
+LargeXmlBenchmark.importBytes:gc.time                                      1000       UBL  avgt    5          63,000                    ms
+LargeXmlBenchmark.importBytes                                              1000       CII  avgt    5          12,620 ±       0,691   ms/op
+LargeXmlBenchmark.importBytes:gc.alloc.rate                                1000       CII  avgt    5        2635,935 ±     142,143  MB/sec
+LargeXmlBenchmark.importBytes:gc.alloc.rate.norm                           1000       CII  avgt    5    34878963,945 ±     944,581    B/op
+LargeXmlBenchmark.importBytes:gc.count                                     1000       CII  avgt    5          54,000                counts
+LargeXmlBenchmark.importBytes:gc.time                                      1000       CII  avgt    5          52,000                    ms
+LargeXmlBenchmark.importBytes                                              5000       UBL  avgt    5          40,903 ±       1,282   ms/op
+LargeXmlBenchmark.importBytes:gc.alloc.rate                                5000       UBL  avgt    5        2463,339 ±      77,048  MB/sec
+LargeXmlBenchmark.importBytes:gc.alloc.rate.norm                           5000       UBL  avgt    5   105652549,486 ±    1106,170    B/op
+LargeXmlBenchmark.importBytes:gc.count                                     5000       UBL  avgt    5          28,000                counts
+LargeXmlBenchmark.importBytes:gc.time                                      5000       UBL  avgt    5         101,000                    ms
+LargeXmlBenchmark.importBytes                                              5000       CII  avgt    5          69,354 ±       1,810   ms/op
+LargeXmlBenchmark.importBytes:gc.alloc.rate                                5000       CII  avgt    5        2368,104 ±      61,796  MB/sec
+LargeXmlBenchmark.importBytes:gc.alloc.rate.norm                           5000       CII  avgt    5   172219662,970 ±    6210,176    B/op
+LargeXmlBenchmark.importBytes:gc.count                                     5000       CII  avgt    5         187,000                counts
+LargeXmlBenchmark.importBytes:gc.time                                      5000       CII  avgt    5         520,000                    ms
+LargeXmlBenchmark.readBytes                                                 100       UBL  avgt    5           0,876 ±       0,012   ms/op
+LargeXmlBenchmark.readBytes:gc.alloc.rate                                   100       UBL  avgt    5        2485,526 ±      33,913  MB/sec
+LargeXmlBenchmark.readBytes:gc.alloc.rate.norm                              100       UBL  avgt    5     2282792,449 ±      46,654    B/op
+LargeXmlBenchmark.readBytes:gc.count                                        100       UBL  avgt    5          51,000                counts
+LargeXmlBenchmark.readBytes:gc.time                                         100       UBL  avgt    5          32,000                    ms
+LargeXmlBenchmark.readBytes                                                 100       CII  avgt    5           1,434 ±       0,054   ms/op
+LargeXmlBenchmark.readBytes:gc.alloc.rate                                   100       CII  avgt    5        2351,795 ±      88,813  MB/sec
+LargeXmlBenchmark.readBytes:gc.alloc.rate.norm                              100       CII  avgt    5     3535140,794 ±     664,654    B/op
+LargeXmlBenchmark.readBytes:gc.count                                        100       CII  avgt    5          72,000                counts
+LargeXmlBenchmark.readBytes:gc.time                                         100       CII  avgt    5          44,000                    ms
+LargeXmlBenchmark.readBytes                                                1000       UBL  avgt    5           8,079 ±       0,198   ms/op
+LargeXmlBenchmark.readBytes:gc.alloc.rate                                  1000       UBL  avgt    5        2409,723 ±      58,717  MB/sec
+LargeXmlBenchmark.readBytes:gc.alloc.rate.norm                             1000       UBL  avgt    5    20414210,988 ±    1602,407    B/op
+LargeXmlBenchmark.readBytes:gc.count                                       1000       UBL  avgt    5          59,000                counts
+LargeXmlBenchmark.readBytes:gc.time                                        1000       UBL  avgt    5          53,000                    ms
+LargeXmlBenchmark.readBytes                                                1000       CII  avgt    5          12,528 ±       0,378   ms/op
+LargeXmlBenchmark.readBytes:gc.alloc.rate                                  1000       CII  avgt    5        2512,876 ±      76,558  MB/sec
+LargeXmlBenchmark.readBytes:gc.alloc.rate.norm                             1000       CII  avgt    5    33010809,534 ±     934,098    B/op
+LargeXmlBenchmark.readBytes:gc.count                                       1000       CII  avgt    5          62,000                counts
+LargeXmlBenchmark.readBytes:gc.time                                        1000       CII  avgt    5          52,000                    ms
+LargeXmlBenchmark.readBytes                                                5000       UBL  avgt    5          40,289 ±       1,599   ms/op
+LargeXmlBenchmark.readBytes:gc.alloc.rate                                  5000       UBL  avgt    5        2391,943 ±      94,339  MB/sec
+LargeXmlBenchmark.readBytes:gc.alloc.rate.norm                             5000       UBL  avgt    5   101046873,184 ±    1138,604    B/op
+LargeXmlBenchmark.readBytes:gc.count                                       5000       UBL  avgt    5          27,000                counts
+LargeXmlBenchmark.readBytes:gc.time                                        5000       UBL  avgt    5          72,000                    ms
+LargeXmlBenchmark.readBytes                                                5000       CII  avgt    5          62,083 ±       1,523   ms/op
+LargeXmlBenchmark.readBytes:gc.alloc.rate                                  5000       CII  avgt    5        2502,767 ±      61,249  MB/sec
+LargeXmlBenchmark.readBytes:gc.alloc.rate.norm                             5000       CII  avgt    5   162932461,412 ±    5309,043    B/op
+LargeXmlBenchmark.readBytes:gc.count                                       5000       CII  avgt    5          24,000                counts
+LargeXmlBenchmark.readBytes:gc.time                                        5000       CII  avgt    5          77,000                    ms
+LargeXmlBenchmark.readString                                                100       UBL  avgt    5           0,936 ±       0,017   ms/op
+LargeXmlBenchmark.readString:gc.alloc.rate                                  100       UBL  avgt    5        2619,981 ±      47,950  MB/sec
+LargeXmlBenchmark.readString:gc.alloc.rate.norm                             100       UBL  avgt    5     2572137,360 ±     114,482    B/op
+LargeXmlBenchmark.readString:gc.count                                       100       UBL  avgt    5          53,000                counts
+LargeXmlBenchmark.readString:gc.time                                        100       UBL  avgt    5          32,000                    ms
+LargeXmlBenchmark.readString                                                100       CII  avgt    5           1,438 ±       0,021   ms/op
+LargeXmlBenchmark.readString:gc.alloc.rate                                  100       CII  avgt    5        2727,633 ±      38,577  MB/sec
+LargeXmlBenchmark.readString:gc.alloc.rate.norm                             100       CII  avgt    5     4111874,691 ±     755,485    B/op
+LargeXmlBenchmark.readString:gc.count                                       100       CII  avgt    5          84,000                counts
+LargeXmlBenchmark.readString:gc.time                                        100       CII  avgt    5          49,000                    ms
+LargeXmlBenchmark.readString                                               1000       UBL  avgt    5           8,308 ±       0,185   ms/op
+LargeXmlBenchmark.readString:gc.alloc.rate                                 1000       UBL  avgt    5        2661,188 ±      59,247  MB/sec
+LargeXmlBenchmark.readString:gc.alloc.rate.norm                            1000       UBL  avgt    5    23184053,517 ±    1482,988    B/op
+LargeXmlBenchmark.readString:gc.count                                      1000       UBL  avgt    5          66,000                counts
+LargeXmlBenchmark.readString:gc.time                                       1000       UBL  avgt    5          56,000                    ms
+LargeXmlBenchmark.readString                                               1000       CII  avgt    5          12,884 ±       0,342   ms/op
+LargeXmlBenchmark.readString:gc.alloc.rate                                 1000       CII  avgt    5        2858,388 ±      75,751  MB/sec
+LargeXmlBenchmark.readString:gc.alloc.rate.norm                            1000       CII  avgt    5    38616479,027 ±     953,658    B/op
+LargeXmlBenchmark.readString:gc.count                                      1000       CII  avgt    5          71,000                counts
+LargeXmlBenchmark.readString:gc.time                                       1000       CII  avgt    5          32,000                    ms
+LargeXmlBenchmark.readString                                               5000       UBL  avgt    5          41,727 ±       0,950   ms/op
+LargeXmlBenchmark.readString:gc.alloc.rate                                 5000       UBL  avgt    5        2625,186 ±      59,795  MB/sec
+LargeXmlBenchmark.readString:gc.alloc.rate.norm                            5000       UBL  avgt    5   114864663,944 ±    1071,854    B/op
+LargeXmlBenchmark.readString:gc.count                                      5000       UBL  avgt    5          32,000                counts
+LargeXmlBenchmark.readString:gc.time                                       5000       UBL  avgt    5          72,000                    ms
+LargeXmlBenchmark.readString                                               5000       CII  avgt    5          61,830 ±       1,061   ms/op
+LargeXmlBenchmark.readString:gc.alloc.rate                                 5000       CII  avgt    5        2942,707 ±      50,383  MB/sec
+LargeXmlBenchmark.readString:gc.alloc.rate.norm                            5000       CII  avgt    5   190794145,503 ±    5428,884    B/op
+LargeXmlBenchmark.readString:gc.count                                      5000       CII  avgt    5          29,000                counts
+LargeXmlBenchmark.readString:gc.time                                       5000       CII  avgt    5          17,000                    ms
+LargeXmlBenchmark.validateBytes                                             100       UBL  avgt    5          14,255 ±       0,218   ms/op
+LargeXmlBenchmark.validateBytes:gc.alloc.rate                               100       UBL  avgt    5        1273,653 ±      19,389  MB/sec
+LargeXmlBenchmark.validateBytes:gc.alloc.rate.norm                          100       UBL  avgt    5    19037930,871 ±    1613,609    B/op
+LargeXmlBenchmark.validateBytes:gc.count                                    100       UBL  avgt    5          38,000                counts
+LargeXmlBenchmark.validateBytes:gc.time                                     100       UBL  avgt    5          25,000                    ms
+LargeXmlBenchmark.validateBytes                                             100       CII  avgt    5          13,256 ±       0,117   ms/op
+LargeXmlBenchmark.validateBytes:gc.alloc.rate                               100       CII  avgt    5        1687,191 ±      15,703  MB/sec
+LargeXmlBenchmark.validateBytes:gc.alloc.rate.norm                          100       CII  avgt    5    23453016,462 ±   11609,930    B/op
+LargeXmlBenchmark.validateBytes:gc.count                                    100       CII  avgt    5          43,000                counts
+LargeXmlBenchmark.validateBytes:gc.time                                     100       CII  avgt    5          30,000                    ms
+LargeXmlBenchmark.validateBytes                                            1000       UBL  avgt    5         143,448 ±       0,998   ms/op
+LargeXmlBenchmark.validateBytes:gc.alloc.rate                              1000       UBL  avgt    5        1190,636 ±       8,250  MB/sec
+LargeXmlBenchmark.validateBytes:gc.alloc.rate.norm                         1000       UBL  avgt    5   179099112,861 ±    7372,067    B/op
+LargeXmlBenchmark.validateBytes:gc.count                                   1000       UBL  avgt    5          38,000                counts
+LargeXmlBenchmark.validateBytes:gc.time                                    1000       UBL  avgt    5          57,000                    ms
+LargeXmlBenchmark.validateBytes                                            1000       CII  avgt    5         151,233 ±       1,316   ms/op
+LargeXmlBenchmark.validateBytes:gc.alloc.rate                              1000       CII  avgt    5        1388,002 ±      12,081  MB/sec
+LargeXmlBenchmark.validateBytes:gc.alloc.rate.norm                         1000       CII  avgt    5   220116452,000 ±    5239,301    B/op
+LargeXmlBenchmark.validateBytes:gc.count                                   1000       CII  avgt    5          44,000                counts
+LargeXmlBenchmark.validateBytes:gc.time                                    1000       CII  avgt    5          72,000                    ms
+LargeXmlBenchmark.validateBytes                                            5000       UBL  avgt    5         891,866 ±       8,173   ms/op
+LargeXmlBenchmark.validateBytes:gc.alloc.rate                              5000       UBL  avgt    5         953,868 ±       8,753  MB/sec
+LargeXmlBenchmark.validateBytes:gc.alloc.rate.norm                         5000       UBL  avgt    5   892078460,800 ±   12288,663    B/op
+LargeXmlBenchmark.validateBytes:gc.count                                   5000       UBL  avgt    5          21,000                counts
+LargeXmlBenchmark.validateBytes:gc.time                                    5000       UBL  avgt    5         130,000                    ms
+LargeXmlBenchmark.validateBytes                                            5000       CII  avgt    5        1403,811 ±      85,629   ms/op
+LargeXmlBenchmark.validateBytes:gc.alloc.rate                              5000       CII  avgt    5         753,128 ±      45,550  MB/sec
+LargeXmlBenchmark.validateBytes:gc.alloc.rate.norm                         5000       CII  avgt    5  1108425534,400 ±   11386,435    B/op
+LargeXmlBenchmark.validateBytes:gc.count                                   5000       CII  avgt    5          22,000                counts
+LargeXmlBenchmark.validateBytes:gc.time                                    5000       CII  avgt    5         139,000                    ms
+LargeXmlBenchmark.validateBytesWithCalculationCheck                         100       UBL  avgt    5          15,038 ±       0,147   ms/op
+LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.alloc.rate           100       UBL  avgt    5        1354,801 ±      13,149  MB/sec
+LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.alloc.rate.norm      100       UBL  avgt    5    21363905,543 ±   12117,622    B/op
+LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.count                100       UBL  avgt    5          40,000                counts
+LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.time                 100       UBL  avgt    5          29,000                    ms
+LargeXmlBenchmark.validateBytesWithCalculationCheck                         100       CII  avgt    5          14,834 ±       0,281   ms/op
+LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.alloc.rate           100       CII  avgt    5        1738,944 ±      31,579  MB/sec
+LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.alloc.rate.norm      100       CII  avgt    5    27048619,305 ±   20808,057    B/op
+LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.count                100       CII  avgt    5          53,000                counts
+LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.time                 100       CII  avgt    5          38,000                    ms
+LargeXmlBenchmark.validateBytesWithCalculationCheck                        1000       UBL  avgt    5         151,268 ±       2,815   ms/op
+LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.alloc.rate          1000       UBL  avgt    5        1260,129 ±      23,312  MB/sec
+LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.alloc.rate.norm     1000       UBL  avgt    5   199881993,714 ±   24520,240    B/op
+LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.count               1000       UBL  avgt    5          33,000                counts
+LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.time                1000       UBL  avgt    5          50,000                    ms
+LargeXmlBenchmark.validateBytesWithCalculationCheck                        1000       CII  avgt    5         168,978 ±       1,504   ms/op
+LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.alloc.rate          1000       CII  avgt    5        1430,810 ±      12,671  MB/sec
+LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.alloc.rate.norm     1000       CII  avgt    5   253536712,400 ±   22684,895    B/op
+LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.count               1000       CII  avgt    5          36,000                counts
+LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.time                1000       CII  avgt    5          54,000                    ms
+LargeXmlBenchmark.validateBytesWithCalculationCheck                        5000       UBL  avgt    5         959,889 ±      22,823   ms/op
+LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.alloc.rate          5000       UBL  avgt    5         988,350 ±      24,295  MB/sec
+LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.alloc.rate.norm     5000       UBL  avgt    5   994800679,467 ± 1233800,665    B/op
+LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.count               5000       UBL  avgt    5          25,000                counts
+LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.time                5000       UBL  avgt    5         138,000                    ms
+LargeXmlBenchmark.validateBytesWithCalculationCheck                        5000       CII  avgt    5        1523,815 ±      46,229   ms/op
+LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.alloc.rate          5000       CII  avgt    5         796,524 ±      25,592  MB/sec
+LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.alloc.rate.norm     5000       CII  avgt    5  1272694216,800 ± 3038765,824    B/op
+LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.count               5000       CII  avgt    5          28,000                counts
+LargeXmlBenchmark.validateBytesWithCalculationCheck:gc.time                5000       CII  avgt    5         163,000                    ms
+LargeXmlBenchmark.validateString                                            100       UBL  avgt    5          15,217 ±       0,512   ms/op
+LargeXmlBenchmark.validateString:gc.alloc.rate                              100       UBL  avgt    5        1210,717 ±      40,754  MB/sec
+LargeXmlBenchmark.validateString:gc.alloc.rate.norm                         100       UBL  avgt    5    19318864,019 ±    1678,827    B/op
+LargeXmlBenchmark.validateString:gc.count                                   100       UBL  avgt    5          37,000                counts
+LargeXmlBenchmark.validateString:gc.time                                    100       UBL  avgt    5          25,000                    ms
+LargeXmlBenchmark.validateString                                            100       CII  avgt    5          14,188 ±       0,427   ms/op
+LargeXmlBenchmark.validateString:gc.alloc.rate                              100       CII  avgt    5        1614,570 ±      48,405  MB/sec
+LargeXmlBenchmark.validateString:gc.alloc.rate.norm                         100       CII  avgt    5    24020788,082 ±    6908,825    B/op
+LargeXmlBenchmark.validateString:gc.count                                   100       CII  avgt    5          49,000                counts
+LargeXmlBenchmark.validateString:gc.time                                    100       CII  avgt    5          37,000                    ms
+LargeXmlBenchmark.validateString                                           1000       UBL  avgt    5         146,885 ±       1,720   ms/op
+LargeXmlBenchmark.validateString:gc.alloc.rate                             1000       UBL  avgt    5        1180,711 ±      13,794  MB/sec
+LargeXmlBenchmark.validateString:gc.alloc.rate.norm                        1000       UBL  avgt    5   181860680,114 ±    7788,364    B/op
+LargeXmlBenchmark.validateString:gc.count                                  1000       UBL  avgt    5          37,000                counts
+LargeXmlBenchmark.validateString:gc.time                                   1000       UBL  avgt    5          49,000                    ms
+LargeXmlBenchmark.validateString                                           1000       CII  avgt    5         159,834 ±       2,363   ms/op
+LargeXmlBenchmark.validateString:gc.alloc.rate                             1000       CII  avgt    5        1346,704 ±      19,864  MB/sec
+LargeXmlBenchmark.validateString:gc.alloc.rate.norm                        1000       CII  avgt    5   225713787,323 ±    3294,782    B/op
+LargeXmlBenchmark.validateString:gc.count                                  1000       CII  avgt    5          43,000                counts
+LargeXmlBenchmark.validateString:gc.time                                   1000       CII  avgt    5          68,000                    ms
+LargeXmlBenchmark.validateString                                           5000       UBL  avgt    5         902,078 ±      22,825   ms/op
+LargeXmlBenchmark.validateString:gc.alloc.rate                             5000       UBL  avgt    5         957,699 ±      24,197  MB/sec
+LargeXmlBenchmark.validateString:gc.alloc.rate.norm                        5000       UBL  avgt    5   905889610,133 ±    7973,168    B/op
+LargeXmlBenchmark.validateString:gc.count                                  5000       UBL  avgt    5          18,000                counts
+LargeXmlBenchmark.validateString:gc.time                                   5000       UBL  avgt    5         126,000                    ms
+LargeXmlBenchmark.validateString                                           5000       CII  avgt    5        1449,350 ±      35,772   ms/op
+LargeXmlBenchmark.validateString:gc.alloc.rate                             5000       CII  avgt    5         749,721 ±      18,451  MB/sec
+LargeXmlBenchmark.validateString:gc.alloc.rate.norm                        5000       CII  avgt    5  1139399847,200 ±    9138,839    B/op
+LargeXmlBenchmark.validateString:gc.count                                  5000       CII  avgt    5          47,000                counts
+LargeXmlBenchmark.validateString:gc.time                                   5000       CII  avgt    5         168,000                    ms
+
+Benchmark result is saved to /Users/hoss/Development/Open Source/NaluKit/paniolo-parent/paniolo-benchmark/results/2026-11-11-5bfe146-large-xml-current/results.json

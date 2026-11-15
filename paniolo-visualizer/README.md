@@ -27,7 +27,7 @@ component and the document, e.g. for archives or e-mails; the CLI does the same 
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo-visualizer</artifactId>
-  <version>1.0.0-rc01</version>
+  <version>1.0.0-rc02</version>
 </dependency>
 ```
 
@@ -60,10 +60,20 @@ The view has these tabs:
   that belong to a line are marked there and link to it.
 - **XML**: the formatted source, to copy or download.
 
+EXTENDED codes that qualify another value are shown with their label and code: the document
+language (LanguageID), the subject and content code of document and line notes (a note may state
+its content code instead of its text), the account type of accounting references (code list 52),
+the line status code next to the kind of line, and the code of the date the VAT of a line becomes due. The PDF of `paniolo-facturx` leaves these codes
+out, as it is laid out for the recipient in the chosen language; only a note stated by its content
+code alone shows that code there.
+
 Code lists are shown with their names (document types, payment means, VAT categories, units, note
 subjects, identifier schemes; countries and currencies with `Intl.DisplayNames`). Amounts are
-formatted exactly as written in the document, with the locale of the viewer. Labels exist in German,
-English, and French.
+formatted exactly as written in the document, with the locale of the viewer: no digit is rounded
+away, also not with more than 20 decimals or a very large integer part (such values are composed from the
+decimal string with the grouping and separators of the locale). Dates that do not exist (30 February,
+hour 25) and years before 1000 are shown as written in the document instead of being shifted; CII date
+formats 102, 203, and 204 (with seconds) are read. Labels exist in German, English, and French.
 
 `print()` and the print button print all tabs except the XML, without the host page. The layout
 adapts to the width of the component (container queries): in narrow containers the lines are shown
@@ -169,6 +179,20 @@ The page contains the script and the Base64 encoded document and opens offline.
 - No inline `style` attributes; the styles are an adopted style sheet, so a Content Security Policy
   without `'unsafe-inline'` for styles works in current browsers.
 
+## Browser tests
+
+The Java tests check the HTML and the script as text. `ViewerBrowserTest` runs the real parser and
+`<paniolo-viewer>` in a browser (Playwright for Java, a local HTTP server, no network): UBL, CII, and
+Factur-X PDF load; sub-lines, attachments, and the validation report appear; the language switches
+between German, English, and French; markup and script text of an invoice stays text; empty, malformed,
+unknown, and broken PDF input end in the error view, after which the viewer loads the next document.
+It needs a browser and therefore runs with a profile, and in the CI job `visualizer-browser`:
+
+```sh
+mvn verify -P browser-tests -pl paniolo-visualizer
+mvn verify -P browser-tests -pl paniolo-visualizer -Dpaniolo.browser.channel=chrome   # the installed Chrome
+```
+
 ## Limits
 
 - Encrypted PDFs are not read. PDF streams with filters other than `FlateDecode` are skipped.
@@ -176,7 +200,7 @@ The page contains the script and the Base64 encoded document and opens offline.
   `paniolo validate -f xml`) and pass the report.
 - No PDF rendering of the visualization (Mustang uses Apache FOP for that); print to PDF with the
   browser, or render an archivable PDF/A on the server with
-  [`paniolo-pdf-layout`](../paniolo-pdf-layout/README.md).
+  [`paniolo-facturx`](../paniolo-facturx/docs/pdf-layout.md).
 - Requires a current browser: ES modules, custom elements, `DecompressionStream` (PDF), container
   queries; Chrome/Edge 105+, Firefox 113+, Safari 16.4+.
 
@@ -197,7 +221,7 @@ JavaScript instead:
 | Factur-X PDF                      | extract the XML first      | read directly, incl. attachments and PDF preview |
 | Languages                         | de, en, fr                 | de, en, fr                                       |
 | Validation result                 | separate log visualization | tab in the same view, findings linked to lines   |
-| PDF output                        | yes (FOP)                  | browser print; PDF/A-3 with `paniolo-pdf-layout` |
+| PDF output                        | yes (FOP)                  | browser print; PDF/A-3 with `paniolo-facturx`    |
 | Dark mode, responsive, embeddable | no                         | yes                                              |
 
 ## Demo

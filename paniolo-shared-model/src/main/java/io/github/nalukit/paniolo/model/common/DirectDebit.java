@@ -20,11 +20,11 @@ package io.github.nalukit.paniolo.model.common;
 import io.github.nalukit.paniolo.model.common.validation.ModelChecks;
 
 /**
- * SEPA direct debit (BG-19); XRechnung requires all three identifiers.
+ * SEPA direct debit (BG-19); XRechnung requires all three identifiers, the model at least one.
  *
- * @param mandateReference mandate reference (BT-89); must not be blank
- * @param creditorId       bank-assigned creditor identifier (BT-90); must not be blank
- * @param debitedAccountId debited account identifier (BT-91); must not be blank
+ * @param mandateReference mandate reference (BT-89), or null; must not be blank if set
+ * @param creditorId       bank-assigned creditor identifier (BT-90), or null; must not be blank if set
+ * @param debitedAccountId debited account identifier (BT-91), or null; must not be blank if set
  */
 public record DirectDebit(String mandateReference, String creditorId, String debitedAccountId) {
   /**
@@ -33,12 +33,23 @@ public record DirectDebit(String mandateReference, String creditorId, String deb
    * @throws IllegalArgumentException if a value violates the checks of the model
    */
   public DirectDebit {
-    ModelChecks.required(mandateReference,
-                         "mandate reference");
-    ModelChecks.required(creditorId,
-                         "bank assigned creditor identifier");
-    ModelChecks.required(debitedAccountId,
-                         "debited account identifier");
+    // XRechnung requires all three (BR-DE-29 to BR-DE-31), which validation checks; EN 16931 and the
+    // documents of others state them separately, so the model needs one of them only.
+    if (mandateReference == null && creditorId == null && debitedAccountId == null) {
+      throw new IllegalArgumentException("A direct debit requires the mandate reference (BT-89), the bank assigned creditor identifier (BT-90), or the debited account identifier (BT-91)");
+    }
+    if (mandateReference != null) {
+      ModelChecks.required(mandateReference,
+                           "mandate reference");
+    }
+    if (creditorId != null) {
+      ModelChecks.required(creditorId,
+                           "bank assigned creditor identifier");
+    }
+    if (debitedAccountId != null) {
+      ModelChecks.required(debitedAccountId,
+                           "debited account identifier");
+    }
   }
 
   /**
@@ -71,7 +82,7 @@ public record DirectDebit(String mandateReference, String creditorId, String deb
     /**
      * Mandate reference identifier (BT-89).
      *
-     * @param mandateReference mandate reference (BT-89); must not be blank
+     * @param mandateReference mandate reference (BT-89), or null; must not be blank if set
      * @return this builder
      */
     public Builder mandateReference(String mandateReference) {
@@ -82,7 +93,7 @@ public record DirectDebit(String mandateReference, String creditorId, String deb
     /**
      * Bank assigned creditor identifier (BT-90).
      *
-     * @param creditorId bank-assigned creditor identifier (BT-90); must not be blank
+     * @param creditorId bank-assigned creditor identifier (BT-90), or null; must not be blank if set
      * @return this builder
      */
     public Builder creditorId(String creditorId) {
@@ -93,7 +104,7 @@ public record DirectDebit(String mandateReference, String creditorId, String deb
     /**
      * Debited account identifier (BT-91).
      *
-     * @param debitedAccountId debited account identifier (BT-91); must not be blank
+     * @param debitedAccountId debited account identifier (BT-91), or null; must not be blank if set
      * @return this builder
      */
     public Builder debitedAccountId(String debitedAccountId) {

@@ -129,7 +129,11 @@ class XrechnungVersionsTest {
                  current.profileName());
     assertFalse(hasRule(current,
                         "XR-OLDER-VERSION"));
-    // XRechnung 1.1 has no packaged release; the current rules reject its identifier.
+    assertTrue(current.isValid(),
+               () -> current.messages()
+                            .toString());
+    // XRechnung 1.1 has no packaged release: checked against the current rules, but invalid with
+    // the error XR-SPECIFICATION-UNSUPPORTED instead of a mere warning BR-DE-21.
     var unknown = PANIOLO.validate(xml(InvoiceSyntax.UBL,
                                        InvoiceTypeCode.CODE_380,
                                        "1.1"));
@@ -137,6 +141,14 @@ class XrechnungVersionsTest {
                  unknown.profileName());
     assertFalse(hasRule(unknown,
                         "XR-OLDER-VERSION"));
+    assertFalse(unknown.isValid(),
+                () -> unknown.messages()
+                             .toString());
+    assertTrue(unknown.messages()
+                      .stream()
+                      .anyMatch(message -> "XR-SPECIFICATION-UNSUPPORTED".equals(message.ruleId()) && message.severity() == Severity.ERROR),
+               () -> unknown.messages()
+                            .toString());
   }
 
   /**

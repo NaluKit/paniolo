@@ -53,18 +53,18 @@ jobs:
       actions: write
     steps:
       - name: Delete workflow runs
-        uses: Mattraks/delete-workflow-runs@v2
+        uses: Mattraks/delete-workflow-runs@0cf693bc9909e5e867ee8f27b813224ba862939c # v2
         with:
-          token: ${{ github.token }}
-          repository: ${{ github.repository }}
-          retain_days: ${{ github.event.inputs.days || 30 }}
-          keep_minimum_runs: ${{ github.event.inputs.minimum_runs || 6 }}
-          delete_workflow_pattern: ${{ github.event.inputs.delete_workflow_pattern }}
-          delete_workflow_by_state_pattern: ${{ github.event.inputs.delete_workflow_by_state_pattern }}
-          delete_run_by_conclusion_pattern: >-
-            ${{
-              startsWith(github.event.inputs.delete_run_by_conclusion_pattern, 'Unsuccessful:')
-              && 'action_required,cancelled,failure,skipped'
-              || github.event.inputs.delete_run_by_conclusion_pattern
-            }}
-          dry_run: ${{ github.event.inputs.dry_run }}
+            token: ${{ github.token }}
+            repository: ${{ github.repository }}
+            retain_days: ${{ github.event.inputs.days || 30 }}
+            keep_minimum_runs: ${{ github.event.inputs.minimum_runs || 6 }}
+            delete_workflow_pattern: ${{ github.event.inputs.delete_workflow_pattern }}
+            delete_workflow_by_state_pattern: ${{ github.event.inputs.delete_workflow_by_state_pattern }}
+            delete_run_by_conclusion_pattern: >-
+              ${{
+                startsWith(github.event.inputs.delete_run_by_conclusion_pattern, 'Unsuccessful:')
+                && 'action_required,cancelled,failure,skipped'
+                || github.event.inputs.delete_run_by_conclusion_pattern
+              }}
+            dry_run: ${{ github.event.inputs.dry_run }}

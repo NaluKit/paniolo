@@ -34,7 +34,9 @@ import io.github.nalukit.paniolo.model.common.PrecedingInvoiceReference;
 import io.github.nalukit.paniolo.model.common.ProcessControl;
 import io.github.nalukit.paniolo.model.common.References;
 import io.github.nalukit.paniolo.model.common.SellerTaxRepresentativeParty;
+import io.github.nalukit.paniolo.model.common.TaxCategory;
 import io.github.nalukit.paniolo.model.common.ThirdPartyPayment;
+import io.github.nalukit.paniolo.model.common.VatAmount;
 import io.github.nalukit.paniolo.model.common.validation.ModelChecks;
 import io.github.nalukit.paniolo.model.common.value.CurrencyCode;
 import io.github.nalukit.paniolo.model.common.value.DateTimeQualifier;
@@ -88,12 +90,15 @@ import java.util.Set;
  * @param extended                   Factur-X EXTENDED information, or null; an empty extension is treated as absent
  * @param statedTotals               explicit totals for a line-free MINIMUM or BASIC WL invoice, or null for totals derived from lines
  * @param thirdPartyPayments         third party payments (BG-DEX-09) of the XRechnung extension; null is treated as an empty list
+ * @param vatAmounts                 stated VAT category tax amounts (BT-117) within the rounding of their amounts, see
+ *                                   {@link VatAmount}; null is treated as an empty list
  */
 public record Invoice(String number, LocalDate issueDate, InvoiceTypeCode typeCode, CurrencyCode currencyCode, CurrencyCode taxCurrencyCode, BigDecimal taxAmountInTaxCurrency, ProcessControl processControl, String buyerReference, References references,
                       List<PrecedingInvoiceReference> precedingInvoiceReferences, LocalDate dueDate, LocalDate taxPointDate, DateTimeQualifier taxPointDateCode, InvoicePeriod invoicePeriod, DeliveryInformation delivery, String paymentTerms, Party seller,
                       Party buyer, Payee payee, SellerTaxRepresentativeParty taxRepresentative, PaymentInstruction paymentInstruction, List<InvoiceNote> notes, List<InvoiceLine> lines, List<DocumentAdjustment> adjustments,
                       List<AdditionalSupportingDocument> supportingDocuments, BigDecimal paidAmount, BigDecimal roundingAmount, List<CashDiscount> cashDiscounts, ExtendedInformation extended, DocumentTotals statedTotals,
-                      List<ThirdPartyPayment> thirdPartyPayments) {
+                      List<ThirdPartyPayment> thirdPartyPayments, List<VatAmount> vatAmounts) {
+  private static final String NEGATIVE_PRICES = "only the Factur-X profiles EXTENDED and EXTENDED-CTC-FR allow negative prices";
 
   /**
    * Applies the checks of the model and copies the lists.
@@ -137,6 +142,11 @@ public record Invoice(String number, LocalDate issueDate, InvoiceTypeCode typeCo
     Party.requireName(buyer,
                       "buyer");
     notes = List.copyOf(notes);
+    // Only Factur-X EXTENDED knows a note with a content code instead of its text (BR-FXEXT-01).
+    if (!processControl.isExtended() && notes.stream()
+                                             .anyMatch(note -> note.text() == null)) {
+      throw new IllegalArgumentException("note must not be blank; only the Factur-X profiles EXTENDED and EXTENDED-CTC-FR allow a note with a content code only");
+    }
     lines = List.copyOf(lines);
     // The sub-invoice lines of a French multi-vendor invoice name their item seller by its legal
     // registration only, the sub-invoice line by name, identifiers, and country (BR-FR-MV-03).
@@ -153,10 +163,11 @@ public record Invoice(String number, LocalDate issueDate, InvoiceTypeCode typeCo
       if (lines.isEmpty()) {
         throw new IllegalArgumentException("An invoice requires at least one line, or stated totals for the Factur-X profiles MINIMUM and BASIC WL");
       }
-      Party.requireAddress(seller,
-                           "seller");
-      Party.requireAddress(buyer,
-                           "buyer");
+      // EN 16931 requires the country of the address only; city and post code are a matter of the profile.
+      Party.requireCountryAddress(seller,
+                                  "seller");
+      Party.requireCountryAddress(buyer,
+                                  "buyer");
     } else if (!lines.isEmpty()) {
       throw new IllegalArgumentException("Stated totals are only allowed for an invoice without lines");
     } else if (seller.address() == null) {
@@ -164,9 +175,13 @@ public record Invoice(String number, LocalDate issueDate, InvoiceTypeCode typeCo
       throw new IllegalArgumentException("The seller requires a postal address (BG-5)");
     }
     var ids = new HashSet<String>();
+    var duplicates = new HashSet<String>();
     for (InvoiceLine line : lines) {
+      // EN 16931 does not require unique line identifiers (BT-126), and documents with repeated ones
+      // are valid; lines are kept by position. Only the EXTENDED line hierarchy refers to a line by
+      // its identifier, where a repeated one would be ambiguous.
       if (!ids.add(line.id())) {
-        throw new IllegalArgumentException("Duplicate invoice line id: " + line.id());
+        duplicates.add(line.id());
       }
       // BR-26: only sub-lines of the XRechnung extension and EXTENDED subtotal and information
       // lines may omit the item net price.
@@ -175,10 +190,25 @@ public record Invoice(String number, LocalDate issueDate, InvoiceTypeCode typeCo
         Objects.requireNonNull(line.netUnitPrice(),
                                "netUnitPrice");
       }
+      // BR-23: the unit of the invoiced quantity; only its sub-lines of the XRechnung extension may omit it.
+      if (line.quantity() != null && line.unitCode() == null) {
+        throw new NullPointerException("Line " + line.id() + ": unitCode (BT-130)");
+      }
+    }
+    for (InvoiceLine line : lines) {
+      var lineExtension = line.extended();
+      if (!duplicates.isEmpty() && lineExtension != null && (lineExtension.parentLineId() != null || lineExtension.subtype() == LineSubtype.GROUP)) {
+        throw new IllegalArgumentException("Duplicate invoice line id: " + duplicates.iterator()
+                                                                                       .next() + "; the line hierarchy of the profile EXTENDED refers to lines by their identifier");
+      }
     }
     checkLineHierarchy(lines,
                        ids);
     checkLineAmounts(lines);
+    // Factur-X EXTENDED and EXTENDED-CTC-FR have no BR-27 and BR-28: negative prices are valid there.
+    if (!processControl.isExtended()) {
+      checkPrices(lines);
+    }
     adjustments         = List.copyOf(adjustments);
     supportingDocuments = List.copyOf(supportingDocuments);
     cashDiscounts       = cashDiscounts == null ?
@@ -189,6 +219,18 @@ public record Invoice(String number, LocalDate issueDate, InvoiceTypeCode typeCo
                                                           "paidAmount"));
     if (roundingAmount != null) {
       roundingAmount = ModelChecks.money(roundingAmount);
+    }
+    vatAmounts = vatAmounts == null ?
+                 List.of() :
+                 List.copyOf(vatAmounts);
+    if (!vatAmounts.isEmpty() && statedTotals != null) {
+      throw new IllegalArgumentException("Stated VAT amounts belong to an invoice with lines; stated totals carry their own VAT breakdown");
+    }
+    if (vatAmounts.stream()
+                  .map(VatAmount::tax)
+                  .distinct()
+                  .count() != vatAmounts.size()) {
+      throw new IllegalArgumentException("One stated VAT amount per VAT category and rate");
     }
     thirdPartyPayments = thirdPartyPayments == null ?
                          List.of() :
@@ -263,6 +305,24 @@ public record Invoice(String number, LocalDate issueDate, InvoiceTypeCode typeCo
    * Checks the stated EXTENDED line amounts: the amount with VAT is the net amount plus the VAT
    * amount.
    */
+  /**
+   * BR-27 and BR-28: the item net price and the item gross price shall not be negative, outside the
+   * Factur-X profiles EXTENDED and EXTENDED-CTC-FR. Sub-lines are checked as well.
+   */
+  private static void checkPrices(List<InvoiceLine> lines) {
+    for (InvoiceLine line : lines) {
+      if (line.netUnitPrice() != null && line.netUnitPrice()
+                                             .signum() < 0) {
+        throw new IllegalArgumentException("Line " + line.id() + ": netUnitPrice must not be negative (BR-27); " + NEGATIVE_PRICES);
+      }
+      if (line.grossPrice() != null && line.grossPrice()
+                                           .signum() < 0) {
+        throw new IllegalArgumentException("Line " + line.id() + ": grossPrice must not be negative (BR-28); " + NEGATIVE_PRICES);
+      }
+      checkPrices(line.subLines());
+    }
+  }
+
   private static void checkLineAmounts(List<InvoiceLine> lines) {
     for (InvoiceLine line : lines) {
       var extended = line.extended();
@@ -454,6 +514,7 @@ public record Invoice(String number, LocalDate issueDate, InvoiceTypeCode typeCo
     private ExtendedInformation                extended;
     private DocumentTotals                     statedTotals;
     private List<ThirdPartyPayment>            thirdPartyPayments         = new ArrayList<>();
+    private List<VatAmount>                    vatAmounts                 = new ArrayList<>();
 
     /**
      * Creates a builder with the defaults of the model; usually obtained with {@link Invoice#create()}.
@@ -885,7 +946,7 @@ public record Invoice(String number, LocalDate issueDate, InvoiceTypeCode typeCo
      * @return the constructed value after the model checks succeed
      */
     public Invoice build() {
-      return new Invoice(number,
+      var invoice = new Invoice(number,
                          issueDate,
                          typeCode,
                          currencyCode,
@@ -915,7 +976,40 @@ public record Invoice(String number, LocalDate issueDate, InvoiceTypeCode typeCo
                          cashDiscounts,
                          extended,
                          statedTotals,
-                         thirdPartyPayments);
+                         thirdPartyPayments,
+                         vatAmounts);
+      // Stated VAT amounts are checked against the rounding of their categories right away.
+      if (!vatAmounts.isEmpty()) {
+        invoice.totals();
+      }
+      return invoice;
+    }
+
+    /**
+     * States the VAT category tax amount (BT-117) of a breakdown instead of the amount the model rounds
+     * once per category, e.g. when the seller rounds the VAT of every line. It may differ from the
+     * rounded amount by 0.01 per line, allowance, and charge of the category (BR-FXEXT-S-09); the totals
+     * follow from it. See {@link VatAmount}.
+     *
+     * @param tax    the VAT category and rate of the breakdown, as the lines state it
+     * @param amount the VAT amount of the category
+     * @return this builder
+     */
+    public Builder vatAmount(TaxCategory tax,
+                             BigDecimal amount) {
+      return addVatAmount(new VatAmount(tax,
+                                        amount));
+    }
+
+    /**
+     * Adds a stated VAT category tax amount; see {@link #vatAmount(TaxCategory, BigDecimal)}.
+     *
+     * @param value the stated VAT amount
+     * @return this builder
+     */
+    public Builder addVatAmount(VatAmount value) {
+      this.vatAmounts.add(value);
+      return this;
     }
   }
 }

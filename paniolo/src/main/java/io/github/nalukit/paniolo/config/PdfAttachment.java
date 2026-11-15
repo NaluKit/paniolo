@@ -78,6 +78,29 @@ public record PdfAttachment(String fileName, byte[] content, String mimeType, Af
   }
 
   /**
+   * The MIME type of a file of another producer as this record accepts it: parameters after a
+   * semicolon (e.g. {@code ;charset=UTF-8}) and surrounding white space are removed; a missing or
+   * invalid value becomes {@code application/octet-stream}.
+   *
+   * @param mimeType the declared type, or null
+   * @return a MIME type that {@link PdfAttachment} accepts
+   */
+  public static String normalizeMimeType(String mimeType) {
+    if (mimeType == null) {
+      return "application/octet-stream";
+    }
+    int    semicolon = mimeType.indexOf(';');
+    String type      = (semicolon < 0 ?
+                        mimeType :
+                        mimeType.substring(0,
+                                           semicolon)).strip();
+    return MIME_TYPE.matcher(type)
+                    .matches() ?
+           type :
+           "application/octet-stream";
+  }
+
+  /**
    * A supplementary file without description.
    *
    * @param fileName file name, unique in the PDF

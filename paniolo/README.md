@@ -1,7 +1,8 @@
 # Paniolo
 
-`paniolo` is the module applications depend on. It bundles the model, the UBL and CII
-writers and readers, validation, and the official XRechnung and Factur-X rules behind one entry point,
+`paniolo` is the module applications depend on. It contains the UBL and CII writers and readers
+and the validation, and brings the model and the official XRechnung and Factur-X rules
+([`paniolo-rules`](../paniolo-rules/README.md)); all of it is available behind one entry point,
 `io.github.nalukit.paniolo.Paniolo`. New features are added to this facade, so the public
 API stays in one place. It requires Java 21.
 
@@ -14,17 +15,19 @@ What the facade covers:
 - **Order-X** orders, order changes, and order responses as XML and PDF.
 - **Despatch advices** (delivery notes) as UBL DespatchAdvice (Peppol BIS 3), CIDA XML, and PDF.
 - **Rendering** of the visual PDF/A-3b pages of all these documents, so no PDF of your own is
-  needed (with [`paniolo-pdf-layout`](../paniolo-pdf-layout/README.md)).
+  needed (with [`paniolo-facturx`](../paniolo-facturx/docs/pdf-layout.md)).
 
 ## Dependency
 
-After installing Paniolo from the repository root with `mvn install`, add:
+For the published release, add the dependency below. After installing the current source from
+the repository root with `mvn install`, use `HEAD-SNAPSHOT` instead; see
+[installation and version scope](../README.md#installation).
 
 ```xml
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo</artifactId>
-  <version>1.0.0-rc01</version>
+  <version>1.0.0-rc02</version>
 </dependency>
 ```
 
@@ -34,8 +37,8 @@ additionally [`paniolo-pdfa`](../paniolo-pdfa/README.md). Both are found through
 raise an `IllegalStateException` naming the missing dependency. Without `paniolo-pdfa`, PDF
 validation still runs the container and XML checks and adds the information `PDFA-NOT-CHECKED`.
 Rendering the pages
-(`toPdf`, and `toFacturX`, `toOrderXPdf`, `toDespatchAdvicePdf` without a PDF) needs
-[`paniolo-pdf-layout`](../paniolo-pdf-layout/README.md) in the same way.
+(`toPdf`, and `toFacturX`, `toOrderXPdf`, `toDespatchAdvicePdf` without a PDF) is part of
+[`paniolo-facturx`](../paniolo-facturx/docs/pdf-layout.md) as well.
 
 ## Usage
 
@@ -82,14 +85,15 @@ examples, in the Javadoc of [`Paniolo`](src/main/java/io/github/nalukit/paniolo/
 | `read`                                                                                                                                                                | Read UBL Invoice, UBL CreditNote, CII, ZUGFeRD 1.0, or a Factur-X PDF from `String`, `byte[]`, or `InputStream`; with `ReadMode.LENIENT` a `ReadResult` with warnings |
 | `importInvoice`, `export`                                                                                                                                             | Import a received invoice with original XML, stated amounts and deviations; export it explicitly as `ORIGINAL` or `NORMALIZED`                                        |
 | `validate`                                                                                                                                                            | Validate XML or a PDF with the rules detected from the content, an `Invoice` in a given syntax, or XML against an explicit document type or Factur-X profile          |
-| `detect`, `isPdf`                                                                                                                                                     | Document type `UBL_INVOICE`, `UBL_CREDIT_NOTE`, or `CII`; whether the content is a PDF                                                                                |
+| `detect`, `isPdf` | XML syntax (`UBL_INVOICE`, `UBL_CREDIT_NOTE`, `CII`); whether the content is a PDF |
+| `isEInvoice`, `probe` | Quick e-invoice recognition for XML or PDF; false or an empty optional for unsuitable content, MINIMUM, BASIC WL, or ZUGFeRD 1.0; does not validate |
 | `toFacturX`, `extractXml`, `attachments`, `producer`                                                                                                                  | Create a Factur-X / ZUGFeRD PDF from your PDF/A or with a rendered page, get its XML, further files, or producing software; needs `paniolo-facturx`                   |
 | `embedXml`                                                                                                                                                            | Embed existing CII XML byte for byte into your PDF/A and validate the result; needs `paniolo-facturx`                                                                 |
-| `toPdf`                                                                                                                                                               | Render the visual PDF/A-3b document of an invoice, order, or despatch advice without XML; needs `paniolo-pdf-layout`                                                  |
-| `toReportPdf`                                                                                                                                                         | Render a validation report as PDF/A-3b; needs `paniolo-pdf-layout`                                                                                                    |
+| `toPdf`                                                                                                                                                               | Render the visual PDF/A-3b document of an invoice, order, or despatch advice without XML; needs `paniolo-facturx`                                                  |
+| `toReportPdf`                                                                                                                                                         | Render a validation report as PDF/A-3b; needs `paniolo-facturx`                                                                                                    |
 | `migrateZugferd1`                                                                                                                                                     | Migrate ZUGFeRD 1.0 XML or PDF to Factur-X / ZUGFeRD 2                                                                                                                |
 | `toOrderX`, `toOrderXBytes`, `toOrderXPdf`, `readOrder`, `validateOrder`                                                                                              | Order-X documents; see [Order-X](../paniolo-facturx/README.md#order-x)                                                                                                |
-| `toDespatchAdvice`, `toDespatchAdviceBytes`, `toCiiDespatchAdvice`, `toCiiDespatchAdviceBytes`, `toDespatchAdvicePdf`, `readDespatchAdvice`, `validateDespatchAdvice` | Despatch advices in UBL and CIDA; see [despatch advice](../paniolo-xml-ubl/README.md#despatch-advice)                                                                 |
+| `toDespatchAdvice`, `toDespatchAdviceBytes`, `toCiiDespatchAdvice`, `toCiiDespatchAdviceBytes`, `toDespatchAdvicePdf`, `readDespatchAdvice`, `validateDespatchAdvice` | Despatch advices in UBL and CIDA; see [despatch advice](docs/ubl.md#despatch-advice)                                                                 |
 
 ## Configuration
 
@@ -110,13 +114,14 @@ Paniolo paniolo = Paniolo.builder()
 
 | Builder method        | Without it                                                                                  |
 |-----------------------|---------------------------------------------------------------------------------------------|
-| `rules`               | The KoSIT release packaged in `paniolo-xrechnung-rules`                                     |
-| `facturXRules`        | The FeRD release packaged in `paniolo-facturx-rules` (ZUGFeRD 2.5.2 / Factur-X 1.09.2)      |
-| `extendedCtcFrRules`  | The French EXTENDED-CTC-FR and BR-FR rules packaged in `paniolo-facturx-rules`              |
-| `orderXRules`         | The Order-X 1.0 rules of FNFE-MPE and FeRD packaged in `paniolo-facturx-rules`              |
+| `rules`               | The KoSIT release packaged in `paniolo-rules`                                     |
+| `facturXRules`        | The FeRD release packaged in `paniolo-rules` (ZUGFeRD 2.5.2 / Factur-X 1.09.2)      |
+| `extendedCtcFrRules`  | The French EXTENDED-CTC-FR and BR-FR rules packaged in `paniolo-rules`              |
+| `orderXRules`         | The Order-X 1.0 rules of FNFE-MPE and FeRD packaged in `paniolo-rules`              |
 | `despatchAdviceRules` | `validateDespatchAdvice` checks the UBL schema only, information `PEPPOL-RULES-NOT-CHECKED` |
 | `calculationCheck`    | Official rules only; with it, amounts are recalculated (stage `CALCULATION`, warnings only) |
 | `ruleStatistics`      | `ValidationResult.statistics()` is null; with it, fired rules and PDF/A checks are counted |
+| `pdfaScriptCache` | `REUSE`: veraPDF's compiled rules stay cached per validating thread; `CLEAR_AFTER_CHECK` releases them after each check; see [`paniolo-pdfa`](../paniolo-pdfa/README.md#compiled-rules-per-thread) |
 | `unknownDocuments`    | `THROW`: undetectable documents raise `IllegalArgumentException`; `REPORT_INVALID` (Mustang compatible) returns an invalid result |
 
 ## Behavior
@@ -136,16 +141,19 @@ Paniolo paniolo = Paniolo.builder()
   finding instead, and with `unknownDocuments(UnknownDocumentHandling.REPORT_INVALID)` the
   detecting `validate` methods report every undetectable document as invalid.
 - **Profile fallback**: standalone XML with the plain EN 16931 identifier, Peppol identifiers,
-  or an unrecognized specification identifier uses the EN 16931 and XRechnung rules. This can
-  reject a general EN 16931 invoice that is not an XRechnung. For an EN 16931-only check, use
-  `InvoiceValidator` with `ValidationProfile.en16931(bundle, syntax)`.
+  or an unrecognized specification identifier uses the EN 16931 and XRechnung rules. Findings
+  of the XRechnung CIUS are lowered to information, with `XR-NOT-STATED` explaining the change;
+  Peppol rules retain their severity if the identifier states Peppol. Explicit
+  `validate(bytes, type)` and `InvoiceValidator` keep the rules unchanged. For an EN 16931-only
+  check, use `InvoiceValidator` with `ValidationProfile.en16931(bundle, syntax)`.
 - **Errors**: `null` arguments raise `NullPointerException`, unprocessable content
   `IllegalArgumentException` with the reason; business rule violations are findings in the
   `ValidationResult`, never exceptions.
 - **Streams** passed to `read` and `validate` are read completely and stay open.
 
-The individual modules remain available for applications that need only part of the
-functionality. Their helper package `io.github.nalukit.paniolo.xml.util` is internal.
+The writers, readers, and the validator can also be used without the facade; see
+[XML interfaces](docs/xml.md), [UBL](docs/ubl.md), [CII](docs/cii.md), and
+[validation](docs/validation.md). The helper package `io.github.nalukit.paniolo.xml.util` is internal.
 
 ## Build and tests
 
@@ -158,4 +166,6 @@ against the official rules, cover the XRechnung extension, lenient reading, desp
 the behavior without `paniolo-facturx`, error handling and custom rule bundles, the calculation
 check against its [corpus](src/test/resources/calculation-corpus/README.md), several allowances on
 the gross price, and run one instance from several threads concurrently. PDF features and Order-X are tested in
-[`paniolo-facturx`](../paniolo-facturx/README.md).
+[`paniolo-facturx`](../paniolo-facturx/README.md). The tests of the writers, readers, and the
+validator run in the same build; [validation](docs/validation.md#build-and-tests) describes how to
+test another KoSIT bundle.

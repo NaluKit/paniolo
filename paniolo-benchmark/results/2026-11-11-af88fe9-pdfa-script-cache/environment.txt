@@ -1,0 +1,8 @@
+label: pdfa-script-cache
+date: 2026-11-11T19:11:09Z
+commit: af88fe9823778073de990cab3b69dfadf9bba2cf (working tree modified: PdfaScriptCache implementation, not yet committed)
+os: macOS 27.2.1 arm64
+cpu: Apple M4 Max, cores: 16
+memory: 64 GB
+jvm options: -Djava.awt.headless=true (defaults otherwise)
+arguments: <strategy> 4 3 12 4 (threads, warmup rounds, measured rounds, passes per worker and round)

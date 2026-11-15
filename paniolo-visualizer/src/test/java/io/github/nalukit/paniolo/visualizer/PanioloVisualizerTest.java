@@ -67,6 +67,41 @@ class PanioloVisualizerTest {
 
 
 
+  /**
+   * The remaining EXTENDED metadata (task V05): the script reads them and labels them in German,
+   * English, and French. Their display was checked in a browser; this test keeps the reading and the
+   * labels from getting lost.
+   */
+  @Test
+  @DisplayName("reads and labels the remaining EXTENDED metadata")
+  void readsTheRemainingExtendedMetadata() {
+    String script = VISUALIZER.script();
+    for (String element : new String[] { "'LanguageID'",
+                                         "txt(n, 'ContentCode')",
+                                         "'IncludedNote/SubjectCode'",
+                                         "'IncludedNote/ContentCode'",
+                                         "'LineStatusCode'",
+                                         "txt(a, 'TypeCode')" }) {
+      assertTrue(script.contains(element),
+                 element);
+    }
+    for (String label : new String[] { "language:",
+                                       "noteSubject:",
+                                       "noteCode:",
+                                       "lineStatusCode:",
+                                       "accountType:" }) {
+      assertEquals(3,
+                   count(script,
+                         " " + label + " '"),
+                   label);
+    }
+    // Code list 52 in every language.
+    assertEquals(3,
+                 count(script,
+                       "'7': '"),
+                 "account types");
+  }
+
   @Nested
   @DisplayName("script")
   class Script {

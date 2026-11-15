@@ -17,7 +17,7 @@
  */
 package io.github.nalukit.paniolo.cli;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import io.github.nalukit.paniolo.Paniolo;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -141,6 +141,53 @@ class PanioloCliTest {
                  new ObjectMapper().readTree(json.out()));
   }
 
+  /**
+   * A specification identifier that states XRechnung but is not supported makes the document
+   * invalid (Mustang issue 1343), which the exit code and the XML report show.
+   */
+  @Test
+  void reportsAnUnsupportedXrechnungIdentifierThroughTheExitCode()
+      throws IOException {
+    for (var syntax : new String[] { "UBL", "CII" }) {
+      var written = run("to-xml",
+                        invoiceJson.toString(),
+                        "-s",
+                        syntax);
+      assertEquals(PanioloCli.EXIT_OK,
+                   written.exitCode(),
+                   written.err());
+      Path valid = dir.resolve("en16931-" + syntax + ".xml");
+      Files.writeString(valid,
+                        written.out());
+      assertEquals(PanioloCli.EXIT_OK,
+                   run("validate",
+                       "-q",
+                       valid.toString()).exitCode());
+      for (var id : new String[] { "urn:cen.eu:en16931:2017#compliant#urn:xoev-de:kosit:standard:xrechnung_3.0",
+                                   "urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_9.9",
+                                   "urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0#garbage" }) {
+        Path invalid = dir.resolve("unsupported-" + syntax + ".xml");
+        Files.writeString(invalid,
+                          written.out()
+                                 .replace(">urn:cen.eu:en16931:2017<",
+                                          ">" + id + "<"));
+        var xml = run("validate",
+                      "-f",
+                      "xml",
+                      invalid.toString());
+        assertEquals(PanioloCli.EXIT_INVALID,
+                     xml.exitCode(),
+                     xml.out());
+        assertTrue(xml.out()
+                      .contains("rule=\"XR-SPECIFICATION-UNSUPPORTED\""),
+                   xml.out());
+        assertTrue(xml.out()
+                      .contains(id),
+                   xml.out());
+      }
+    }
+  }
+
   @Test
   void convertsBetweenSyntaxesThroughStandardStreams() {
     var ubl = run("to-xml",
@@ -244,6 +291,173 @@ class PanioloCliTest {
                attachments.out());
     assertArrayEquals(Files.readAllBytes(orderJson),
                       Files.readAllBytes(extracted.resolve("order.json")));
+  }
+
+  @Test
+  void extractsAttachmentsWithoutOverwriting()
+      throws IOException {
+    Files.writeString(dir.resolve("proof.txt"),
+                      "first");
+    Path pdf = dir.resolve("one.pdf");
+    var created = run("to-facturx",
+                      invoiceJson.toString(),
+                      "--pdf",
+                      visualPdf.toString(),
+                      "--profile",
+                      "en16931",
+                      "--attach",
+                      dir.resolve("proof.txt").toString(),
+                      "-o",
+                      pdf.toString());
+    assertEquals(PanioloCli.EXIT_OK,
+                 created.exitCode(),
+                 created.err());
+
+    Path out = dir.resolve("out");
+    var extracted = run("attachments",
+                        pdf.toString(),
+                        "--extract",
+                        out.toString());
+    assertEquals(PanioloCli.EXIT_OK,
+                 extracted.exitCode(),
+                 extracted.err());
+    assertTrue(extracted.out()
+                        .startsWith("proof.txt\t"));
+    assertEquals("first",
+                 Files.readString(out.resolve("proof.txt")));
+
+    // A second run finds the file and changes nothing.
+    Files.writeString(out.resolve("proof.txt"),
+                      "mine");
+    var again = run("attachments",
+                    pdf.toString(),
+                    "--extract",
+                    out.toString());
+    assertEquals(PanioloCli.EXIT_ERROR,
+                 again.exitCode());
+    assertTrue(again.err()
+                    .contains("--overwrite"),
+               again.err());
+    assertEquals("mine",
+                 Files.readString(out.resolve("proof.txt")));
+
+    assertEquals(PanioloCli.EXIT_OK,
+                 run("attachments",
+                     pdf.toString(),
+                     "--extract",
+                     out.toString(),
+                     "--overwrite").exitCode());
+    assertEquals("first",
+                 Files.readString(out.resolve("proof.txt")));
+  }
+
+  @Test
+  void equalAttachmentNamesGetDistinctFiles()
+      throws IOException {
+    var io = new Io(new ByteArrayInputStream(new byte[0]),
+                    new PrintStream(new ByteArrayOutputStream()));
+    // PDFs of other producers may hold a/proof.txt and b/proof.txt, both read as proof.txt.
+    assertEquals(java.util.List.of("proof.txt",
+                                   "Proof-2.txt",
+                                   "PROOF-3.TXT",
+                                   "noext",
+                                   "NOEXT-2"),
+                 io.extractionNames(dir.resolve("none"),
+                                    java.util.List.of("proof.txt",
+                                                      "Proof.txt",
+                                                      "PROOF.TXT",
+                                                      "noext",
+                                                      "NOEXT"),
+                                    false));
+  }
+
+  @Test
+  void namesThatDifferOnlyInUnicodeFormOrCaseGetDistinctFiles() {
+    var io = new Io(new ByteArrayInputStream(new byte[0]),
+                    new PrintStream(new ByteArrayOutputStream()));
+    // NFC and NFD of the same name are one file on macOS; case folding combines with it
+    assertEquals(java.util.List.of("\u00e9.txt",
+                                   "e\u0301-2.txt",
+                                   "\u00c9-3.TXT",
+                                   "E\u0301-4.txt"),
+                 io.extractionNames(dir.resolve("none"),
+                                    java.util.List.of("\u00e9.txt",
+                                                      "e\u0301.txt",
+                                                      "\u00c9.TXT",
+                                                      "E\u0301.txt"),
+                                    true));
+  }
+
+  @Test
+  void multiCharacterAndFinalCaseFoldingsGetDistinctFiles() {
+    var io = new Io(new ByteArrayInputStream(new byte[0]),
+                    new PrintStream(new ByteArrayOutputStream()));
+    // a file system with full case folding keeps each pair in one file
+    assertEquals(java.util.List.of("\u00df.txt",
+                                   "ss-2.txt",
+                                   "SS-3.TXT",
+                                   "\u03a3.txt",
+                                   "\u03c2-2.txt",
+                                   "\u03c3-3.txt",
+                                   "\ufb01.txt",
+                                   "fi-2.txt"),
+                 io.extractionNames(dir.resolve("none"),
+                                    java.util.List.of("\u00df.txt",
+                                                      "ss.txt",
+                                                      "SS.TXT",
+                                                      "\u03a3.txt",
+                                                      "\u03c2.txt",
+                                                      "\u03c3.txt",
+                                                      "\ufb01.txt",
+                                                      "fi.txt"),
+                                    true));
+  }
+
+  @Test
+  void extractionNeverFollowsSymbolicLinks()
+      throws IOException {
+    Files.writeString(dir.resolve("note.txt"),
+                      "attached");
+    Path pdf = dir.resolve("note.pdf");
+    assertEquals(PanioloCli.EXIT_OK,
+                 run("to-facturx",
+                     invoiceJson.toString(),
+                     "--pdf",
+                     visualPdf.toString(),
+                     "--profile",
+                     "en16931",
+                     "--attach",
+                     dir.resolve("note.txt").toString(),
+                     "-o",
+                     pdf.toString()).exitCode());
+    Path target = dir.resolve("precious.txt");
+    Files.writeString(target,
+                      "keep");
+    Path out = dir.resolve("linked");
+    Files.createDirectories(out);
+    try {
+      Files.createSymbolicLink(out.resolve("note.txt"),
+                               target);
+    } catch (UnsupportedOperationException | IOException e) {
+      org.junit.jupiter.api.Assumptions.assumeTrue(false,
+                                                   "no symbolic links here");
+    }
+    for (String[] extra : new String[][] { {},
+                                           { "--overwrite" } }) {
+      var args = new java.util.ArrayList<>(java.util.List.of("attachments",
+                                                              pdf.toString(),
+                                                              "--extract",
+                                                              out.toString()));
+      args.addAll(java.util.List.of(extra));
+      var result = run(args.toArray(String[]::new));
+      assertEquals(PanioloCli.EXIT_ERROR,
+                   result.exitCode());
+      assertTrue(result.err()
+                       .contains("symbolic link"),
+                 result.err());
+      assertEquals("keep",
+                   Files.readString(target));
+    }
   }
 
   @Test
@@ -499,7 +713,7 @@ class PanioloCliTest {
                      "-f",
                      "json");
       var mapper = new ObjectMapper();
-      var objects = new java.util.ArrayList<com.fasterxml.jackson.databind.JsonNode>();
+      var objects = new java.util.ArrayList<tools.jackson.databind.JsonNode>();
       for (String line : json.out()
                              .lines()
                              .toList()) {
@@ -1080,7 +1294,8 @@ class PanioloCliTest {
     assertTrue(out.contains("unknown.xml: UNKNOWN, not validated, root element {urn:example}Order"),
                out);
     assertTrue(out.lines()
-                  .anyMatch(line -> line.contains("broken.xml: MALFORMED") && line.contains("must start and end within the same entity")),
+                  // the parser message after the position is localized by the JDK, so only the locale-independent part is checked
+                  .anyMatch(line -> line.contains("broken.xml: MALFORMED, not validated, ParseError at [row,col]:[1,11]")),
                out);
     assertTrue(out.contains("plain.pdf: PDF, producer"),
                out);
@@ -1095,7 +1310,7 @@ class PanioloCliTest {
                    "-f",
                    "json");
     var mapper  = new ObjectMapper();
-    var entries = new java.util.ArrayList<com.fasterxml.jackson.databind.JsonNode>();
+    var entries = new java.util.ArrayList<tools.jackson.databind.JsonNode>();
     for (String line : json.out()
                            .lines()
                            .toList()) {

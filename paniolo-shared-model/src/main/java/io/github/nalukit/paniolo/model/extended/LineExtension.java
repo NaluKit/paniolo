@@ -76,6 +76,10 @@ import java.util.List;
  * @param furtherObjectIdentifiers        further invoiced object identifiers (BT-128) after the one
  *                                        of the line, in document order, e.g. the sub-invoice (AFL)
  *                                        of a French multi-vendor invoice next to the object (AVV)
+ * @param taxDueDateTypeCode              code of the date the VAT of the line becomes due (UNTDID 2475,
+ *                                        e.g. {@code 5}, {@code 29}, {@code 72}) as the line states it,
+ *                                        or null; a subtotal or information line may state it without
+ *                                        a VAT category
  */
 public record LineExtension(String parentLineId, LineSubtype subtype, String statusCode, String productId, String industryItemId, String modelId, String modelName, String brandName, List<String> batchIds, List<ProductCharacteristic> characteristics,
                             List<ProductInstance> instances, Party manufacturer, List<IncludedProduct> includedProducts, String deliveryTermsCode, DocumentReference sellerOrderReference, DocumentReference quotationReference,
@@ -83,13 +87,16 @@ public record LineExtension(String parentLineId, LineSubtype subtype, String sta
                             Party ultimateShipTo, LocalDate actualDeliveryDate, DocumentReference despatchAdviceReference, DocumentReference receivingAdviceReference, DocumentReference deliveryNoteReference, DocumentReference precedingInvoiceReference,
                             String noteContentCode, String noteSubjectCode, List<TypedDocumentReference> additionalReferences, String accountingTypeCode, BigDecimal taxTotal, BigDecimal grossTotal,
                             List<GrossPriceAdjustment> priceAdjustments, List<AccountingAccount> additionalAccountingAccounts,
-                            List<ObjectIdentifier> furtherObjectIdentifiers) {
+                            List<ObjectIdentifier> furtherObjectIdentifiers, String taxDueDateTypeCode) {
   /**
    * Applies the checks of the model and copies the lists.
    *
    * @throws IllegalArgumentException if a value violates the checks of the model
    */
   public LineExtension {
+    if (taxDueDateTypeCode != null && taxDueDateTypeCode.isBlank()) {
+      throw new IllegalArgumentException("taxDueDateTypeCode must not be blank");
+    }
     Party.requireAddress(manufacturer,
                          "manufacturer");
     // The invoice checks the item seller, which a French multi-vendor invoice states partially.
@@ -214,7 +221,8 @@ public record LineExtension(String parentLineId, LineSubtype subtype, String sta
                              grossTotal,
                              List.of(),
                              additionalAccountingAccounts,
-                             furtherObjectIdentifiers);
+                             furtherObjectIdentifiers,
+                             taxDueDateTypeCode);
   }
 
   /**
@@ -272,6 +280,7 @@ public record LineExtension(String parentLineId, LineSubtype subtype, String sta
     private List<GrossPriceAdjustment>   priceAdjustments                = new ArrayList<>();
     private List<AccountingAccount>      additionalAccountingAccounts    = new ArrayList<>();
     private List<ObjectIdentifier>       furtherObjectIdentifiers        = new ArrayList<>();
+    private String                       taxDueDateTypeCode;
 
     /**
      * Creates a builder with the defaults of the model; usually obtained with {@link LineExtension#create()}.
@@ -743,7 +752,19 @@ public record LineExtension(String parentLineId, LineSubtype subtype, String sta
                                grossTotal,
                                priceAdjustments,
                                additionalAccountingAccounts,
-                               furtherObjectIdentifiers);
+                               furtherObjectIdentifiers,
+                               taxDueDateTypeCode);
+    }
+
+    /**
+     * Sets {@link LineExtension#taxDueDateTypeCode() taxDueDateTypeCode}.
+     *
+     * @param taxDueDateTypeCode code of the date the VAT of the line becomes due (UNTDID 2475), or null
+     * @return this builder
+     */
+    public Builder taxDueDateTypeCode(String taxDueDateTypeCode) {
+      this.taxDueDateTypeCode = taxDueDateTypeCode;
+      return this;
     }
   }
 }

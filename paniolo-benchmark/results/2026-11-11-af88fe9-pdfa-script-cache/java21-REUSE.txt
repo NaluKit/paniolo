@@ -1,0 +1,20 @@
+strategy=REUSE threads=4 warmup=3 rounds=12 passes=4 documents=6 checksPerRound=96 java=21.0.12.1
+documents: XRechnung PDF 1 line | XRechnung PDF 100 lines | PDF/A-2b without invoice | PDF/A-1b declared without invoice | PDF/A-3u declared without invoice | broken PDF
+phase  round  wall_ms  ms_per_check  metaspace_mb  loaded_classes  unloaded_classes  cached_scripts  script_loaders
+warmup      1      464         19.33          39.1            6756               173             356            356
+warmup      2      250         10.42          39.8            6807               254             356            356
+warmup      3      198          8.25          40.1            6804               334             356            356
+measure      4      204          8.50          40.5            6818               414             356            356
+measure      5      213          8.88          40.8            6817               494             356            356
+measure      6      201          8.38          41.0            6813               574             356            356
+measure      7      192          8.00          41.1            6811               654             356            356
+measure      8      196          8.17          41.3            6825               734             356            356
+measure      9      191          7.96          41.5            6819               814             356            356
+measure     10      176          7.33          41.5            6817               894             356            356
+measure     11      187          7.79          41.5            6813               974             356            356
+measure     12      196          8.17          41.6            6809              1054             356            356
+measure     13      191          7.96          41.6            6805              1134             356            356
+measure     14      186          7.75          41.6            6797              1214             356            356
+measure     15      207          8.63          41.7            6793              1294             356            356
+summary: mean_wall_ms=195.0 metaspace_first_mb=40.5 metaspace_last_mb=41.7 metaspace_delta_mb=1.16 loaded_first=6818 loaded_last=6793 loaded_delta=-25 cached_scripts_last=356
+findings fingerprint: 67521b5e (6 documents)

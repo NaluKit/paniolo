@@ -1,0 +1,17 @@
+label: large-xml-current
+date: 2026-11-11T18:06:45Z
+commit: 5bfe146583d39017bd6aa84120cacaa79b4e7e7a
+commit subject: Add benchmarks for large invoices, attachments and the PDF/A path
+working tree: clean
+class path: /Users/hoss/Development/Open Source/NaluKit/paniolo-parent/paniolo-benchmark/target/benchmarks.jar
+arguments: LargeXmlBenchmark
+
+java:
+  openjdk version "21.0.12.1" 2026-08-18 LTS
+  OpenJDK Runtime Environment Temurin-21.0.12.1+1 (build 21.0.12.1+1-LTS)
+  OpenJDK 64-Bit Server VM Temurin-21.0.12.1+1 (build 21.0.12.1+1-LTS, mixed mode, sharing)
+
+os: Darwin 27.2.0 arm64
+cpu: Apple M4 Max
+cores: 16
+memory: 64 GB

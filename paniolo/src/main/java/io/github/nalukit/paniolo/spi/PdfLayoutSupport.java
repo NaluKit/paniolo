@@ -28,7 +28,7 @@ import java.util.Objects;
 
 /**
  * Service provider that renders the visual PDF/A document of an invoice, order, or despatch
- * advice, implemented by {@code paniolo-pdf-layout} and found with
+ * advice, implemented by {@code paniolo-facturx} and found with
  * {@link java.util.ServiceLoader}. Implementations must be thread-safe.
  */
 public interface PdfLayoutSupport {

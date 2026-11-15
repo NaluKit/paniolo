@@ -20,6 +20,6 @@ tax-total.facturx-en16931.xml;BR-CO-14:ERROR BR-CO-15:ERROR;PANIOLO-CALC-TOTAL@B
 payable-amount.xrechnung-cii.xml;BR-CO-16:FATAL;PANIOLO-CALC-TOTAL@BT-115:INFO
 payable-amount.xrechnung-ubl.xml;BR-CO-16:FATAL;PANIOLO-CALC-TOTAL@BT-115:INFO
 payable-amount.facturx-en16931.xml;BR-CO-16:ERROR;PANIOLO-CALC-TOTAL@BT-115:INFO
-vat-category-amount.xrechnung-cii.xml;;PANIOLO-CALC-TOTAL@BT-110:INFO PANIOLO-CALC-TOTAL@BT-112:INFO PANIOLO-CALC-TOTAL@BT-115:INFO
-vat-category-amount.xrechnung-ubl.xml;;PANIOLO-CALC-TOTAL@BT-110:INFO PANIOLO-CALC-TOTAL@BT-112:INFO PANIOLO-CALC-TOTAL@BT-115:INFO
-vat-category-amount.facturx-en16931.xml;;PANIOLO-CALC-TOTAL@BT-110:INFO PANIOLO-CALC-TOTAL@BT-112:INFO PANIOLO-CALC-TOTAL@BT-115:INFO
+vat-category-amount.xrechnung-cii.xml;;
+vat-category-amount.xrechnung-ubl.xml;;
+vat-category-amount.facturx-en16931.xml;;

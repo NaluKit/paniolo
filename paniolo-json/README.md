@@ -2,14 +2,15 @@
 
 `paniolo-json` stores invoices, orders, and despatch advices of the
 [Paniolo model](../paniolo-shared-model/README.md) as JSON and loads them again, for example for
-drafts, message queues, or REST interfaces. It depends only on `paniolo-shared-model` and Jackson
-Databind (Apache License 2.0), which is why it is optional. It requires Java 21.
+drafts, message queues, or REST interfaces. It depends only on `paniolo-shared-model` and Jackson 3
+Databind (`tools.jackson.core:jackson-databind`, Apache License 2.0), which is why it is optional.
+It requires Java 21.
 
 ```xml
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo-json</artifactId>
-  <version>1.0.0-rc01</version>
+  <version>1.0.0-rc02</version>
 </dependency>
 ```
 
@@ -22,9 +23,12 @@ String text = json.toJson(invoice);                      // or toPrettyJson, toB
 Invoice loaded = json.read(text, Invoice.class);         // also Order, DespatchAdvice, ...
 ```
 
-To use an own `ObjectMapper`, for example in Spring, apply the same settings to its builder:
+To use an own Jackson 3 mapper, for example in Spring Boot 4, apply the same settings to its
+builder:
 
 ```java
+import tools.jackson.databind.json.JsonMapper;
+
 JsonMapper mapper = PanioloJson.configure(JsonMapper.builder()).build();
 ```
 
@@ -57,17 +61,19 @@ complete XRechnung example (business-rule validation is separate):
   Components added to the model later, such as the payee identifier schemes
   (`identifierSchemeId`, `legalRegistrationSchemeId`), are therefore simply absent in older JSON
   and load as `null`.
-- Calculated values, such as totals and the VAT breakdown, are not stored; they are calculated
-  again from the loaded object.
+- Derived totals and VAT breakdowns are calculated again from the loaded object. Explicit
+  model components such as `statedTotals`, `statedNetAmount`, and `vatAmounts` are stored, including
+  a stated VAT breakdown for an invoice without lines.
 
 ## Behavior
 
 - Loading invokes the record constructors, not the builders. Builder defaults are not applied:
   required values such as `typeCode`, `currencyCode`, `processControl`, and `paidAmount` must be
   supplied explicitly. Missing lists are empty as described above.
-- Loading runs the checks of the model, like the builders: an incomplete address or inconsistent
+- Loading runs the checks of the model, like the builders: a blank address value or inconsistent
   stated totals is rejected with the message of the model, e.g.
-  `postalCode must not be blank (Address)`.
+  `postalCode must not be blank (Address)`. The model requires only the country for an invoice
+  address; city, post code, and other profile requirements are checked by XML validation.
 - Unknown properties, unknown codes, malformed JSON, and trailing content raise an
   `IllegalArgumentException` that names the property or position.
 - The JSON is a storage format of Paniolo, not a standard for electronic invoices: exchange
@@ -75,13 +81,33 @@ complete XRechnung example (business-rule validation is separate):
 - `PanioloJson` is immutable and thread-safe. Register `PanioloJsonModule` once when building a
   mapper and do not change it afterwards.
 
+## Jackson version
+
+Since 1.0.0-rc02, `paniolo-json` uses Jackson 3 (`tools.jackson`); 1.0.0-rc01 used Jackson 2.
+The JSON format is unchanged: JSON stored with 1.0.0-rc01 loads as before. Migrating from 1.0.0-rc01:
+
+- `PanioloJson.configure` takes and returns `tools.jackson.databind.json.JsonMapper.Builder`, and
+  `PanioloJsonModule` is a Jackson 3 module; replace the `com.fasterxml.jackson.databind` and
+  `com.fasterxml.jackson.core` imports by `tools.jackson.databind` and `tools.jackson.core`.
+  Annotations stay in `com.fasterxml.jackson.annotation`.
+- A mapper built with `configure` throws Jackson 3's unchecked `JacksonException`.
+  `PanioloJson.read` still throws `IllegalArgumentException` as described above.
+- Applications still on Jackson 2 can use `PanioloJson.create()`; both Jackson majors can share
+  one classpath.
+
+The changed defaults of Jackson 3 and the checks of the format are described in
+[Jackson version](../docs/jackson.md).
+
 ## Build and tests
 
 ```sh
 mvn -pl paniolo-json -am verify
 ```
 
-Tests cover the format, all codes of all code lists, hand-written JSON, and invalid documents.
+Tests cover the format, all codes of all code lists, JSON stored with 1.0.0-rc01, hand-written
+JSON, invalid documents, and an own mapper with an own module (`OwnMapperTest`).
+`JsonFixturesTest` in `paniolo-facturx` loads and writes JSON of further documents stored with
+1.0.0-rc01 byte for byte.
 `JsonRoundTripTest` in `paniolo-facturx` stores and loads the test invoices of all Factur-X
 profiles (including EXTENDED with sub-lines, MINIMUM and BASIC WL, and read ZUGFeRD 1.0
 documents), all Order-X documents, and a despatch advice.

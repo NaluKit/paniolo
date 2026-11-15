@@ -12,33 +12,24 @@
   <artifactId>paniolo</artifactId>
 
   <name>paniolo</name>
-  <description>Single entry point for writing, reading and validating XRechnung invoices</description>
+  <description>Single entry point for writing, reading and validating XRechnung, Factur-X / ZUGFeRD and Order-X
+    documents: UBL and CII writers and readers, XSD and Schematron validation
+  </description>
 
   <dependencies>
     <dependency>
       <groupId>io.github.nalukit</groupId>
-      <artifactId>paniolo-xml-ubl</artifactId>
+      <artifactId>paniolo-shared-model</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>io.github.nalukit</groupId>
-      <artifactId>paniolo-xml-cii</artifactId>
+      <artifactId>paniolo-rules</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>io.github.nalukit</groupId>
-      <artifactId>paniolo-validation</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>io.github.nalukit</groupId>
-      <artifactId>paniolo-xrechnung-rules</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>io.github.nalukit</groupId>
-      <artifactId>paniolo-facturx-rules</artifactId>
-      <version>${project.version}</version>
+      <groupId>net.sf.saxon</groupId>
+      <artifactId>Saxon-HE</artifactId>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
@@ -46,4 +37,23 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
+
+  <build>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>true</filtering>
+        <includes>
+          <include>**/paniolo-validation.properties</include>
+        </includes>
+      </resource>
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>false</filtering>
+        <excludes>
+          <exclude>**/paniolo-validation.properties</exclude>
+        </excludes>
+      </resource>
+    </resources>
+  </build>
 </project>

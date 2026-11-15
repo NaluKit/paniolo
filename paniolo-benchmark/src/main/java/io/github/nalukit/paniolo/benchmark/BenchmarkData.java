@@ -17,6 +17,7 @@
  */
 package io.github.nalukit.paniolo.benchmark;
 
+import io.github.nalukit.paniolo.config.PdfAttachment;
 import io.github.nalukit.paniolo.model.Invoice;
 import io.github.nalukit.paniolo.model.common.Address;
 import io.github.nalukit.paniolo.model.common.Contact;
@@ -24,6 +25,7 @@ import io.github.nalukit.paniolo.model.common.CreditTransfer;
 import io.github.nalukit.paniolo.model.common.DeliveryInformation;
 import io.github.nalukit.paniolo.model.common.ElectronicAddress;
 import io.github.nalukit.paniolo.model.common.InvoiceLine;
+import io.github.nalukit.paniolo.model.common.InvoicePeriod;
 import io.github.nalukit.paniolo.model.common.Party;
 import io.github.nalukit.paniolo.model.common.PaymentInstruction;
 import io.github.nalukit.paniolo.model.common.TaxCategory;
@@ -48,6 +50,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
+import java.util.SplittableRandom;
 
 /**
  * Valid XRechnung test invoices of a given size and a minimal PDF/A-2b document.
@@ -60,6 +63,17 @@ final class BenchmarkData {
    * An XRechnung invoice with the given number of lines and two VAT rates.
    */
   static Invoice invoice(int lines) {
+    return invoice(lines,
+                   false);
+  }
+
+  /**
+   * An XRechnung invoice with the given number of lines and two VAT rates; with
+   * {@code linePeriods} every line states its own invoicing period (BG-26), so reading the
+   * invoice parses two dates per line.
+   */
+  static Invoice invoice(int lines,
+                         boolean linePeriods) {
     var seller = Party.create()
                       .name("Muster GmbH")
                       .address(Address.create()
@@ -130,6 +144,14 @@ final class BenchmarkData {
                                  .tax(i % 3 == 0 ?
                                       reduced :
                                       standard)
+                                 .period(linePeriods ?
+                                         new InvoicePeriod(LocalDate.of(2026,
+                                                                        9,
+                                                                        1 + i % 28),
+                                                           LocalDate.of(2026,
+                                                                        10,
+                                                                        1 + i % 28)) :
+                                         null)
                                  .build());
     }
     return builder.build();
@@ -144,6 +166,36 @@ final class BenchmarkData {
     if (!result.isValid()) {
       throw new IllegalStateException(what + " is not valid: " + result.messages());
     }
+  }
+
+  /**
+   * Fails the benchmark setup unless PDF/A conformance is checked as expected, so results with and
+   * without the PDF/A stage are never mixed up; the stage depends on paniolo-pdfa being on the class
+   * path.
+   */
+  static void requirePdfaChecked(ValidationResult result,
+                                 boolean expected,
+                                 String what) {
+    boolean checked = result.messages()
+                            .stream()
+                            .noneMatch(message -> "PDFA-NOT-CHECKED".equals(message.ruleId()));
+    if (checked != expected) {
+      throw new IllegalStateException(what + (expected ?
+                                              " was not checked for PDF/A: run it with the jars of target/pdfa-lib on the class path, see README.md" :
+                                              " was checked for PDF/A: run it without the jars of target/pdfa-lib on the class path"));
+    }
+  }
+
+  /**
+   * A supplementary file of the given size whose content does not compress, so it grows the PDF by
+   * about its size.
+   */
+  static PdfAttachment attachment(int kilobytes) {
+    byte[] content = new byte[kilobytes * 1024];
+    new SplittableRandom(kilobytes).nextBytes(content);
+    return PdfAttachment.of("anlage-" + kilobytes + "kb.bin",
+                            content,
+                            "application/octet-stream");
   }
 
   /**

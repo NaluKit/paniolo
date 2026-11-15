@@ -25,6 +25,14 @@
       <groupId>org.verapdf</groupId>
       <artifactId>validation-model</artifactId>
       <version>${verapdf.version}</version>
+      <exclusions>
+        <!-- veraPDF uses Jackson 2 only for its own report output (org.verapdf.processor), which
+             Paniolo does not use; Paniolo itself uses Jackson 3. See docs/jackson.md. -->
+        <exclusion>
+          <groupId>com.fasterxml.jackson.core</groupId>
+          <artifactId>jackson-databind</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>io.github.nalukit</groupId>

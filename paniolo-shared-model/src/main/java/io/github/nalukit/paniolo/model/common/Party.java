@@ -235,9 +235,9 @@ public record Party(String name, Address address, String vatId, String taxId, El
   }
 
   /**
-   * Rejects a party without name or without a complete postal address with street, city, post
-   * code, and country, which all documents except the Factur-X profile MINIMUM require; null
-   * parties are allowed.
+   * Rejects a party without name or without a postal address beyond the country, which all
+   * documents except the Factur-X profile MINIMUM state; null parties are allowed. Which address
+   * values a profile requires, e.g. city and post code in XRechnung, is checked by validation.
    *
    * @param party the party, or null
    * @param role  role of the party for the error message, e.g. {@code seller}
@@ -252,7 +252,28 @@ public record Party(String name, Address address, String vatId, String taxId, El
         (party.address() == null ||
          party.address()
               .isCountryOnly())) {
-      throw new IllegalArgumentException("The " + role + " requires a postal address with street, city, and post code");
+      throw new IllegalArgumentException("The " + role + " requires a postal address with more than the country, e.g. city and post code");
+    }
+    return party;
+  }
+
+  /**
+   * Rejects a party without name or without a postal address; a country-only address passes, as
+   * EN 16931 requires the country of an address only (BT-40, BT-55). What a profile requires
+   * beyond it, e.g. city and post code in XRechnung, is checked by validation. Null parties are
+   * allowed.
+   *
+   * @param party the party, or null
+   * @param role  role of the party for the error message, e.g. {@code seller}
+   * @return the party
+   * @throws IllegalArgumentException if the name or the address is missing
+   */
+  public static Party requireCountryAddress(Party party,
+                                            String role) {
+    requireName(party,
+                role);
+    if (party != null && party.address() == null) {
+      throw new IllegalArgumentException("The " + role + " requires a postal address with at least the country");
     }
     return party;
   }

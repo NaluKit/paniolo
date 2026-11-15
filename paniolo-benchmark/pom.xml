@@ -17,6 +17,7 @@
   <properties>
     <jmh.version>1.37</jmh.version>
     <plugin.shade.version>3.6.0</plugin.shade.version>
+    <plugin.dependency.version>3.7.0</plugin.dependency.version>
     <maven.install.skip>true</maven.install.skip>
     <maven.deploy.skip>true</maven.deploy.skip>
   </properties>
@@ -31,6 +32,14 @@
       <groupId>org.openjdk.jmh</groupId>
       <artifactId>jmh-core</artifactId>
       <version>${jmh.version}</version>
+    </dependency>
+    <!-- Not shaded: FacturXBenchmark measures without PDF/A. The jars are copied to
+         target/pdfa-lib for FacturXPdfaBenchmark, see README.md. -->
+    <dependency>
+      <groupId>io.github.nalukit</groupId>
+      <artifactId>paniolo-pdfa</artifactId>
+      <version>${project.version}</version>
+      <scope>provided</scope>
     </dependency>
   </dependencies>
 
@@ -48,6 +57,25 @@
             </path>
           </annotationProcessorPaths>
         </configuration>
+      </plugin>
+      <!-- Copies paniolo-pdfa and veraPDF to target/pdfa-lib for the benchmarks with PDF/A. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <version>${plugin.dependency.version}</version>
+        <executions>
+          <execution>
+            <id>pdfa-lib</id>
+            <phase>package</phase>
+            <goals>
+              <goal>copy-dependencies</goal>
+            </goals>
+            <configuration>
+              <includeScope>provided</includeScope>
+              <outputDirectory>${project.build.directory}/pdfa-lib</outputDirectory>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
       <!-- Builds target/benchmarks.jar, runnable with java -jar. -->
       <plugin>

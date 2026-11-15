@@ -1,0 +1,17 @@
+label: large-xml-baseline
+date: 2026-11-11T17:54:30Z
+commit: 720acb2a4731d0dabeb129e6a35317a150c1025f
+commit subject: Merge pull request #20 from NaluKit/ci/release-check-before-merge
+working tree: modified, the results do not belong to the commit alone
+class path: <separate checkout of 720acb2>/paniolo-benchmark/target/benchmarks.jar
+arguments: LargeXmlBenchmark
+
+java:
+  openjdk version "21.0.12.1" 2026-08-18 LTS
+  OpenJDK Runtime Environment Temurin-21.0.12.1+1 (build 21.0.12.1+1-LTS)
+  OpenJDK 64-Bit Server VM Temurin-21.0.12.1+1 (build 21.0.12.1+1-LTS, mixed mode, sharing)
+
+os: Darwin 27.2.0 arm64
+cpu: Apple M4 Max
+cores: 16
+memory: 64 GB

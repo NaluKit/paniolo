@@ -17,8 +17,8 @@
  */
 package io.github.nalukit.paniolo.cli;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 import io.github.nalukit.paniolo.Paniolo;
 import io.github.nalukit.paniolo.config.PdfLayout;
 import io.github.nalukit.paniolo.validation.AcceptancePolicy;
@@ -70,7 +70,7 @@ final class ReportOptions {
   FileSelection selection;
 
   @Option(names = { "-f",
-                    "--format" }, defaultValue = "text", description = "Output format: ${COMPLETION-CANDIDATES} (default: ${DEFAULT-VALUE}). " + "json writes one object per line; xml writes the Paniolo validation report, pdf renders it as PDF/A (needs paniolo-pdf-layout); both accept one document only.")
+                    "--format" }, defaultValue = "text", description = "Output format: ${COMPLETION-CANDIDATES} (default: ${DEFAULT-VALUE}). " + "json writes one object per line; xml writes the Paniolo validation report, pdf renders it as PDF/A; both accept one document only.")
   Format format;
 
   @Option(names = { "-l",

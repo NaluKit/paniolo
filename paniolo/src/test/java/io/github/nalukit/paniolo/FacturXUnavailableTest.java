@@ -51,11 +51,11 @@ class FacturXUnavailableTest {
     var layout = assertThrows(IllegalStateException.class,
                               () -> PANIOLO.toPdf(invoice));
     assertTrue(layout.getMessage()
-                     .contains("paniolo-pdf-layout"));
+                     .contains("paniolo-facturx"));
     var rendered = assertThrows(IllegalStateException.class,
                                 () -> PANIOLO.toFacturX(invoice,
                                                         FacturXProfile.XRECHNUNG));
     assertTrue(rendered.getMessage()
-                       .contains("paniolo-pdf-layout"));
+                       .contains("paniolo-facturx"));
   }
 }
