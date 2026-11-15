@@ -60,7 +60,7 @@
   </developers>
 
   <properties>
-    <revision>HEAD-SNAPSHOT</revision>
+    <revision>1.0.0-rc02</revision>
 
     <junit.version>6.1.3</junit.version>
     <saxon.version>13.1</saxon.version>
