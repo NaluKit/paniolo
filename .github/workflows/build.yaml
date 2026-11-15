@@ -82,7 +82,9 @@ jobs:
   # language, render untrusted text as text, and show errors. See the profile browser-tests in
   # paniolo-visualizer/pom.xml.
   visualizer-browser:
-    runs-on: ubuntu-26.04
+    # Playwright 1.58 installs its browser and system packages only for Ubuntu up to 24.04; raise this
+    # together with the Playwright version (playwright.version in paniolo-visualizer/pom.xml).
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
