@@ -164,10 +164,12 @@ jobs:
     timeout-minutes: 8
     needs: [ verify ]
     services:
-      # Not pinned on purpose: the image carries the vulnerability database, and a pinned image
-      # would freeze it.
+      # Pinned by digest, so that the executed image cannot change without a commit. The image
+      # carries the vulnerability database, so a pinned image freezes it: the step "Check the age
+      # of the vulnerability database" fails once the data is older than OWASP_DB_MAX_AGE_DAYS.
+      # Refresh with scripts/ci/update-owasp-image.sh and review the diff.
       owasp-db:
-        image: nalusolutionsgmbh/owasp-maven-action:latest
+        image: nalusolutionsgmbh/owasp-maven-action@sha256:2ff7684a918a0618e449be9153bc0f24dc20f5f1960bd6455e374ca237847bc2 # :latest on 2026-11-15
         options: --entrypoint /bin/sh --name owasp-db --hostname owasp-db
     steps:
       - uses: actions/checkout@v7
@@ -178,6 +180,20 @@ jobs:
           cache: maven
       - name: Copy owasp database from container to runner
         run: docker cp "$(docker ps -aqf "name=owasp-db")":/dependency-check/data ./dependency-checker-db/
+      - name: Check the age of the vulnerability database
+        env:
+          OWASP_DB_MAX_AGE_DAYS: 14
+        run: |
+          newest=$(find ./dependency-checker-db -type f -printf '%T@\n' | sort -n | tail -n 1)
+          [[ -n $newest ]] || { echo "::error::The vulnerability database is empty"; exit 1; }
+          age_days=$(( ($(date +%s) - ${newest%.*}) / 86400 ))
+          summary="Vulnerability database: newest file from $(date -u -d "@${newest%.*}" +%F) ($age_days days old, limit $OWASP_DB_MAX_AGE_DAYS), image from the digest in the workflow"
+          echo "$summary"
+          echo "$summary" >> "$GITHUB_STEP_SUMMARY"
+          if [[ $age_days -gt $OWASP_DB_MAX_AGE_DAYS ]]; then
+            echo "::error::The vulnerability database is older than $OWASP_DB_MAX_AGE_DAYS days; update the image digest (scripts/ci/update-owasp-image.sh)"
+            exit 1
+          fi
       - name: OWASP Check
         # the plugin version comes from the pluginManagement of the parent POM
         run: |
