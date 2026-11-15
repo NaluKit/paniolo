@@ -15,6 +15,7 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
+#
 
 # Tests update-owasp-image.sh with a stubbed registry (curl) and a copy of a workflow: the real
 # write path with --apply, the print-only mode and the error cases without partial changes.

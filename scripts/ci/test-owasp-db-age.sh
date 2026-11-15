@@ -15,6 +15,7 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
+#
 
 # Tests check-owasp-db-age.sh with generated H2 databases that carry the update metadata of
 # dependency-check: old data stays old even with new files next to it, and missing, invalid or

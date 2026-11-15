@@ -15,6 +15,7 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
+#
 
 # Fails if the NVD data in a dependency-check data directory is older than the given number of
 # days. The age comes from the update metadata in the database (OwaspDatabaseAge.java), not from
