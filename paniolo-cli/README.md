@@ -59,7 +59,7 @@ GitHub token with the `read:packages` scope in a `<server>` entry with the id of
 | `to-facturx FILE --pdf PDF --profile PROFILE [--attach FILE]...`                                                                                                | `toFacturX(invoice, pdfA, profile, attachments)`                                           |
 | `to-facturx FILE --profile PROFILE [layout options]`                                                                                                            | `toFacturX(invoice, profile, layout, attachments)`: renders the page                       |
 | `embed-xml XML --pdf PDF --profile PROFILE [--attach FILE]...`                                                                                                  | `embedXml(pdfA, xml, profile, attachments)`: XML byte for byte, findings on stderr, exit 1 if invalid |
-| `to-pdf FILE [--lang de\|en\|fr] [--logo FILE [--logo-position LEFT\|RIGHT]] [--no-sender-address] [--font FILE [--bold-font FILE]] [--accent RGB] [--footer TEXT] [--watermark TEXT]` | `toPdf(invoice, layout)` of [`paniolo-facturx`](../paniolo-facturx/docs/pdf-layout.md)        |
+| `to-pdf FILE [--lang de\|en\|fr] [--logo FILE [--logo-position LEFT\|RIGHT]] [--no-sender-address] [--font FILE [--bold-font FILE]] [--accent RGB] [--footer TEXT] [--watermark TEXT] [--pdf-profile PREVIEW\|PREVIEW_2_0\|PDF_A_1B\|PDF_A_3B]` | `toPdf(invoice, layout)` of [`paniolo-facturx`](../paniolo-facturx/docs/pdf-layout.md)        |
 | `extract-xml PDF`                                                                                                                                               | `extractXml(pdf)`                                                                          |
 | `attachments PDF [--extract DIR [--overwrite]]`                                                                                                                               | `attachments(pdf)`                                                                         |
 | `producer PDF`                                                                                                                                                  | `producer(pdf)`                                                                            |
@@ -97,7 +97,7 @@ case-insensitive (`--profile en16931`).
   EN 16931 and XRechnung with their unchanged severities; `--profile EN16931` selects the
   Factur-X EN 16931 rules for CII XML.
 - **Layout options**: `--lang`, `--logo`, `--logo-position`, `--no-sender-address`, `--font`,
-  `--bold-font`, `--accent`, `--footer`, and `--watermark` configure the rendered pages like
+  `--bold-font`, `--accent`, `--footer`, `--watermark`, and `--pdf-profile` configure the rendered pages like
   `PdfLayout` ([PDF layout](../paniolo-facturx/docs/pdf-layout.md)). Without `--font`, the pages
   use IBM Plex Sans Regular and Bold; `--font` alone emboldens the given font for bold text.
 - **Rules**: `--rules`, `--facturx-rules`, `--extended-ctc-fr-rules`, `--order-x-rules`, and
@@ -271,7 +271,7 @@ paniolo embed-xml received.xml --pdf layout.pdf --profile EN16931 -o factur-x.pd
 paniolo to-facturx invoice.json --profile XRECHNUNG --logo logo.png --footer "Amtsgericht Berlin HRB 12345 B" -o factur-x.pdf
 
 # Preview for checking before sending: only the page, no XML, with watermark
-paniolo to-pdf invoice.json --watermark PREVIEW -o preview.pdf
+paniolo to-pdf invoice.json --watermark PREVIEW --pdf-profile PREVIEW -o preview.pdf
 
 # Unpack a received Factur-X PDF
 paniolo extract-xml received.pdf -o received.xml

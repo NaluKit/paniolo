@@ -1,7 +1,8 @@
 # Paniolo PDF layout
 
-[`paniolo-facturx`](../README.md) renders the visual PDF/A-3b document of invoices, Order-X orders,
-and despatch advices from the Paniolo model (package `io.github.nalukit.paniolo.pdflayout`). With
+[`paniolo-facturx`](../README.md) renders the visual document of invoices, Order-X orders,
+and despatch advices from the Paniolo model, by default as PDF/A-3b and, with a
+[profile](#pdf-profiles), as PDF/A-1b or as plain PDF 1.7 or 2.0 preview (package `io.github.nalukit.paniolo.pdflayout`). With
 it, a Factur-X / ZUGFeRD invoice, an Order-X PDF, or a CIDA delivery note needs no PDF of its own:
 Paniolo renders the pages, writes the XML, and embeds it. It is based on Apache PDFBox and sets
 the text in IBM Plex Sans, which the module packages (see [Fonts](#fonts)); there is no further
@@ -46,8 +47,18 @@ text as given:
 byte[] preview = paniolo.toPdf(invoice, PdfLayout.defaults().withWatermark("PREVIEW"));
 ```
 
+This preview is still a PDF/A-3b document, the default profile. For a plain PDF that is not meant
+for archiving, or as PDF 2.0, choose a [profile](#pdf-profiles):
+
+```java
+byte[] plain = paniolo.toPdf(invoice, PdfLayout.defaults()
+                                               .withWatermark("PREVIEW")
+                                               .withProfile(PdfProfile.PREVIEW));
+```
+
 The methods that embed XML (`toFacturX`, `toOrderXPdf`, `toDespatchAdvicePdf`) reject a layout
-with watermark: the result would be a valid e-invoice whose page says it is not.
+with watermark: the result would be a valid e-invoice whose page says it is not. They reject the
+profiles `PREVIEW` and `PREVIEW_2_0` as well.
 
 The profile is checked before rendering, as for `toFacturX(invoice, pdf, profile)`. On the command
 line, `paniolo to-pdf` renders an invoice, and `to-facturx`, `order to-pdf`, and
@@ -169,11 +180,149 @@ Invoices without lines (Factur-X MINIMUM and BASIC WL) show their stated totals.
 
 ## PDF/A
 
-The documents conform to PDF/A-3b (checked with veraPDF in the tests): embedded font subsets,
-sRGB output intent, XMP metadata matching the document information, document language. Factur-X
-documents created with `toFacturX` pass `Paniolo.validate`, including the PDF/A check of
+By default the documents conform to PDF/A-3b (checked with veraPDF in the tests): embedded font
+subsets, sRGB output intent, XMP metadata matching the document information, document language.
+PDF/A-3 is based on PDF 1.7 and does not allow PDF 2.0. Factur-X documents created with
+`toFacturX` pass `Paniolo.validate`, including the PDF/A check of
 [`paniolo-pdfa`](../../paniolo-pdfa/README.md); Order-X PDFs created with `toOrderXPdf` pass
 `Paniolo.validateOrder`. The tests render all twelve official Order-X COMFORT examples.
+
+## PDF profiles
+
+`PdfLayout.withProfile(PdfProfile)` selects the kind of PDF. It applies to `toPdf` for invoices,
+orders, and despatch advices and to `toReportPdf`; without it the result is PDF/A-3b.
+
+| Profile              | PDF | PDF/A | Transparency | Use                                                                     |
+|----------------------|-----|-------|--------------|-------------------------------------------------------------------------|
+| `PDF_A_3B` (default) | 1.7 | 3b    | yes          | The visual document for archives; the format of every hybrid document   |
+| `PDF_A_1B`           | 1.4 | 1b    | no           | The visual part that you pass to `toFacturX(invoice, pdfA, profile)`    |
+| `PREVIEW`            | 1.7 | no    | yes          | A plain PDF to look at, e.g. with watermark                             |
+| `PREVIEW_2_0`        | 2.0 | no    | yes          | The same as PDF 2.0                                                     |
+
+**Which profile?**
+
+- You want a **Factur-X, Order-X, or CIDA document** and let Paniolo render the page: call
+  `toFacturX(invoice, profile)`, `toOrderXPdf(order)`, or `toDespatchAdvicePdf(advice)`. They
+  use PDF/A-3b; there is nothing to choose.
+- You want the **page of an invoice as an archive copy**, without XML: `toPdf(invoice)`, PDF/A-3b.
+- You want to **create the visual part first and embed the XML later**, e.g. because you check the
+  page or add pages of your own in between: `PDF_A_1B`, then `toFacturX(invoice, pdfA, profile)`.
+- You want to **look at the page before it is sent**, e.g. with a watermark `ENTWURF` or `PREVIEW`:
+  `PREVIEW`, or `PREVIEW_2_0` if your viewer or workflow expects PDF 2.0.
+
+### Examples
+
+A plain preview with watermark, as PDF 1.7 and as PDF 2.0:
+
+```java
+PdfLayout draft = PdfLayout.of(Locale.GERMAN).withWatermark("ENTWURF");
+
+byte[] preview17 = paniolo.toPdf(invoice, draft.withProfile(PdfProfile.PREVIEW));
+byte[] preview20 = paniolo.toPdf(invoice, draft.withProfile(PdfProfile.PREVIEW_2_0));
+```
+
+PDF/A-1b as the visual part of a Factur-X invoice. `toFacturX` embeds the XML and makes PDF/A-3b
+of the document:
+
+```java
+byte[] pdfA1   = paniolo.toPdf(invoice, PdfLayout.defaults().withProfile(PdfProfile.PDF_A_1B));
+byte[] facturX = paniolo.toFacturX(invoice, pdfA1, FacturXProfile.EN16931);
+
+ValidationResult result = paniolo.validate(facturX);   // container, PDF/A-3, and XML
+```
+
+The same layout with logo, footer, and a profile; the settings do not depend on each other:
+
+```java
+PdfLayout layout = PdfLayout.of(Locale.ENGLISH)
+                            .withLogo(Files.readAllBytes(Path.of("logo.png")))
+                            .withShowLogo(true)
+                            .withFooter("Managing director: Erika Muster · Berlin HRB 12345 B")
+                            .withProfile(PdfProfile.PDF_A_1B);
+```
+
+Orders, despatch advices, and validation reports use the profile as well:
+
+```java
+byte[] orderPage  = paniolo.toPdf(order, PdfLayout.defaults().withProfile(PdfProfile.PREVIEW));
+byte[] notePage   = paniolo.toPdf(advice, PdfLayout.defaults().withProfile(PdfProfile.PDF_A_1B));
+byte[] reportPdf  = paniolo.toReportPdf(result, "invoice.pdf", received,
+                                        PdfLayout.defaults().withProfile(PdfProfile.PDF_A_3B));
+```
+
+The command line selects the profile with `--pdf-profile`; `--profile` is the Factur-X profile
+of `to-facturx`:
+
+```bash
+paniolo to-pdf invoice.json --watermark ENTWURF --pdf-profile PREVIEW -o preview.pdf
+paniolo to-pdf invoice.json --pdf-profile PREVIEW_2_0 -o preview20.pdf
+paniolo to-pdf invoice.json --pdf-profile PDF_A_1B -o pdfa1.pdf
+paniolo to-facturx invoice.json --profile EN16931 --pdf-profile PDF_A_1B -o facturx.pdf
+```
+
+### What PDF/A-1b changes
+
+PDF/A-1 forbids transparency and object streams. Paniolo therefore renders `PDF_A_1B` differently:
+
+- **Watermark**: opaque light gray text *below* the content instead of semi-transparent text above
+  it. Content that covers it, such as filled table cells, hides parts of it.
+- **Logo**: a PNG logo with transparency is placed on a white background. The page is white, so the
+  logo looks the same. JPEG logos and PNGs without transparency are embedded as they are.
+- **File**: written without object streams and cross-reference streams, so it is larger than the
+  same document as PDF/A-3b or preview.
+- **Version**: PDF 1.4, the version PDF/A-1 is based on. The content is limited to the features of
+  PDF 1.4, so the header says no more; veraPDF would accept a higher header number, but it would
+  promise features the document does not use.
+
+The hybrid methods accept a `PDF_A_1B` layout, e.g.
+`toFacturX(invoice, profile, layout, attachments)`: the page is rendered as PDF/A-1b, and embedding
+the XML makes PDF/A-3b of it. A watermark is rejected there as before. The Factur-X result is the same as with the default
+profile apart from the page: `Paniolo.validate` reports it as valid.
+
+### PDF versions
+
+| Profile        | Header and catalog                                                              |
+|----------------|---------------------------------------------------------------------------------|
+| `PDF_A_1B`     | `%PDF-1.4`                                                                      |
+| `PDF_A_3B`     | PDF 1.7; the catalog says `/Version 1.7`                                        |
+| `PREVIEW`      | PDF 1.7; the catalog says `/Version 1.7`                                        |
+| `PREVIEW_2_0`  | `%PDF-2.0` and `/Version 2.0`                                                   |
+
+The file header of a compressed PDF 1.7 document reads `%PDF-1.6`, because PDFBox writes object
+streams; the catalog entry `/Version 1.7` raises the version, and PDF readers and veraPDF use it.
+PDF 2.0 is a plain PDF only: PDF/A-3 is based on PDF 1.7 and does not allow it, so there is no
+Factur-X, Order-X, or CIDA document in PDF 2.0, and a Factur-X document requires PDF/A-3 in any
+case. PDF/A-4 (PDF 2.0 based) is not supported.
+
+How the version is set: the renderer finishes every document in `PdfA.finish`, after the pages are
+drawn, and sets the version of the profile there, together with the output intent, the XMP
+metadata, and the document information.
+
+- PDFBox 3 writes a version of 1.4 or higher to the `/Version` entry of the catalog only; the
+  header comes from the way the file is saved. `PDF_A_1B` is saved without compression, so its
+  header is `%PDF-1.4`; the other profiles are saved with object streams, so their header reads
+  `%PDF-1.6` and `/Version 1.7` in the catalog gives the version.
+- `PREVIEW_2_0` sets the version on the catalog and on the underlying COS document, so that the
+  header says `%PDF-2.0` as well; with the catalog entry alone, the header would stay at 1.6.
+- Embedding the XML raises a version below 1.7 to 1.7 and writes `pdfaid:part` 3, so
+  `toFacturX(invoice, pdfA, profile)` turns a `PDF_A_1B` page into PDF/A-3b.
+
+### Errors
+
+| Case                                                                 | Result                                   |
+|----------------------------------------------------------------------|------------------------------------------|
+| `toFacturX`, `toOrderXPdf`, `toDespatchAdvicePdf` with `PREVIEW` or `PREVIEW_2_0` | `IllegalArgumentException`   |
+| the same methods with a watermark                                    | `IllegalArgumentException`               |
+| `PdfLayout` without profile (`null`)                                 | `NullPointerException`                   |
+| `--pdf-profile` with another value on the command line               | usage error that lists the values        |
+
+### Checking the result
+
+`PDF_A_1B` and `PDF_A_3B` are checked with veraPDF in the tests of the module. To check your own
+documents, `Paniolo.validate(pdf)` with [`paniolo-pdfa`](../../paniolo-pdfa/README.md) validates
+a PDF against the flavour its XMP metadata declares. A `PDF_A_1B` document is reported with
+`PDFA-PART`, because Factur-X requires part 3; its PDF/A-1b rules themselves are checked and show
+no findings. A preview is reported with `PDFA-NOT-DECLARED`, because it declares no PDF/A.
 
 ## Fonts
 
@@ -196,6 +345,6 @@ rejected with an `IllegalArgumentException` that names the restriction.
 
 ## Limits
 
-- No PDF/A-3a (tagged PDF) and no right-to-left scripts.
+- No PDF/A-3a (tagged PDF), no PDF/A-2 and PDF/A-4, and no right-to-left scripts.
 - The layout is fixed apart from logo, fonts, accent color, footer, and language. For a fully own
   design, render your PDF/A yourself and use `toFacturX(invoice, pdf, profile)`.

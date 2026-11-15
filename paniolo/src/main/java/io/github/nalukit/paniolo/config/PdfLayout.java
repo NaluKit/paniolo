@@ -22,8 +22,8 @@ import java.util.Locale;
 import java.util.Objects;
 
 /**
- * Settings of the visual PDF/A document that {@code paniolo-facturx} renders from an invoice,
- * order, or despatch advice, e.g. for {@code Paniolo#toPdf(Invoice, PdfLayout)} and
+ * Settings of the visual document that {@code paniolo-facturx} renders from an invoice,
+ * order, or despatch advice, by default a PDF/A-3b document (PDF 1.7); see {@link PdfProfile}, e.g. for {@code Paniolo#toPdf(Invoice, PdfLayout)} and
  * {@code Paniolo#toFacturX(Invoice, FacturXProfile, PdfLayout, List)}. Immutable; the byte arrays
  * are copied defensively.
  *
@@ -35,6 +35,10 @@ import java.util.Objects;
  *                             .withAccentColor(0x01244F)
  *                             .withFooter("Managing director: Erika Muster · Berlin commercial register HRB 12345");
  * }</pre>
+ *
+ * <p>The profile selects the kind of PDF: PDF/A-3b (PDF 1.7, the default), PDF/A-1b (PDF 1.4, the
+ * visual part to pass to {@code Paniolo#toFacturX}), or a plain PDF 1.7 or 2.0 preview. PDF/A-3 is
+ * based on PDF 1.7 and does not allow PDF 2.0.
  *
  * <p>For letter paper with a preprinted letterhead, hide the sender's address with
  * {@code withShowSenderAddress(false)}; the sender line above the address window and the footer
@@ -60,8 +64,10 @@ import java.util.Objects;
  *                          court, or null
  * @param watermark         text printed diagonally across every page, e.g. {@code PREVIEW}, or
  *                          null; see {@link #withWatermark(String)}
+ * @param profile           kind of PDF to render, {@link PdfProfile#PDF_A_3B} by default; see
+ *                          {@link #withProfile(PdfProfile)}
  */
-public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, boolean showLogo, LogoPosition logoPosition, byte[] regularFont, byte[] boldFont, int accentColor, String footer, String watermark) {
+public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, boolean showLogo, LogoPosition logoPosition, byte[] regularFont, byte[] boldFont, int accentColor, String footer, String watermark, PdfProfile profile) {
   /**
    * Accent color of the default layout: the teal of the Paniolo brand.
    */
@@ -93,6 +99,8 @@ public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, b
     if (footer != null && footer.isBlank()) {
       footer = null;
     }
+    Objects.requireNonNull(profile,
+                           "profile");
     if (watermark != null) {
       watermark = watermark.isBlank() ?
                   null :
@@ -126,7 +134,8 @@ public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, b
                          null,
                          DEFAULT_ACCENT_COLOR,
                          null,
-                         null);
+                         null,
+                         PdfProfile.PDF_A_3B);
   }
 
   private static byte[] copy(byte[] bytes) {
@@ -152,7 +161,8 @@ public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, b
                          boldFont,
                          accentColor,
                          footer,
-                         watermark);
+                         watermark,
+                         profile);
   }
 
   /**
@@ -189,7 +199,8 @@ public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, b
                          boldFont,
                          accentColor,
                          footer,
-                         watermark);
+                         watermark,
+                         profile);
   }
 
   /**
@@ -208,7 +219,8 @@ public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, b
                          boldFont,
                          accentColor,
                          footer,
-                         watermark);
+                         watermark,
+                         profile);
   }
 
   /**
@@ -228,7 +240,8 @@ public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, b
                          boldFont,
                          accentColor,
                          footer,
-                         watermark);
+                         watermark,
+                         profile);
   }
 
   /**
@@ -253,7 +266,8 @@ public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, b
                          bold,
                          accentColor,
                          footer,
-                         watermark);
+                         watermark,
+                         profile);
   }
 
   /**
@@ -272,7 +286,8 @@ public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, b
                          boldFont,
                          rgb,
                          footer,
-                         watermark);
+                         watermark,
+                         profile);
   }
 
   /**
@@ -291,7 +306,8 @@ public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, b
                          boldFont,
                          accentColor,
                          footer,
-                         watermark);
+                         watermark,
+                         profile);
   }
 
   /**
@@ -318,7 +334,31 @@ public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, b
                          boldFont,
                          accentColor,
                          footer,
-                         watermark);
+                         watermark,
+                         profile);
+  }
+
+  /**
+   * Returns a copy that renders another kind of PDF: {@link PdfProfile#PREVIEW} for a plain PDF to
+   * look at, {@link PdfProfile#PDF_A_1B} for a PDF/A-1b document, e.g. as the visual part for
+   * {@code Paniolo#toFacturX}, or {@link PdfProfile#PDF_A_3B}, the
+   * default. The hybrid methods ({@code toFacturX}, {@code toOrderXPdf}, ...) reject a preview.
+   *
+   * @param profile the kind of PDF
+   * @return the layout
+   */
+  public PdfLayout withProfile(PdfProfile profile) {
+    return new PdfLayout(locale,
+                         showSenderAddress,
+                         logo,
+                         showLogo,
+                         logoPosition,
+                         regularFont,
+                         boldFont,
+                         accentColor,
+                         footer,
+                         watermark,
+                         profile);
   }
 
   /**
@@ -378,7 +418,8 @@ public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, b
            Objects.equals(footer,
                           other.footer) &&
            Objects.equals(watermark,
-                          other.watermark);
+                          other.watermark) &&
+           profile == other.profile;
   }
 
   @Override
@@ -392,7 +433,8 @@ public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, b
                         Arrays.hashCode(boldFont),
                         accentColor,
                         footer,
-                        watermark);
+                        watermark,
+                        profile);
   }
 
   @Override
@@ -420,6 +462,8 @@ public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, b
            footer +
            ", watermark=" +
            watermark +
+           ", profile=" +
+           profile +
            "]";
   }
 

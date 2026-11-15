@@ -133,8 +133,10 @@ Supported:
 - XRechnung extension in UBL Invoice: nested sub invoice lines, third party payments, and XML
   attachments, validated with the KoSIT extension scenario.
 - Producing software of received PDFs, recognized from the signatures the Mustang project uses.
-- Rendering of the visual PDF/A-3b document of invoices, orders, and delivery notes (DIN 5008,
-  German, English, and French, logo, IBM Plex Sans or own fonts) with `paniolo-facturx`.
+- Rendering of the visual document of invoices, orders, and delivery notes (DIN 5008,
+  German, English, and French, logo, IBM Plex Sans or own fonts) with `paniolo-facturx`: PDF/A-3b
+  (PDF 1.7) by default, PDF/A-1b (PDF 1.4) as input for `toFacturX`, or a plain PDF 1.7 or 2.0
+  preview with watermark; see [PDF profiles](#pdf-profiles-of-topdf).
 - JSON storage of invoices, orders, and despatch advices with the checks of the model (`paniolo-json`).
 - Migration of Mustang integrations: `paniolo-mustang` maps `org.mustangproject.Invoice` (any
   `IExportableTransaction`) to the model; built for Mustang 2.26.0, newer Mustang versions are
@@ -382,6 +384,27 @@ Choose the profile your recipient expects and the matching `ProcessControl` fact
 `xrechnung()`. MINIMUM and BASIC WL have no lines and are only booking aids in Germany. See
 [Factur-X / ZUGFeRD](#factur-x--zugferd) and the [module README](paniolo-facturx/README.md).
 
+### PDF profiles of `toPdf`
+
+`toPdf` renders PDF/A-3b (PDF 1.7) by default. `PdfLayout.withProfile` selects another kind:
+
+| Profile              | PDF | Use                                                                                  |
+|----------------------|-----|--------------------------------------------------------------------------------------|
+| `PDF_A_3B` (default) | 1.7 | The visual PDF/A-3b document. PDF/A-3 is based on PDF 1.7 and does not allow PDF 2.0 |
+| `PDF_A_1B`           | 1.4 | PDF/A-1b as the visual part for `toFacturX(invoice, pdfA, profile)`                  |
+| `PREVIEW`            | 1.7 | Plain PDF, no PDF/A, e.g. with watermark, for checking before sending                |
+| `PREVIEW_2_0`        | 2.0 | The same as PDF 2.0                                                                  |
+
+```java
+byte[] preview = PANIOLO.toPdf(invoice, PdfLayout.defaults().withWatermark("PREVIEW").withProfile(PdfProfile.PREVIEW));
+byte[] pdfA1   = PANIOLO.toPdf(invoice, PdfLayout.defaults().withProfile(PdfProfile.PDF_A_1B));
+byte[] facturX = PANIOLO.toFacturX(invoice, pdfA1, FacturXProfile.EN16931);
+```
+
+PDF/A-1 has no transparency: the watermark becomes opaque light text below the content, and PNG
+logos with transparency are placed on white. The methods that embed XML reject the preview
+profiles. The command line selects the profile with `--pdf-profile`.
+
 ### Migrate ZUGFeRD 1.0
 
 ZUGFeRD 1.0 does not meet EN 16931 and is no longer accepted as an electronic invoice. Paniolo
@@ -538,7 +561,7 @@ Paniolo never downloads rules at runtime.
 | `toFacturX(invoice, pdfA, profile[, attachments])`                                                                    | Create a Factur-X / ZUGFeRD PDF/A-3 from your own PDF/A (`paniolo-facturx`)                               |
 | `toFacturX(invoice, profile[, layout, attachments])`                                                                  | Create a Factur-X / ZUGFeRD PDF/A-3 with a rendered page (`paniolo-facturx`)                           |
 | `embedXml(pdfA, xml, profile[, attachments])`                                                                         | Embed existing CII XML byte for byte into your PDF/A; returns the PDF and its validation                  |
-| `toPdf(invoice / order / advice[, layout])`                                                                           | Render the visual PDF/A-3b document only, without XML (`paniolo-facturx`)                              |
+| `toPdf(invoice / order / advice[, layout])`                                                                           | Render the visual document only, without XML: PDF/A-3b (PDF 1.7) by default, PDF/A-1b, or a PDF 1.7 / 2.0 preview with `PdfLayout.withProfile` (`paniolo-facturx`) |
 | `toReportPdf(result, fileName, document[, layout])`                                                                   | Render a validation report as PDF/A-3b for archives and departments (`paniolo-facturx`)                |
 | `extractXml(pdf)`, `attachments(pdf)`                                                                                 | Embedded invoice XML and further embedded files of a PDF                                                  |
 | `producer(pdf)`                                                                                                       | Producing software of a PDF (`PdfProducer`), also reported as `FX-PRODUCER` by `validate(pdf)`            |

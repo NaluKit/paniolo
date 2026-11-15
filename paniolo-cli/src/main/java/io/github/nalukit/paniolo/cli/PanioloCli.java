@@ -23,6 +23,7 @@ import io.github.nalukit.paniolo.config.FacturXResult;
 import io.github.nalukit.paniolo.config.InvoiceSyntax;
 import io.github.nalukit.paniolo.config.PdfAttachment;
 import io.github.nalukit.paniolo.config.PdfLayout;
+import io.github.nalukit.paniolo.config.PdfProfile;
 import io.github.nalukit.paniolo.config.UnknownDocumentHandling;
 import io.github.nalukit.paniolo.json.PanioloJson;
 import io.github.nalukit.paniolo.model.Invoice;
@@ -573,8 +574,12 @@ public final class PanioloCli {
     @Option(names = "--watermark", paramLabel = "TEXT", description = "Text printed diagonally across every page, e.g. PREVIEW; only for the invoice command to-pdf, the commands that embed XML reject it.")
     String watermark;
 
+    @Option(names = "--pdf-profile", paramLabel = "PROFILE", defaultValue = "PDF_A_3B", description = "Kind of the rendered PDF: ${COMPLETION-CANDIDATES}; default: ${DEFAULT-VALUE}. PREVIEW and PREVIEW_2_0 are plain PDFs without PDF/A and only for to-pdf; PDF_A_1B can be the visual part of to-facturx.")
+    PdfProfile pdfProfile;
+
     PdfLayout layout(Io io) {
       var layout = PdfLayout.of(Locale.forLanguageTag(language))
+                            .withProfile(pdfProfile)
                             .withFooter(footer)
                             .withWatermark(watermark)
                             .withShowSenderAddress(!noSenderAddress)

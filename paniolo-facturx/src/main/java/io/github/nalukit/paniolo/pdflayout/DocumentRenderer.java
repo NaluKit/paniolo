@@ -18,6 +18,7 @@
 package io.github.nalukit.paniolo.pdflayout;
 
 import io.github.nalukit.paniolo.config.PdfLayout;
+import io.github.nalukit.paniolo.config.PdfProfile;
 import io.github.nalukit.paniolo.model.common.AdditionalSupportingDocument;
 import io.github.nalukit.paniolo.model.common.Address;
 import io.github.nalukit.paniolo.model.common.ItemAttribute;
@@ -31,6 +32,12 @@ import org.apache.fontbox.ttf.OS2WindowsMetricsTable;
 import org.apache.fontbox.ttf.TTFParser;
 import org.apache.fontbox.ttf.TrueTypeFont;
 import org.apache.pdfbox.io.RandomAccessReadBuffer;
+import org.apache.pdfbox.pdfwriter.compress.CompressParameters;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import javax.imageio.ImageIO;
+import org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -72,6 +79,11 @@ abstract class DocumentRenderer {
   static final int MUTED     = 0x5B6573;
   static final int LIGHT     = 0xD5DAE1;
   static final int WATERMARK = 0x8A94A3;
+  /**
+   * {@link #WATERMARK} at 35 % opacity on white: PDF/A-1 forbids transparency, so the watermark is
+   * drawn in this color below the content instead.
+   */
+  static final int WATERMARK_OPAQUE = 0xD6DADF;
 
   final PdfLayout layout;
   final Texts     t;
@@ -251,6 +263,7 @@ abstract class DocumentRenderer {
       watermarks(document);
       Party recipient = recipient();
       PdfA.finish(document,
+                  layout.profile(),
                   documentTitle(),
                   sender() == null ?
                   null :
@@ -261,7 +274,13 @@ abstract class DocumentRenderer {
                    " – " + recipient.name()),
                   layout.locale());
       var out = new ByteArrayOutputStream(64 * 1024);
-      document.save(out);
+      if (layout.profile() == PdfProfile.PDF_A_1B) {
+        // PDF/A-1 knows neither object streams nor cross-reference streams.
+        document.save(out,
+                      CompressParameters.NO_COMPRESSION);
+      } else {
+        document.save(out);
+      }
       return out.toByteArray();
     } catch (IOException e) {
       throw new UncheckedIOException("Cannot render the document as PDF",
@@ -344,6 +363,10 @@ abstract class DocumentRenderer {
         image = PDImageXObject.createFromByteArray(document,
                                                    layout.logo(),
                                                    "logo");
+        if (layout.profile() == PdfProfile.PDF_A_1B && image.getSoftMask() != null) {
+          image = opaque(document,
+                         layout.logo());
+        }
       } catch (IOException | RuntimeException e) {
         throw new IllegalArgumentException("The logo of the layout is no readable PNG or JPEG image",
                                            e);
@@ -1035,6 +1058,37 @@ abstract class DocumentRenderer {
   }
 
   /**
+   * The logo on a white background: PDF/A-1 forbids the soft mask that carries PNG transparency.
+   */
+  private static PDImageXObject opaque(PDDocument document,
+                                       byte[] logo)
+      throws IOException {
+    BufferedImage source = ImageIO.read(new ByteArrayInputStream(logo));
+    if (source == null) {
+      throw new IOException("Unknown image format");
+    }
+    var flat = new BufferedImage(source.getWidth(),
+                                 source.getHeight(),
+                                 BufferedImage.TYPE_INT_RGB);
+    Graphics2D g = flat.createGraphics();
+    try {
+      g.setColor(Color.WHITE);
+      g.fillRect(0,
+                 0,
+                 flat.getWidth(),
+                 flat.getHeight());
+      g.drawImage(source,
+                  0,
+                  0,
+                  null);
+    } finally {
+      g.dispose();
+    }
+    return LosslessFactory.createFromImage(document,
+                                           flat);
+  }
+
+  /**
    * The watermark of the layout across every page, along the diagonal from bottom left to top right,
    * as large as fits about two thirds of the diagonal, at most 110 pt; semi-transparent, so the
    * content below stays readable.
@@ -1045,6 +1099,8 @@ abstract class DocumentRenderer {
     if (text == null) {
       return;
     }
+    // PDF/A-1 forbids transparency: opaque light text below the content instead.
+    boolean pdfA1 = layout.profile() == PdfProfile.PDF_A_1B;
     float diagonal = (float) Math.hypot(PAGE.getWidth(),
                                         PAGE.getHeight());
     // Filled only: a simulated bold outline would overlap the fill and darken the edges.
@@ -1056,6 +1112,8 @@ abstract class DocumentRenderer {
                           Math.min(110f,
                                    diagonal * 0.65f / Math.max(width,
                                                                0.01f)),
+                          pdfA1 ?
+                          WATERMARK_OPAQUE :
                           WATERMARK);
     var transparent = new PDExtendedGraphicsState();
     transparent.setNonStrokingAlphaConstant(0.35f);
@@ -1063,11 +1121,15 @@ abstract class DocumentRenderer {
     for (PDPage page : canvas.pages()) {
       try (var stream = new PDPageContentStream(document,
                                                 page,
+                                                pdfA1 ?
+                                                PDPageContentStream.AppendMode.PREPEND :
                                                 PDPageContentStream.AppendMode.APPEND,
                                                 true,
                                                 true)) {
         stream.saveGraphicsState();
-        stream.setGraphicsStateParameters(transparent);
+        if (!pdfA1) {
+          stream.setGraphicsStateParameters(transparent);
+        }
         stream.transform(Matrix.getRotateInstance(Math.atan2(PAGE.getHeight(),
                                                              PAGE.getWidth()),
                                                   PAGE.getWidth() / 2,

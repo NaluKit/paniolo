@@ -27,18 +27,19 @@ import java.time.Instant;
 import java.util.Objects;
 
 /**
- * Service provider that renders the visual PDF/A document of an invoice, order, or despatch
- * advice, implemented by {@code paniolo-facturx} and found with
+ * Service provider that renders the visual document of an invoice, order, or despatch
+ * advice, PDF/A-3b (PDF 1.7) unless the {@code profile} of the layout says otherwise, implemented by {@code paniolo-facturx} and found with
  * {@link java.util.ServiceLoader}. Implementations must be thread-safe.
  */
 public interface PdfLayoutSupport {
 
   /**
-   * Renders an invoice as PDF/A-3b document without embedded XML.
+   * Renders an invoice as PDF document without embedded XML: PDF/A-3b (PDF 1.7) or the
+   * {@link PdfLayout#profile() profile} of the layout.
    *
    * @param invoice the invoice
    * @param layout  language, logo, fonts, and colors
-   * @return the PDF/A-3b document
+   * @return the PDF document
    * @throws IllegalArgumentException if the logo or a font cannot be read or embedded
    */
   byte[] render(Invoice invoice,
@@ -50,7 +51,7 @@ public interface PdfLayoutSupport {
    *
    * @param order  the order
    * @param layout language, logo, fonts, and colors
-   * @return the PDF/A-3b document
+   * @return the PDF document
    * @throws IllegalArgumentException if the logo or a font cannot be read or embedded
    */
   default byte[] render(Order order,
@@ -63,7 +64,7 @@ public interface PdfLayoutSupport {
    *
    * @param advice the despatch advice
    * @param layout language, logo, fonts, and colors
-   * @return the PDF/A-3b document
+   * @return the PDF document
    * @throws IllegalArgumentException if the logo or a font cannot be read or embedded
    */
   default byte[] render(DespatchAdvice advice,
@@ -77,7 +78,7 @@ public interface PdfLayoutSupport {
    *
    * @param report the validation result with the information about the validated document
    * @param layout language, fonts, colors, and footer; logo and sender address are not used
-   * @return the PDF/A-3b document
+   * @return the PDF document
    * @throws UnsupportedOperationException if the implementation does not render reports
    */
   default byte[] render(Report report,

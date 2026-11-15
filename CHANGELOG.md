@@ -6,7 +6,24 @@ reference in `docs/api/<version>.md`.
 
 ## [Unreleased]
 
+### Added
+
+- `PdfLayout.withProfile(PdfProfile)` selects the kind of PDF that `toPdf` renders:
+  - `PDF_A_3B` (the default, as before): PDF/A-3b, based on PDF 1.7. PDF/A-3 does not allow PDF 2.0.
+  - `PDF_A_1B`: PDF/A-1b, PDF 1.4, as visual part for `toFacturX(invoice, pdfA, profile)`, which makes
+    PDF/A-3 of it. PDF/A-1 has no transparency: the watermark is drawn as opaque light text below the
+    content, and PNG logos with transparency are placed on white.
+  - `PREVIEW`: plain PDF 1.7 without PDF/A, e.g. with a watermark.
+  - `PREVIEW_2_0`: the same as PDF 2.0 (header and catalog version).
+
+  The methods that embed XML reject the preview profiles. The CLI selects the profile with
+  `--pdf-profile` (`--profile` is the Factur-X profile of `to-facturx`). README and API
+  documentation describe the profiles.
+
 ### Changed
+
+- The record `PdfLayout` has the new component `profile`; the canonical constructor takes it as
+  last argument. `of`, `defaults`, and the `with` methods are unchanged.
 
 - The rendered PDFs use IBM Plex Sans Regular and Bold (SIL Open Font License 1.1), packaged with
   `paniolo-facturx`, instead of Liberation Sans of PDFBox. Bold text uses the real bold face instead

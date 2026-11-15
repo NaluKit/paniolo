@@ -16,7 +16,7 @@ without it keep a PDF-free class path.
 | ZUGFeRD 1.0 PDFs                                                  | `read(pdf)`, `migrateZugferd1`                                                  |
 | Order-X PDFs (`order-x.xml`)                                      | `toOrderXPdf`, `readOrder(pdf)`, `validateOrder(pdf)`                           |
 | PDF delivery notes (`cida.xml`)                                   | `toDespatchAdvicePdf`, `readDespatchAdvice(pdf)`, `validateDespatchAdvice(pdf)` |
-| Rendered PDF/A-3b pages ([PDF layout](docs/pdf-layout.md))        | `toPdf`, `toReportPdf`, `toFacturX(invoice, profile)`, `toOrderXPdf(order)`     |
+| Rendered pages: PDF/A-3b, PDF/A-1b, preview ([PDF layout](docs/pdf-layout.md)) | `toPdf`, `toReportPdf`, `toFacturX(invoice, profile)`, `toOrderXPdf(order)`     |
 
 The visual part comes from you as a PDF/A-1, -2, or -3 document; Paniolo adds the XML, the
 association, and the XMP metadata. Without a PDF of your own, this module renders the pages from

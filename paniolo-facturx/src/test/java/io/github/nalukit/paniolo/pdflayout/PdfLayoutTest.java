@@ -853,7 +853,8 @@ class PdfLayoutTest {
                                        new byte[] { 1 },
                                        0,
                                        null,
-                                       null));
+                                       null,
+                                       io.github.nalukit.paniolo.config.PdfProfile.PDF_A_3B));
     }
 
     @Test
