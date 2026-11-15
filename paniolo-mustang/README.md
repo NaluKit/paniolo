@@ -12,12 +12,12 @@ invoice. The Paniolo core does not depend on Mustang; only this module does.
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo-mustang</artifactId>
-  <version>1.0.0-rc01</version>
+  <version>1.0.0-rc02</version>
 </dependency>
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo</artifactId>            <!-- to write and validate the mapped invoice -->
-  <version>1.0.0-rc01</version>
+  <version>1.0.0-rc02</version>
 </dependency>
 ```
 

@@ -10,7 +10,7 @@ It requires Java 21.
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo-json</artifactId>
-  <version>1.0.0-rc01</version>
+  <version>1.0.0-rc02</version>
 </dependency>
 ```
 
@@ -83,10 +83,8 @@ complete XRechnung example (business-rule validation is separate):
 
 ## Jackson version
 
-The current source uses Jackson 3 (`tools.jackson`); the published 1.0.0-rc01 uses Jackson 2.
-To use the Jackson 3 API described here, build the current source and depend on `HEAD-SNAPSHOT` as described
-in [installation](../README.md#installation). The JSON format
-is unchanged: JSON stored with 1.0.0-rc01 loads as before. Migrating from 1.0.0-rc01:
+Since 1.0.0-rc02, `paniolo-json` uses Jackson 3 (`tools.jackson`); 1.0.0-rc01 used Jackson 2.
+The JSON format is unchanged: JSON stored with 1.0.0-rc01 loads as before. Migrating from 1.0.0-rc01:
 
 - `PanioloJson.configure` takes and returns `tools.jackson.databind.json.JsonMapper.Builder`, and
   `PanioloJsonModule` is a Jackson 3 module; replace the `com.fasterxml.jackson.databind` and

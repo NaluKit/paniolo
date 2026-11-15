@@ -27,7 +27,7 @@ the repository root with `mvn install`, use `HEAD-SNAPSHOT` instead; see
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo</artifactId>
-  <version>1.0.0-rc01</version>
+  <version>1.0.0-rc02</version>
 </dependency>
 ```
 
