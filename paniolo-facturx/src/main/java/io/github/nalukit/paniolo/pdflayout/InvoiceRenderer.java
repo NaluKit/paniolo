@@ -65,9 +65,9 @@ import java.util.Set;
  * further references, delivery terms and parties, line details, logistics service charges, and
  * financial adjustments; third party payments of the XRechnung extension appear in the totals.
  */
-final class InvoiceRenderer
+class InvoiceRenderer
     extends DocumentRenderer {
-  private final Invoice invoice;
+  final Invoice invoice;
 
   InvoiceRenderer(Invoice invoice,
                   PdfLayout layout) {
@@ -113,7 +113,8 @@ final class InvoiceRenderer
     var rows     = new ArrayList<String[]>();
     var extended = invoice.extended();
     fact(rows,
-         "number",
+         t.typedKey("number",
+                    invoice.typeCode()),
          invoice.number());
     if (extended != null) {
       // EXTENDED: a test or copy must not be mistaken for the original invoice.
@@ -131,7 +132,8 @@ final class InvoiceRenderer
            extended.documentName());
     }
     fact(rows,
-         "issueDate",
+         t.typedKey("issueDate",
+                    invoice.typeCode()),
          t.date(invoice.issueDate()));
     fact(rows,
          "dueDate",
@@ -210,6 +212,13 @@ final class InvoiceRenderer
   }
 
   private void lines() {
+    lineTable(invoice.lines());
+  }
+
+  /**
+   * The table of the given lines with their sub-lines.
+   */
+  void lineTable(List<InvoiceLine> tableLines) {
     float fixed = 26 + 42 + 50 + 62 + 32 + 66;
     var columns = List.of(new Column(26,
                                      Align.LEFT),
@@ -229,7 +238,7 @@ final class InvoiceRenderer
     // EXTENDED states sub-lines flat with the identifier of their parent; indent them like nested
     // sub-lines of the XRechnung extension.
     var parents = new HashMap<String, String>();
-    for (InvoiceLine line : invoice.lines()) {
+    for (InvoiceLine line : tableLines) {
       if (line.extended() != null && line.extended()
                                          .parentLineId() != null) {
         parents.put(line.id(),
@@ -237,7 +246,7 @@ final class InvoiceRenderer
                         .parentLineId());
       }
     }
-    for (InvoiceLine line : invoice.lines()) {
+    for (InvoiceLine line : tableLines) {
       int    depth  = 0;
       String parent = parents.get(line.id());
       while (parent != null && depth < 10) {
@@ -378,7 +387,14 @@ final class InvoiceRenderer
 
   // -- totals -------------------------------------------------------------------------------------
 
-  private void totals() {
+  /**
+   * Whether the totals end with the amount due. A quotation ends with the total amount with VAT.
+   */
+  boolean showsAmountDue() {
+    return true;
+  }
+
+  void totals() {
     InvoiceTotals totals = invoice.totals();
     var           rows   = new ArrayList<TotalRow>();
     if (!invoice.lines()
@@ -429,8 +445,11 @@ final class InvoiceRenderer
       rows.add(plain(text,
                      money(vat.taxAmount())));
     }
-    rows.add(strong(t.label("totals.gross"),
-                    money(totals.taxInclusiveAmount())));
+    rows.add(showsAmountDue() ?
+             strong(t.label("totals.gross"),
+                    money(totals.taxInclusiveAmount())) :
+             grand(t.label("totals.gross"),
+                   money(totals.taxInclusiveAmount())));
     if (nonZero(totals.paidAmount())) {
       rows.add(plain(t.label("totals.paid"),
                      money(totals.paidAmount()
@@ -458,8 +477,10 @@ final class InvoiceRenderer
                                payment.description())),
                      money(payment.amount())));
     }
-    rows.add(grand(t.label("totals.payable"),
-                   money(totals.payableAmount())));
+    if (showsAmountDue()) {
+      rows.add(grand(t.label("totals.payable"),
+                     money(totals.payableAmount())));
+    }
     if (invoice.taxCurrencyCode() != null && invoice.taxAmountInTaxCurrency() != null) {
       rows.add(new TotalRow(t.label("totals.vatInTaxCurrency",
                                     invoice.taxCurrencyCode()
@@ -497,7 +518,7 @@ final class InvoiceRenderer
 
   // -- VAT notes, payment, references -------------------------------------------------------------
 
-  private void vatNotes() {
+  void vatNotes() {
     Set<String> notes = new LinkedHashSet<>();
     for (VatBreakdown vat : invoice.totals()
                                    .vatBreakdowns()) {

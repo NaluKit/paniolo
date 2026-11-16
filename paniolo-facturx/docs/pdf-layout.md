@@ -1,7 +1,7 @@
 # Paniolo PDF layout
 
 [`paniolo-facturx`](../README.md) renders the visual document of invoices, Order-X orders,
-and despatch advices from the Paniolo model, by default as PDF/A-3b and, with a
+quotations, and despatch advices from the Paniolo model, by default as PDF/A-3b and, with a
 [profile](#pdf-profiles), as PDF/A-1b or as plain PDF 1.7 or 2.0 preview (package `io.github.nalukit.paniolo.pdflayout`). With
 it, a Factur-X / ZUGFeRD invoice, an Order-X PDF, or a CIDA delivery note needs no PDF of its own:
 Paniolo renders the pages, writes the XML, and embeds it. It is based on Apache PDFBox and sets
@@ -163,6 +163,14 @@ allowances and charges; a response shows the ordered and the confirmed quantity 
 status, with rejected lines in red. Then the totals, the parties (deliver to, ship from, invoicee,
 requisitioner), and the order details: previous documents, blanket order, requisition, catalogue,
 project, validity, delivery terms, payment means and terms, purpose.
+
+**Quotations** (`Quotation`, rendered with `paniolo.toPdf(quotation, layout)`): the seller's
+letterhead and the buyer in the window; quotation number and date, validity ("valid until"), buyer
+reference, customer number, VAT ID. After the subject and notes come the lines of the standard
+offer and the totals, which end with the total amount with VAT, as a quotation has no amount due.
+Optional lines follow in a table of their own and are not part of the totals. The terms show
+delivery, delivery terms, and payment terms. A quotation has no payment instruction and no XML,
+so there is no embedded XML; the PDF is PDF/A-3b without attachment.
 
 **Despatch advices** (UBL and CIDA) as delivery notes: the despatching party's
 letterhead and the delivery customer in the window; despatch and delivery dates, estimated

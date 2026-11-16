@@ -31,6 +31,7 @@ import io.github.nalukit.paniolo.model.base.PanioloBase;
 import io.github.nalukit.paniolo.model.common.ProcessControl;
 import io.github.nalukit.paniolo.model.despatch.DespatchAdvice;
 import io.github.nalukit.paniolo.model.order.Order;
+import io.github.nalukit.paniolo.model.quotation.Quotation;
 import io.github.nalukit.paniolo.model.order.OrderXProfile;
 import io.github.nalukit.paniolo.model.util.PanioloStopWatch;
 import io.github.nalukit.paniolo.rules.facturx.FacturXRules;
@@ -153,7 +154,8 @@ import java.util.function.Supplier;
  *           {@link #attachments(byte[])}, {@link #producer(byte[])}</td></tr>
  *   <tr><td>Visual PDF/A (rendered)</td>
  *       <td>{@link #toPdf(Invoice)}, {@link #toPdf(Invoice, PdfLayout)}, {@link #toPdf(Order)},
- *           {@link #toPdf(Order, PdfLayout)}, {@link #toPdf(DespatchAdvice)},
+ *           {@link #toPdf(Order, PdfLayout)}, {@link #toPdf(Quotation)},
+ *           {@link #toPdf(Quotation, PdfLayout)}, {@link #toPdf(DespatchAdvice)},
  *           {@link #toPdf(DespatchAdvice, PdfLayout)}, {@link #toOrderXPdf(Order)},
  *           {@link #toOrderXPdf(Order, PdfLayout, List)}, {@link #toDespatchAdvicePdf(DespatchAdvice)},
  *           {@link #toDespatchAdvicePdf(DespatchAdvice, PdfLayout, List)}</td></tr>
@@ -2673,6 +2675,47 @@ public final class Paniolo
                            "layout");
     PanioloStopWatch watch = super.logStart("Paniolo.toPdf");
     byte[] result = pdfLayout().render(order,
+                                       layout);
+    super.logStop(watch);
+    return result;
+  }
+
+  /**
+   * Renders a quotation as visual PDF/A-3b document (PDF 1.7) with the default layout (German
+   * labels), without embedded XML. Requires {@code paniolo-facturx}.
+   *
+   * @param quotation the quotation; must not be {@code null}
+   * @return the PDF/A-3b document
+   * @throws IllegalStateException if {@code paniolo-facturx} is missing
+   * @see #toPdf(Quotation, PdfLayout)
+   */
+  public byte[] toPdf(Quotation quotation) {
+    return toPdf(quotation,
+                 PdfLayout.defaults());
+  }
+
+  /**
+   * Renders a quotation as visual document, PDF/A-3b (PDF 1.7) by default or as the
+   * {@link PdfLayout#withProfile(PdfProfile) profile} of the layout says: the letterhead of the
+   * seller, the validity, the lines of the standard offer with totals, the optional lines apart
+   * from the totals, and delivery and payment terms. It shows no payment instruction and no amount
+   * due. A quotation has no XML syntax, so the PDF carries no embedded XML. Requires
+   * {@code paniolo-facturx}.
+   *
+   * @param quotation the quotation; must not be {@code null}
+   * @param layout    language, logo, fonts, colors, and PDF profile; must not be {@code null}
+   * @return the PDF document: PDF/A-3b by default, otherwise as the profile of the layout says
+   * @throws IllegalArgumentException if the logo or a font of the layout cannot be read or embedded
+   * @throws IllegalStateException    if {@code paniolo-facturx} is missing
+   */
+  public byte[] toPdf(Quotation quotation,
+                      PdfLayout layout) {
+    Objects.requireNonNull(quotation,
+                           "quotation");
+    Objects.requireNonNull(layout,
+                           "layout");
+    PanioloStopWatch watch = super.logStart("Paniolo.toPdf");
+    byte[] result = pdfLayout().render(quotation,
                                        layout);
     super.logStop(watch);
     return result;

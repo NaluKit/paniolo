@@ -8,6 +8,31 @@ reference in `docs/api/<version>.md`.
 
 ### Added
 
+- `Quotation` (German "Angebot") in the new package `model.quotation` of `paniolo-shared-model`:
+  the offer of a seller to a buyer with validity date, subject, delivery and payment terms text,
+  allowances and charges, and `QuotationLine`s that are standard or optional. A quotation is no
+  e-invoice document and has no XML syntax. `totals()` calculates as for the invoice; optional
+  lines count only if accepted. `toInvoice(number, issueDate)` creates the invoice of the standard
+  offer, `toInvoice(number, issueDate, acceptedOptionalLineIds)` adds the accepted optional lines,
+  and `toInvoiceBuilder(...)` returns the invoice builder to complete payment instruction, due
+  date, or the EXTENDED `reference()` of the quotation before building.
+
+- `Paniolo.toPdf(Quotation)` and `toPdf(Quotation, PdfLayout)` render a quotation as visual PDF/A-3b
+  document without embedded XML (`paniolo-facturx`, German, English, and French): heading
+  "Angebot", quotation number and date, validity, the lines of the standard offer with totals that
+  end with the total amount with VAT, the optional lines apart from the totals, and delivery and
+  payment terms. It shows no payment instruction and no amount due. The SPI `PdfLayoutSupport`
+  has the new default method `render(Quotation, PdfLayout)`.
+
+- `PanioloJson` stores and loads a `Quotation` like the other documents: `json.toJson(quotation)`
+  and `json.read(text, Quotation.class)`. The JSON has the record components of `Quotation` and
+  `QuotationLine` (with the flag `optional`); loading applies the checks of the model.
+
+- The CLI has the command group `paniolo quotation`: `to-pdf FILE` renders a quotation as PDF
+  (with the layout options of `to-pdf`), and `to-invoice FILE --number NO [--date DATE]
+  [--accept ID]...` writes the invoice of the standard offer plus the accepted optional lines as
+  JSON, which `to-xml`, `to-facturx`, and `to-pdf` take on.
+
 - The insurance tax `AAM` of the Factur-X profile EXTENDED is kept next to VAT. The new record
   `OtherTax` holds tax type, category, rate, basis amount and tax amount apart from the VAT
   category, rate and breakdown. `ExtendedInformation.otherTaxes()` holds the document level taxes,
@@ -69,6 +94,12 @@ reference in `docs/api/<version>.md`.
   fails with an `IllegalArgumentException`. `withAccentColor(int)` is unchanged.
 
 ### Changed
+
+- The first page of a credit note (type codes 381 and 261) names its facts "Gutschriftsnummer" and
+  "Gutschriftsdatum" (English "Credit note no.", French "N° d'avoir") instead of the invoice
+  wording. A debit note (383) does the same with "Belastungsnummer" and
+  "Belastungsdatum" (English "Debit note no.", French "N° de note de débit"). Other
+  document types keep their labels.
 
 - The records `ExtendedInformation` and `LineExtension` have the new last component `otherTaxes`;
   the builders and JSON without it are unchanged.

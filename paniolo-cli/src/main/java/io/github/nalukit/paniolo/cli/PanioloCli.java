@@ -90,6 +90,7 @@ import java.util.logging.Logger;
                     "Use - as file name for standard input and output." },
          subcommands = { InventoryCommand.class,
                          OrderCommand.class,
+                         QuotationCommand.class,
                          DespatchAdviceCommand.class })
 public final class PanioloCli {
   static final int EXIT_OK      = 0;

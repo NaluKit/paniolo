@@ -857,6 +857,46 @@ class PdfLayoutTest {
     }
 
     @Test
+    @DisplayName("labels number and date of a credit note as credit note number and date")
+    void labelsCreditNoteNumberAndDate()
+        throws IOException {
+      byte[] pdf = render("credit-note",
+                          TestInvoices.simple("G-2026-001")
+                                      .typeCode(io.github.nalukit.paniolo.model.common.value.InvoiceTypeCode.CODE_381)
+                                      .build(),
+                          PdfLayout.defaults());
+      String text = text(pdf);
+      assertTrue(text.contains("Gutschriftsnummer G-2026-001"),
+                 text);
+      assertTrue(text.contains("Gutschriftsdatum"),
+                 text);
+      assertFalse(text.contains("Rechnungsnummer"),
+                  text);
+      assertFalse(text.contains("Rechnungsdatum"),
+                  text);
+    }
+
+    @Test
+    @DisplayName("labels number and date of a debit note as debit note number and date")
+    void labelsDebitNoteNumberAndDate()
+        throws IOException {
+      byte[] pdf = render("debit-note",
+                          TestInvoices.simple("B-2026-001")
+                                      .typeCode(io.github.nalukit.paniolo.model.common.value.InvoiceTypeCode.CODE_383)
+                                      .build(),
+                          PdfLayout.defaults());
+      String text = text(pdf);
+      assertTrue(text.contains("Belastungsnummer B-2026-001"),
+                 text);
+      assertTrue(text.contains("Belastungsdatum"),
+                 text);
+      assertFalse(text.contains("Rechnungsnummer"),
+                  text);
+      assertFalse(text.contains("Rechnungsdatum"),
+                  text);
+    }
+
+    @Test
     @DisplayName("rejects a layout with watermark")
     void rejectsWatermark() {
       Invoice invoice = TestInvoices.simple("R-2026-007")

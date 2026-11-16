@@ -1,7 +1,7 @@
 # Paniolo CLI
 
 `paniolo-cli` exposes the document operations of the [`Paniolo`](../paniolo/README.md) facade on the command
-line for validating, reading, writing, and converting invoices, orders, and despatch advices
+line for validating, reading, writing, and converting invoices, orders, quotations, and despatch advices
 in shell scripts, CI pipelines, or cron jobs without writing Java. It includes the optional PDF, JSON, and visualization modules
 ([`paniolo-facturx`](../paniolo-facturx/README.md), [`paniolo-pdfa`](../paniolo-pdfa/README.md),
 [`paniolo-json`](../paniolo-json/README.md),
@@ -70,13 +70,15 @@ GitHub token with the `read:packages` scope in a `<server>` entry with the id of
 | `order to-xml FILE`                                                                                                                                             | `toOrderXBytes(order)`                                                                     |
 | `order to-pdf FILE --pdf PDF [--attach FILE]...`                                                                                                                | `toOrderXPdf(order, pdfA, attachments)`                                                    |
 | `order to-pdf FILE [layout options] [--attach FILE]...`                                                                                                         | `toOrderXPdf(order, layout, attachments)`: renders the pages                               |
+| `quotation to-pdf FILE [layout options]`                                                                                                                        | `toPdf(quotation, layout)`: renders the quotation                                          |
+| `quotation to-invoice FILE --number NO [--date DATE] [--accept ID]...`                                                                                          | `quotation.toInvoice(number, date, accepted)`, written as JSON                             |
 | `despatch-advice read FILE [--ignore-unsupported]`                                                                                                              | `readDespatchAdvice(bytes, ignoreUnsupported)`, written as JSON                            |
 | `despatch-advice validate FILE\|DIR... [options of validate]`                                                                                                   | `validateDespatchAdvice(bytes)`                                                            |
 | `despatch-advice to-xml FILE [--syntax UBL\|CIDA]`                                                                                                              | `toDespatchAdviceBytes(advice)`, `toCiiDespatchAdviceBytes(advice)`                        |
 | `despatch-advice to-pdf FILE --pdf PDF [--attach FILE]...`                                                                                                      | `toDespatchAdvicePdf(advice, pdfA, attachments)`                                           |
 | `despatch-advice to-pdf FILE [layout options] [--attach FILE]...`                                                                                               | `toDespatchAdvicePdf(advice, layout, attachments)`: renders the delivery note              |
 
-`paniolo --help` lists the commands. `paniolo inventory --help`, `paniolo order --help`, and
+`paniolo --help` lists the commands. `paniolo inventory --help`, `paniolo order --help`, `paniolo quotation --help`, and
 `paniolo despatch-advice --help` show help for those command groups. Commands such as `validate`
 print their usage and options when invoked without required arguments (exit code `2`); they do
 not currently have a standalone `--help` option. Enum values such as profiles and syntaxes are

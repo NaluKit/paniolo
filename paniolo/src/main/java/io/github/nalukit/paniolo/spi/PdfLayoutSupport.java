@@ -21,6 +21,7 @@ import io.github.nalukit.paniolo.config.PdfLayout;
 import io.github.nalukit.paniolo.model.Invoice;
 import io.github.nalukit.paniolo.model.despatch.DespatchAdvice;
 import io.github.nalukit.paniolo.model.order.Order;
+import io.github.nalukit.paniolo.model.quotation.Quotation;
 import io.github.nalukit.paniolo.validation.ValidationResult;
 
 import java.time.Instant;
@@ -57,6 +58,19 @@ public interface PdfLayoutSupport {
   default byte[] render(Order order,
                         PdfLayout layout) {
     throw new UnsupportedOperationException("This PDF layout implementation does not render orders");
+  }
+
+  /**
+   * Renders a quotation as PDF/A-3b document without embedded XML.
+   *
+   * @param quotation the quotation
+   * @param layout    language, logo, fonts, and colors
+   * @return the PDF document
+   * @throws IllegalArgumentException if the logo or a font cannot be read or embedded
+   */
+  default byte[] render(Quotation quotation,
+                        PdfLayout layout) {
+    throw new UnsupportedOperationException("This PDF layout implementation does not render quotations");
   }
 
   /**

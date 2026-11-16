@@ -1,6 +1,6 @@
 # Paniolo JSON
 
-`paniolo-json` stores invoices, orders, and despatch advices of the
+`paniolo-json` stores invoices, orders, quotations, and despatch advices of the
 [Paniolo model](../paniolo-shared-model/README.md) as JSON and loads them again, for example for
 drafts, message queues, or REST interfaces. It depends only on `paniolo-shared-model` and Jackson 3
 Databind (`tools.jackson.core:jackson-databind`, Apache License 2.0), which is why it is optional.
@@ -20,7 +20,7 @@ It requires Java 21.
 PanioloJson json = PanioloJson.create();                 // thread-safe, create once
 
 String text = json.toJson(invoice);                      // or toPrettyJson, toBytes
-Invoice loaded = json.read(text, Invoice.class);         // also Order, DespatchAdvice, ...
+Invoice loaded = json.read(text, Invoice.class);         // also Order, Quotation, DespatchAdvice, ...
 ```
 
 To use an own Jackson 3 mapper, for example in Spring Boot 4, apply the same settings to its
@@ -111,3 +111,4 @@ JSON, invalid documents, and an own mapper with an own module (`OwnMapperTest`).
 `JsonRoundTripTest` in `paniolo-facturx` stores and loads the test invoices of all Factur-X
 profiles (including EXTENDED with sub-lines, MINIMUM and BASIC WL, and read ZUGFeRD 1.0
 documents), all Order-X documents, and a despatch advice.
+`QuotationJsonTest` stores and loads a quotation with optional lines and checks the model rules on load.

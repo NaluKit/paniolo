@@ -106,6 +106,18 @@ final class Texts {
     }
   }
 
+  /**
+   * The label key for the given document type: the key with the type code appended, e.g.
+   * "number.381" for a credit note, if the bundle has one, otherwise the plain key.
+   */
+  String typedKey(String key,
+                  InvoiceTypeCode type) {
+    if (type != null && optional(key + "." + type.getCode()) != null) {
+      return key + "." + type.getCode();
+    }
+    return key;
+  }
+
   String title(InvoiceTypeCode type) {
     if (type == null) {
       return label("title.default");
