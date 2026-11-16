@@ -34,6 +34,7 @@ import io.github.nalukit.paniolo.model.common.value.DateTimeQualifier;
 import io.github.nalukit.paniolo.model.extended.AccountingAccount;
 import io.github.nalukit.paniolo.model.extended.DocumentReference;
 import io.github.nalukit.paniolo.model.extended.ExtendedInformation;
+import io.github.nalukit.paniolo.model.extended.OtherTax;
 import io.github.nalukit.paniolo.model.extended.PaymentTermsAdjustment;
 import io.github.nalukit.paniolo.xml.InvoiceXmlWriter;
 import io.github.nalukit.paniolo.xml.util.SpecificationGenerations;
@@ -368,6 +369,15 @@ public final class CiiInvoiceWriter
           firstBreakdown);
       firstBreakdown = false;
       xml.end();
+    }
+    // Taxes of another type (e.g. AAM) stay apart from the VAT breakdowns.
+    if (extended != null) {
+      for (var other : extended.otherTaxes()) {
+        xml.start("ram:ApplicableTradeTax");
+        otherTax(xml,
+                 other);
+        xml.end();
+      }
     }
     var period = invoice.invoicePeriod();
     if (period != null) {
@@ -1133,7 +1143,17 @@ public final class CiiInvoiceWriter
           dueDateTypeCode,
           false);
       xml.end();
-    } else if (dueDateTypeCode != null) {
+    }
+    if (extended != null) {
+      // Taxes of another type the line states; they describe the line and are not VAT.
+      for (var other : extended.otherTaxes()) {
+        xml.start("ram:ApplicableTradeTax");
+        otherTax(xml,
+                 other);
+        xml.end();
+      }
+    }
+    if (line.tax() == null && dueDateTypeCode != null) {
       // A subtotal or information line may state when its VAT becomes due without a VAT category.
       xml.start("ram:ApplicableTradeTax")
          .element("ram:DueDateTypeCode",
@@ -1285,6 +1305,23 @@ public final class CiiInvoiceWriter
         extendedBreakdown,
         null,
         invoice != null);
+  }
+
+  /**
+   * Writes a tax of another type than VAT, e.g. the insurance tax AAM.
+   */
+  private static void otherTax(XmlBuilder xml,
+                               OtherTax tax) {
+    xml.element("ram:CalculatedAmount",
+                tax.amount())
+       .element("ram:TypeCode",
+                tax.typeCode())
+       .element("ram:BasisAmount",
+                tax.basisAmount())
+       .element("ram:CategoryCode",
+                tax.categoryCode())
+       .element("ram:RateApplicablePercent",
+                tax.rate());
   }
 
   /**
@@ -1699,6 +1736,9 @@ public final class CiiInvoiceWriter
     if (invoice.precedingInvoiceReferences()
                .size() > 1 && !extendedProfile) {
       throw new IllegalArgumentException("CII D16B supports only one preceding invoice reference outside the Factur-X profiles EXTENDED and EXTENDED-CTC-FR");
+    }
+    if (invoice.hasOtherTaxes() && !extendedProfile) {
+      throw new IllegalArgumentException("Taxes of another type than VAT, e.g. the insurance tax AAM, can only be written in the Factur-X profile EXTENDED (ProcessControl.facturXExtended()); the profile of this invoice has no place for them, and writing it without them would change the amounts");
     }
     if (invoice.hasExtendedInformation() && !extendedProfile) {
       throw new IllegalArgumentException("EXTENDED information requires the specification identifier of the Factur-X profile EXTENDED (ProcessControl.facturXExtended()) or EXTENDED-CTC-FR (ProcessControl.facturXExtendedCtcFr(...))");

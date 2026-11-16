@@ -39,6 +39,11 @@ import io.github.nalukit.paniolo.model.common.value.InvoiceTypeCode;
 import io.github.nalukit.paniolo.model.common.value.PaymentMeansCode;
 import io.github.nalukit.paniolo.model.common.value.TextSubjectQualifier;
 import io.github.nalukit.paniolo.model.common.value.UnitCode;
+import io.github.nalukit.paniolo.model.extended.ExtendedInformation;
+import io.github.nalukit.paniolo.model.extended.LineExtension;
+import io.github.nalukit.paniolo.model.extended.OtherTax;
+import io.github.nalukit.paniolo.model.extended.PaymentTerm;
+import io.github.nalukit.paniolo.model.extended.PaymentTermsAdjustment;
 import io.github.nalukit.paniolo.model.order.OrderTypeCode;
 import org.junit.jupiter.api.Test;
 
@@ -135,6 +140,57 @@ class PanioloJsonTest {
                                       .tax(TaxCategory.standard(new BigDecimal("19")))
                                       .build())
                   .build();
+  }
+
+  @Test
+  void keepsTheInsuranceTaxApartFromVat() {
+    var tax = OtherTax.insuranceTax("S",
+                                    new BigDecimal("19"),
+                                    new BigDecimal("137.58"));
+    var extended = ExtendedInformation.create()
+                                      .addOtherTax(tax)
+                                      .build();
+    var read = JSON.read(JSON.toJson(extended),
+                         ExtendedInformation.class);
+    assertEquals(extended,
+                 read);
+    assertEquals(List.of(tax),
+                 read.otherTaxes());
+    assertEquals(new BigDecimal("26.14"),
+                 read.otherTaxes()
+                     .get(0)
+                     .amount());
+    var line = LineExtension.create()
+                            .addOtherTax(tax)
+                            .build();
+    assertEquals(line,
+                 JSON.read(JSON.toJson(line),
+                           LineExtension.class));
+    // JSON written before other taxes existed has no such member.
+    assertEquals(List.of(),
+                 JSON.read("{}",
+                           ExtendedInformation.class)
+                     .otherTaxes());
+  }
+
+  @Test
+  void keepsTheCalculatedDiscountAmount() {
+    var term = new PaymentTerm("Skonto",
+                               null,
+                               null,
+                               null,
+                               new PaymentTermsAdjustment(null,
+                                                          14,
+                                                          new BigDecimal("1190.00"),
+                                                          new BigDecimal("3"),
+                                                          null).withComputedAmount());
+    var read = JSON.read(JSON.toJson(term),
+                         PaymentTerm.class);
+    assertEquals(term,
+                 read);
+    assertEquals(new BigDecimal("35.70"),
+                 read.discount()
+                     .amount());
   }
 
   @Test

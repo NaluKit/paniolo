@@ -82,9 +82,9 @@ public record ReadWarning(String code, String lineId, String message) {
    */
   public static final String SPECIFICATION_VERSION = "READ-SPECIFICATION-VERSION";
   /**
-   * The document states a tax of another type than VAT, e.g. the insurance tax {@code AAM} that
-   * Factur-X EXTENDED allows (tax type code other than {@code VAT}). The model keeps VAT only, so
-   * the tax was not read: the calculated totals lack its amount, and a normalized export would drop
+   * The document states a tax of a type the model does not keep (tax type code other than
+   * {@code VAT} and {@code AAM}); the insurance tax {@code AAM} of Factur-X EXTENDED is read, see
+   * {@code OtherTax}. The tax was not read: the calculated totals lack its amount, and a normalized export would drop
    * it and change the amount due. The message names the tax type, its location, and its amounts.
    */
   public static final String OTHER_TAX      = "READ-OTHER-TAX";

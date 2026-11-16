@@ -442,6 +442,23 @@ public record Invoice(String number, LocalDate issueDate, InvoiceTypeCode typeCo
   }
 
   /**
+   * Returns true if the invoice carries taxes of another type than VAT, e.g. the insurance tax AAM,
+   * on the document level or on a line.
+   *
+   * @return true if the invoice carries other taxes
+   */
+  public boolean hasOtherTaxes() {
+    if (extended != null && !extended.otherTaxes()
+                                     .isEmpty()) {
+      return true;
+    }
+    return lines.stream()
+                .anyMatch(line -> line.extended() != null && !line.extended()
+                                                                  .otherTaxes()
+                                                                  .isEmpty());
+  }
+
+  /**
    * Returns true if the invoice carries information of the Factur-X profile EXTENDED: header, line,
    * or party information, note content codes, or classification names. Only the CII writer with
    * the EXTENDED specification identifier writes it.

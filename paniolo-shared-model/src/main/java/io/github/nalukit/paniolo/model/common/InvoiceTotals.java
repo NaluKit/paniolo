@@ -41,7 +41,8 @@ import java.util.Map;
  * @param allowanceTotal     sum of document allowances (BT-107)
  * @param chargeTotal        sum of document charges (BT-108)
  * @param taxExclusiveAmount invoice total without VAT (BT-109)
- * @param taxAmount          invoice total VAT amount in the invoice currency (BT-110)
+ * @param taxAmount          invoice total tax amount in the invoice currency (BT-110): the VAT and the
+ *                           EXTENDED taxes of another type, e.g. the insurance tax AAM
  * @param taxInclusiveAmount invoice total with VAT (BT-112)
  * @param paidAmount         paid amount (BT-113)
  * @param roundingAmount     rounding adjustment (BT-114), or null
@@ -201,6 +202,14 @@ public record InvoiceTotals(BigDecimal lineTotal, BigDecimal allowanceTotal, Big
                                       ModelChecks.money(entry.getValue()),
                                       amount));
       tax = tax.add(amount);
+    }
+    // Taxes of another type than VAT (e.g. the insurance tax AAM) count on the document level only;
+    // the ones a line states describe the line and are never added again.
+    if (invoice.extended() != null) {
+      for (var other : invoice.extended()
+                              .otherTaxes()) {
+        tax = tax.add(other.amount());
+      }
     }
     BigDecimal net = ModelChecks.money(lines.subtract(allowances)
                                             .add(charges));

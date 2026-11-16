@@ -616,6 +616,9 @@ public final class UblInvoiceWriter
       throw new IllegalArgumentException("UBL has one buyer identifier (UBL-SR-16); the further buyer identifiers " + invoice.buyer()
                                                                                                                           .additionalIdentifiers() + " need CII");
     }
+    if (invoice.hasOtherTaxes()) {
+      throw new IllegalArgumentException("Taxes of another type than VAT, e.g. the insurance tax AAM, have no UBL mapping in the model; write CII with the Factur-X profile EXTENDED instead, as UBL would lose them and change the amounts");
+    }
     if (invoice.hasExtendedInformation()) {
       throw new IllegalArgumentException("EXTENDED information is part of the Factur-X profile EXTENDED and has no UBL mapping; write CII instead");
     }

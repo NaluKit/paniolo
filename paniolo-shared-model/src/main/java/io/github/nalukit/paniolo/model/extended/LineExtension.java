@@ -80,6 +80,8 @@ import java.util.List;
  *                                        e.g. {@code 5}, {@code 29}, {@code 72}) as the line states it,
  *                                        or null; a subtotal or information line may state it without
  *                                        a VAT category
+ * @param otherTaxes                      taxes of another type than VAT, e.g. the insurance tax AAM, that
+ *                                        describe the line; they do not count in the totals
  */
 public record LineExtension(String parentLineId, LineSubtype subtype, String statusCode, String productId, String industryItemId, String modelId, String modelName, String brandName, List<String> batchIds, List<ProductCharacteristic> characteristics,
                             List<ProductInstance> instances, Party manufacturer, List<IncludedProduct> includedProducts, String deliveryTermsCode, DocumentReference sellerOrderReference, DocumentReference quotationReference,
@@ -87,7 +89,7 @@ public record LineExtension(String parentLineId, LineSubtype subtype, String sta
                             Party ultimateShipTo, LocalDate actualDeliveryDate, DocumentReference despatchAdviceReference, DocumentReference receivingAdviceReference, DocumentReference deliveryNoteReference, DocumentReference precedingInvoiceReference,
                             String noteContentCode, String noteSubjectCode, List<TypedDocumentReference> additionalReferences, String accountingTypeCode, BigDecimal taxTotal, BigDecimal grossTotal,
                             List<GrossPriceAdjustment> priceAdjustments, List<AccountingAccount> additionalAccountingAccounts,
-                            List<ObjectIdentifier> furtherObjectIdentifiers, String taxDueDateTypeCode) {
+                            List<ObjectIdentifier> furtherObjectIdentifiers, String taxDueDateTypeCode, List<OtherTax> otherTaxes) {
   /**
    * Applies the checks of the model and copies the lists.
    *
@@ -139,6 +141,10 @@ public record LineExtension(String parentLineId, LineSubtype subtype, String sta
     additionalAccountingAccounts = additionalAccountingAccounts == null ?
                                    List.of() :
                                    List.copyOf(additionalAccountingAccounts);
+    // Missing in JSON written before other taxes were added.
+    otherTaxes = otherTaxes == null ?
+                 List.of() :
+                 List.copyOf(otherTaxes);
     furtherObjectIdentifiers = furtherObjectIdentifiers == null ?
                                List.of() :
                                List.copyOf(furtherObjectIdentifiers);
@@ -222,7 +228,8 @@ public record LineExtension(String parentLineId, LineSubtype subtype, String sta
                              List.of(),
                              additionalAccountingAccounts,
                              furtherObjectIdentifiers,
-                             taxDueDateTypeCode);
+                             taxDueDateTypeCode,
+                             otherTaxes);
   }
 
   /**
@@ -279,6 +286,7 @@ public record LineExtension(String parentLineId, LineSubtype subtype, String sta
     private BigDecimal                   grossTotal;
     private List<GrossPriceAdjustment>   priceAdjustments                = new ArrayList<>();
     private List<AccountingAccount>      additionalAccountingAccounts    = new ArrayList<>();
+    private List<OtherTax> otherTaxes = new ArrayList<>();
     private List<ObjectIdentifier>       furtherObjectIdentifiers        = new ArrayList<>();
     private String                       taxDueDateTypeCode;
 
@@ -699,6 +707,18 @@ public record LineExtension(String parentLineId, LineSubtype subtype, String sta
     }
 
     /**
+     * Adds a tax of another type than VAT, e.g. the insurance tax AAM, that describes the line;
+     * it does not count in the totals.
+     *
+     * @param value the tax to add
+     * @return this builder
+     */
+    public Builder addOtherTax(OtherTax value) {
+      this.otherTaxes.add(value);
+      return this;
+    }
+
+    /**
      * Adds a further invoiced object identifier (BT-128) after the one of the line.
      *
      * @param value the object identifier to add
@@ -753,7 +773,8 @@ public record LineExtension(String parentLineId, LineSubtype subtype, String sta
                                priceAdjustments,
                                additionalAccountingAccounts,
                                furtherObjectIdentifiers,
-                               taxDueDateTypeCode);
+                               taxDueDateTypeCode,
+                               otherTaxes);
     }
 
     /**

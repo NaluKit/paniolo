@@ -185,8 +185,8 @@ public final class ReadContext {
   }
 
   /**
-   * Handles a tax of another type than VAT, e.g. the insurance tax {@code AAM} of Factur-X
-   * EXTENDED: strict reading rejects the document, lenient reading reports the tax without reading
+   * Handles a tax of a type the model does not keep, i.e. other than VAT and the insurance tax
+   * {@code AAM} of Factur-X EXTENDED: strict reading rejects the document, lenient reading reports the tax without reading
    * it. The tax is never read as VAT, and no total is adjusted for it.
    *
    * @param typeCode the stated tax type code, e.g. {@code AAM}
@@ -206,7 +206,7 @@ public final class ReadContext {
                        BigDecimal basis,
                        BigDecimal amount) {
     String message = "Tax type " + typeCode + " at " + location + " (category " + category + ", rate " + plain(rate) + ", basis " + plain(basis) + ", amount " + plain(amount) +
-                     ") is not supported; the model keeps VAT only";
+                     ") is not supported; the model keeps VAT and the insurance tax AAM only";
     if (mode == ReadMode.STRICT) {
       throw new IllegalArgumentException(message);
     }

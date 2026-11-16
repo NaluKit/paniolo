@@ -1350,7 +1350,7 @@ public final class Paniolo
    *       must be the syntax of the received XML; the original is never converted.</li>
    *   <li>{@link ExportVariant#NORMALIZED} &ndash; the invoice model written in the given syntax. If
    *       {@link ImportResult#isNormalized()} is true, the amounts differ from the received ones. It
-   *       is refused if the document states taxes of another type than VAT, e.g. AAM
+   *       is refused if the document states taxes of a type the model does not keep (not VAT and not AAM)
    *       ({@link io.github.nalukit.paniolo.xml.ReadWarning#OTHER_TAX}).</li>
    *   <li>{@link ExportVariant#NORMALIZED_DROPPING_OTHER_TAXES} &ndash; like
    *       {@link ExportVariant#NORMALIZED}, but explicitly without those taxes; the amount due is

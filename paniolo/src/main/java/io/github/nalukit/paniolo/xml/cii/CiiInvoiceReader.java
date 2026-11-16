@@ -64,6 +64,7 @@ import io.github.nalukit.paniolo.model.extended.LineExtension;
 import io.github.nalukit.paniolo.model.extended.LineSubtype;
 import io.github.nalukit.paniolo.model.extended.LogisticsServiceCharge;
 import io.github.nalukit.paniolo.model.extended.ObjectIdentifier;
+import io.github.nalukit.paniolo.model.extended.OtherTax;
 import io.github.nalukit.paniolo.model.extended.PartyExtension;
 import io.github.nalukit.paniolo.model.extended.PaymentTerm;
 import io.github.nalukit.paniolo.model.extended.PaymentTermsAdjustment;
@@ -390,8 +391,8 @@ public final class CiiInvoiceReader
   }
 
   /**
-   * Returns the VAT blocks of a list of tax blocks and reports every block of another tax type,
-   * e.g. the insurance tax {@code AAM} of Factur-X EXTENDED, without reading it. A block without
+   * Returns the VAT blocks of a list of tax blocks and reports every block of another tax type
+   * without reading it. A block without
    * tax type code counts as VAT, as older documents leave it out.
    *
    * @param taxes    the tax blocks in document order
@@ -404,21 +405,57 @@ public final class CiiInvoiceReader
                                    String lineId,
                                    String location,
                                    ReadContext context) {
+    return vatTaxes(taxes,
+                    lineId,
+                    location,
+                    context,
+                    null);
+  }
+
+  /**
+   * Like {@link #vatTaxes(List, String, String, ReadContext)}, but a tax of a type the model keeps
+   * next to VAT (see {@link OtherTax#SUPPORTED}) with a category and an amount is added to
+   * {@code otherTaxes} instead of being reported. It is never read as VAT.
+   *
+   * @param taxes      the tax blocks in document order
+   * @param lineId     the line the blocks belong to, or null for the document level
+   * @param location   the location for messages, e.g. {@code line 2} or {@code header}
+   * @param context    the state of the read
+   * @param otherTaxes receives the taxes of the supported other types, or null to report them
+   * @return the VAT blocks in document order
+   */
+  static List<XmlElement> vatTaxes(List<XmlElement> taxes,
+                                   String lineId,
+                                   String location,
+                                   ReadContext context,
+                                   List<OtherTax> otherTaxes) {
     var vat = new ArrayList<XmlElement>();
     for (int index = 0; index < taxes.size(); index++) {
       var    tax  = taxes.get(index);
       String type = tax.text("ram:TypeCode");
       if (type == null || "VAT".equals(type.strip())) {
         vat.add(tax);
+        continue;
+      }
+      String     category = tax.text("ram:CategoryCode");
+      BigDecimal rate = Objects.requireNonNullElse(tax.decimal("ram:RateApplicablePercent"),
+                                                   tax.decimal("ram:ApplicablePercent"));
+      BigDecimal basis  = tax.decimal("ram:BasisAmount");
+      BigDecimal amount = tax.decimal("ram:CalculatedAmount");
+      if (otherTaxes != null && OtherTax.SUPPORTED.contains(type.strip()) && category != null && !category.isBlank() && amount != null) {
+        otherTaxes.add(new OtherTax(type.strip(),
+                                    category.strip(),
+                                    rate,
+                                    basis,
+                                    amount));
       } else {
         context.otherTax(type.strip(),
                          lineId,
                          location + " tax " + (index + 1),
-                         tax.text("ram:CategoryCode"),
-                         Objects.requireNonNullElse(tax.decimal("ram:RateApplicablePercent"),
-                                                    tax.decimal("ram:ApplicablePercent")),
-                         tax.decimal("ram:BasisAmount"),
-                         tax.decimal("ram:CalculatedAmount"));
+                         category,
+                         rate,
+                         basis,
+                         amount);
       }
     }
     return vat;
@@ -576,12 +613,14 @@ public final class CiiInvoiceReader
     var settlement = item.find("ram:SpecifiedLineTradeSettlement");
     var product    = item.find("ram:SpecifiedTradeProduct");
     String lineId = item.text("ram:AssociatedDocumentLineDocument/ram:LineID");
+    var lineOtherTaxes = new ArrayList<OtherTax>();
     var lineTaxes = settlement == null ?
                     List.<XmlElement>of() :
                     vatTaxes(settlement.children("ram:ApplicableTradeTax"),
                              lineId,
                              "line " + lineId,
-                             context);
+                             context,
+                             lineOtherTaxes);
     // A subtotal (GROUP) or information line may state a VAT block without category, with the code
     // of the date its VAT becomes due only (Factur-X 1.07.3); it then has no VAT category.
     var lineTax = lineTaxes.stream()
@@ -691,7 +730,8 @@ public final class CiiInvoiceReader
       }
       builder.buyerAccountingReference(settlement.text("ram:ReceivableSpecifiedTradeAccountingAccount/ram:ID"));
     }
-    builder.extended(lineExtension(item));
+    builder.extended(lineExtension(item,
+                                   lineOtherTaxes));
     return context.netAmount(builder.build(),
                              item.decimal("ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeSettlementLineMonetarySummation/ram:LineTotalAmount"));
   }
@@ -713,13 +753,15 @@ public final class CiiInvoiceReader
   /**
    * Reads the line information of the profile EXTENDED.
    */
-  private static LineExtension lineExtension(XmlElement item) {
+  private static LineExtension lineExtension(XmlElement item,
+                                             List<OtherTax> otherTaxes) {
     var document = item.find("ram:AssociatedDocumentLineDocument");
     var product  = item.find("ram:SpecifiedTradeProduct");
     var agree    = item.find("ram:SpecifiedLineTradeAgreement");
     var delivery = item.find("ram:SpecifiedLineTradeDelivery");
     var settle   = item.find("ram:SpecifiedLineTradeSettlement");
     var extended = LineExtension.create();
+    otherTaxes.forEach(extended::addOtherTax);
     if (document != null) {
       String subtype = document.text("ram:LineStatusReasonCode");
       extended.parentLineId(document.text("ram:ParentLineID"))
@@ -1017,10 +1059,12 @@ public final class CiiInvoiceReader
                                             CurrencyCode::of,
                                             "currency"));
 
+    var headerOtherTaxes = new ArrayList<OtherTax>();
     var headerTaxes = vatTaxes(settlement.children("ram:ApplicableTradeTax"),
                                null,
                                "header",
-                               readContext);
+                               readContext,
+                               headerOtherTaxes);
     var breakdowns = new ArrayList<TaxCategory>();
     var statedVat  = new StatedVatAmounts();
     for (var tax : headerTaxes) {
@@ -1065,6 +1109,7 @@ public final class CiiInvoiceReader
     // Terms with a partial amount, penalty, or discount are EXTENDED terms; the first plain term
     // carries BT-20, BT-9 and the mandate reference, further plain terms are EXTENDED terms too.
     var        extended = ExtendedInformation.create();
+    headerOtherTaxes.forEach(extended::addOtherTax);
     XmlElement terms    = null;
     for (var term : settlement.children("ram:SpecifiedTradePaymentTerms")) {
       if (term.find("ram:PartialPaymentAmount") != null || term.find("ram:ApplicableTradePaymentPenaltyTerms") != null || term.find("ram:ApplicableTradePaymentDiscountTerms") != null || term.find("ram:PayeeTradeParty") != null) {

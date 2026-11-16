@@ -24,6 +24,7 @@ import io.github.nalukit.paniolo.model.common.ProcessControl;
 import io.github.nalukit.paniolo.model.common.TaxCategory;
 import io.github.nalukit.paniolo.model.common.value.DutyTaxFeeCategory;
 import io.github.nalukit.paniolo.model.common.value.InvoiceTypeCode;
+import io.github.nalukit.paniolo.model.extended.OtherTax;
 import io.github.nalukit.paniolo.validation.Severity;
 import io.github.nalukit.paniolo.validation.ValidationMessage;
 import io.github.nalukit.paniolo.validation.ValidationResult;
@@ -45,10 +46,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Taxes of another type than VAT, e.g. the insurance tax AAM that Factur-X EXTENDED allows next to
- * VAT (Mustang issue #1342, task V01). The model keeps VAT only: strict reading rejects such a tax,
- * lenient reading reports it, the calculation check names the totals it cannot check instead of
- * reporting them as wrong, and a normalized export requires an explicit decision to drop it.
+ * Taxes of another type than VAT (Mustang issue #1342, task V01). The model keeps VAT and the
+ * insurance tax AAM that Factur-X EXTENDED allows next to VAT (see {@code InsuranceTaxTest}). For
+ * every other tax type strict reading rejects the tax, lenient reading reports it, the calculation
+ * check names the totals it cannot check instead of reporting them as wrong, and a normalized
+ * export requires an explicit decision to drop it.
  *
  * <p>The cases are derived from a Paniolo invoice: line 1 standard rated (200.00, VAT 38.00), line 2
  * exempt from VAT (100.00) with an insurance tax AAM of 19 % (19.00). The total tax amount is 57.00,
@@ -61,11 +63,15 @@ class OtherTaxTypeTest {
   private static final Paniolo PLAIN   = Paniolo.create();
 
   private static final String EXEMPTION = "Steuerbefreit gemäß § 4 Nr. 10 Buchst. a UStG";
-  private static final String LINE_AAM  = "<ram:ApplicableTradeTax><ram:CalculatedAmount>19.00</ram:CalculatedAmount><ram:TypeCode>AAM</ram:TypeCode>" +
+  private static final String LINE_TAX  = "<ram:ApplicableTradeTax><ram:CalculatedAmount>19.00</ram:CalculatedAmount><ram:TypeCode>%s</ram:TypeCode>" +
                                           "<ram:CategoryCode>S</ram:CategoryCode><ram:RateApplicablePercent>19.00</ram:RateApplicablePercent></ram:ApplicableTradeTax>";
-  private static final String HEAD_AAM  = "<ram:ApplicableTradeTax><ram:CalculatedAmount>19.00</ram:CalculatedAmount><ram:TypeCode>AAM</ram:TypeCode>" +
+  private static final String HEAD_TAX  = "<ram:ApplicableTradeTax><ram:CalculatedAmount>19.00</ram:CalculatedAmount><ram:TypeCode>%s</ram:TypeCode>" +
                                           "<ram:BasisAmount>100.00</ram:BasisAmount><ram:CategoryCode>S</ram:CategoryCode>" +
                                           "<ram:RateApplicablePercent>19.00</ram:RateApplicablePercent></ram:ApplicableTradeTax>";
+  /**
+   * A tax type the model does not keep.
+   */
+  private static final String UNSUPPORTED = "ENV";
   private static final String TAX       = "<ram:ApplicableTradeTax>";
   private static final String TAX_END   = "</ram:ApplicableTradeTax>";
 
@@ -97,7 +103,8 @@ class OtherTaxTypeTest {
   /**
    * The control case with AAM on line 2 and in the header, after or before the VAT block.
    */
-  private static String withAam(boolean aamFirst) {
+  private static String withTax(String type,
+                                boolean aamFirst) {
     String xml   = control();
     int    line2 = xml.indexOf("<ram:IncludedSupplyChainTradeLineItem>",
                                xml.indexOf("<ram:IncludedSupplyChainTradeLineItem>") + 1);
@@ -107,13 +114,13 @@ class OtherTaxTypeTest {
                      xml.indexOf(TAX_END,
                                  line2) + TAX_END.length();
     xml = xml.substring(0,
-                        lineTax) + LINE_AAM + xml.substring(lineTax);
+                        lineTax) + LINE_TAX.formatted(type) + xml.substring(lineTax);
     int headerTax = aamFirst ?
                     xml.indexOf(TAX,
                                 xml.indexOf("<ram:ApplicableHeaderTradeSettlement>")) :
                     xml.lastIndexOf(TAX_END) + TAX_END.length();
     xml = xml.substring(0,
-                        headerTax) + HEAD_AAM + xml.substring(headerTax);
+                        headerTax) + HEAD_TAX.formatted(type) + xml.substring(headerTax);
     return replaceOnce(replaceOnce(replaceOnce(xml,
                                                "<ram:TaxTotalAmount currencyID=\"EUR\">38.00</ram:TaxTotalAmount>",
                                                "<ram:TaxTotalAmount currencyID=\"EUR\">57.00</ram:TaxTotalAmount>"),
@@ -183,7 +190,8 @@ class OtherTaxTypeTest {
   @ParameterizedTest(name = "AAM first: {0}")
   @ValueSource(booleans = {false, true})
   void validatesTheDocumentWithAam(boolean aamFirst) {
-    var result = PLAIN.validate(bytes(withAam(aamFirst)),
+    var result = PLAIN.validate(bytes(withTax("AAM",
+                                                aamFirst)),
                                 FacturXProfile.EXTENDED);
     assertTrue(result.isValid(),
                result::toString);
@@ -191,13 +199,89 @@ class OtherTaxTypeTest {
 
   @ParameterizedTest(name = "AAM first: {0}")
   @ValueSource(booleans = {false, true})
+  void readsTheInsuranceTaxInEveryReadMode(boolean aamFirst) {
+    String xml = withTax("AAM",
+                         aamFirst);
+    for (var mode : ReadMode.values()) {
+      var imported = PANIOLO.importInvoice(bytes(xml),
+                                           mode);
+      assertEquals(List.of(),
+                   imported.warnings(),
+                   mode::toString);
+      var invoice = imported.invoice();
+      assertEquals(List.of(new OtherTax("AAM",
+                                        "S",
+                                        new BigDecimal("19"),
+                                        new BigDecimal("100.00"),
+                                        new BigDecimal("19.00"))),
+                   invoice.extended()
+                          .otherTaxes());
+      // The tax of line 2 describes the line; it is not counted a second time.
+      assertEquals(List.of(new OtherTax("AAM",
+                                        "S",
+                                        new BigDecimal("19"),
+                                        null,
+                                        new BigDecimal("19.00"))),
+                   invoice.lines()
+                          .get(1)
+                          .extended()
+                          .otherTaxes());
+      assertEquals(DutyTaxFeeCategory.E,
+                   invoice.lines()
+                          .get(1)
+                          .tax()
+                          .code());
+      var totals = invoice.totals();
+      assertEquals(new BigDecimal("57.00"),
+                   totals.taxAmount());
+      assertEquals(new BigDecimal("357.00"),
+                   totals.payableAmount());
+      // The VAT breakdowns stay VAT only.
+      assertEquals(2,
+                   totals.vatBreakdowns()
+                         .size());
+    }
+    var result = PANIOLO.validate(bytes(xml),
+                                  FacturXProfile.EXTENDED);
+    assertEquals(List.of(),
+                 calculation(result));
+    assertEquals(List.of(),
+                 errors(result));
+  }
+
+  @ParameterizedTest(name = "AAM first: {0}")
+  @ValueSource(booleans = {false, true})
+  void writesTheInsuranceTaxAgain(boolean aamFirst) {
+    var imported = PANIOLO.importInvoice(bytes(withTax("AAM",
+                                                       aamFirst)),
+                                         ReadMode.STRICT);
+    String written = new String(PANIOLO.export(imported,
+                                               ExportVariant.NORMALIZED,
+                                               InvoiceSyntax.CII),
+                                StandardCharsets.UTF_8);
+    assertEquals(2,
+                 written.split(">AAM<",
+                               -1).length - 1,
+                 written);
+    assertTrue(written.contains("<ram:DuePayableAmount>357.00</ram:DuePayableAmount>"),
+               written);
+    assertEquals(List.of(),
+                 errors(PLAIN.validate(bytes(written),
+                                       FacturXProfile.EXTENDED)));
+    assertEquals(imported.invoice(),
+                 PANIOLO.read(written));
+  }
+
+  @ParameterizedTest(name = "AAM first: {0}")
+  @ValueSource(booleans = {false, true})
   void strictReadingNamesTheTaxType(boolean aamFirst) {
     var error = assertThrows(IllegalArgumentException.class,
-                             () -> PANIOLO.importInvoice(bytes(withAam(aamFirst)),
+                             () -> PANIOLO.importInvoice(bytes(withTax(UNSUPPORTED,
+                                         aamFirst)),
                                                          ReadMode.STRICT));
     // The header is read before the lines.
     assertTrue(error.getMessage()
-                    .startsWith("Tax type AAM at header tax " + (aamFirst ?
+                    .startsWith("Tax type " + UNSUPPORTED + " at header tax " + (aamFirst ?
                                                                  "1" :
                                                                  "3") + " (category S, rate 19.00, basis 100.00, amount 19.00)"),
                error::getMessage);
@@ -206,7 +290,8 @@ class OtherTaxTypeTest {
   @ParameterizedTest(name = "AAM first: {0}")
   @ValueSource(booleans = {false, true})
   void lenientReadingReportsTheTaxAndNeverReadsItAsVat(boolean aamFirst) {
-    String xml      = withAam(aamFirst);
+    String xml      = withTax(UNSUPPORTED,
+                                         aamFirst);
     var    imported = PANIOLO.importInvoice(bytes(xml),
                                             ReadMode.LENIENT);
     var other = imported.warnings()
@@ -221,7 +306,7 @@ class OtherTaxTypeTest {
                       .lineId());
     assertTrue(other.get(0)
                     .message()
-                    .startsWith("Tax type AAM at header tax " + (aamFirst ?
+                    .startsWith("Tax type " + UNSUPPORTED + " at header tax " + (aamFirst ?
                                                                  "1" :
                                                                  "3")),
                () -> other.get(0)
@@ -231,7 +316,7 @@ class OtherTaxTypeTest {
                       .lineId());
     assertTrue(other.get(1)
                     .message()
-                    .startsWith("Tax type AAM at line 2 tax " + (aamFirst ?
+                    .startsWith("Tax type " + UNSUPPORTED + " at line 2 tax " + (aamFirst ?
                                                                  "1" :
                                                                  "2") + " (category S, rate 19.00, basis -, amount 19.00)"),
                () -> other.get(1)
@@ -262,21 +347,22 @@ class OtherTaxTypeTest {
   @ParameterizedTest(name = "AAM first: {0}")
   @ValueSource(booleans = {false, true})
   void normalizedExportRequiresAnExplicitDecision(boolean aamFirst) {
-    var imported = PANIOLO.importInvoice(bytes(withAam(aamFirst)),
+    var imported = PANIOLO.importInvoice(bytes(withTax(UNSUPPORTED,
+                                         aamFirst)),
                                          ReadMode.LENIENT);
     var error = assertThrows(IllegalArgumentException.class,
                              () -> PANIOLO.export(imported,
                                                   ExportVariant.NORMALIZED,
                                                   InvoiceSyntax.CII));
     assertTrue(error.getMessage()
-                    .contains("Tax type AAM") && error.getMessage()
+                    .contains("Tax type " + UNSUPPORTED) && error.getMessage()
                                                       .contains(ExportVariant.NORMALIZED_DROPPING_OTHER_TAXES.name()),
                error::getMessage);
     String dropped = new String(PANIOLO.export(imported,
                                                ExportVariant.NORMALIZED_DROPPING_OTHER_TAXES,
                                                InvoiceSyntax.CII),
                                 StandardCharsets.UTF_8);
-    assertFalse(dropped.contains(">AAM<"),
+    assertFalse(dropped.contains(">" + UNSUPPORTED + "<"),
                 dropped);
     assertTrue(dropped.contains("<ram:DuePayableAmount>338.00</ram:DuePayableAmount>"),
                dropped);
@@ -288,7 +374,8 @@ class OtherTaxTypeTest {
   @ParameterizedTest(name = "AAM first: {0}")
   @ValueSource(booleans = {false, true})
   void calculationCheckNamesTheTotalsItCannotCheck(boolean aamFirst) {
-    var findings = calculation(PANIOLO.validate(bytes(withAam(aamFirst)),
+    var findings = calculation(PANIOLO.validate(bytes(withTax(UNSUPPORTED,
+                                         aamFirst)),
                                                 FacturXProfile.EXTENDED));
     assertEquals(1,
                  findings.size(),
@@ -300,12 +387,13 @@ class OtherTaxTypeTest {
                  finding.severity());
     assertTrue(finding.message()
                       .contains("BT-110, BT-112 and BT-115") && finding.message()
-                                                                      .contains("Tax type AAM at line 2") && finding.message()
-                                                                                                                    .contains("Tax type AAM at header"),
+                                                                      .contains("Tax type " + UNSUPPORTED + " at line 2") && finding.message()
+                                                                                                                    .contains("Tax type " + UNSUPPORTED + " at header"),
                finding::message);
     // Without the calculation check there is no calculation finding at all.
     assertEquals(List.of(),
-                 calculation(PLAIN.validate(bytes(withAam(aamFirst)),
+                 calculation(PLAIN.validate(bytes(withTax(UNSUPPORTED,
+                                         aamFirst)),
                                             FacturXProfile.EXTENDED)));
   }
 

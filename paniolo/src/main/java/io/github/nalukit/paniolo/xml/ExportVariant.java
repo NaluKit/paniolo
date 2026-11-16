@@ -34,7 +34,7 @@ public enum ExportVariant {
   NORMALIZED,
   /**
    * Like {@link #NORMALIZED}, but the caller explicitly accepts that taxes of another type than VAT
-   * ({@link ReadWarning#OTHER_TAX}, e.g. the insurance tax AAM) are not written: their amounts are
+   * ({@link ReadWarning#OTHER_TAX}, a tax type other than VAT and the insurance tax AAM) are not written: their amounts are
    * missing from the total tax amount and the amount due of the export.
    */
   NORMALIZED_DROPPING_OTHER_TAXES;

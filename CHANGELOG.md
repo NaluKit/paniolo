@@ -8,6 +8,28 @@ reference in `docs/api/<version>.md`.
 
 ### Added
 
+- The insurance tax `AAM` of the Factur-X profile EXTENDED is kept next to VAT. The new record
+  `OtherTax` holds tax type, category, rate, basis amount and tax amount apart from the VAT
+  category, rate and breakdown. `ExtendedInformation.otherTaxes()` holds the document level taxes,
+  which count in BT-110, BT-112 and the amount due (1,017.57 EUR net and 26.14 EUR insurance tax
+  give 1,043.71 EUR); `LineExtension.otherTaxes()` describes a line and is never counted again.
+  `OtherTax.insuranceTax(category, rate, basis)` calculates the amount, rounded half up to cents.
+  The CII reader reads `AAM` at the lines and the document in strict and lenient mode, and the CII
+  writer writes it, never as VAT. Writing it in another profile than EXTENDED or as UBL fails with
+  a message instead of losing it. The calculation check recalculates the totals of such invoices.
+  Other tax types stay reported as `READ-OTHER-TAX` (rejected in strict mode). The official rules of
+  EXTENDED treat every header tax block like a VAT breakdown of its category (BR-E-09,
+  BR-FXEXT-S-01), so a category must be chosen that they accept.
+
+- `PaymentTermsAdjustment.withComputedAmount()` and `withComputedAmount(contextBaseAmount)` calculate
+  a missing cash discount or penalty amount from base amount and percentage, rounded half up to
+  cents (1,190.00 EUR at 3 % gives 35.70 EUR). An amount that is set stays unchanged. The base
+  amount of the adjustment takes precedence; the base amount of the calling context is used only
+  if the adjustment has none. Without any base amount an `IllegalStateException` reports the
+  missing basis; nothing is guessed. `PaymentTerm.withComputedDiscount(contextBaseAmount)` does the
+  same for the discount of a term. The calculation changes neither the due date nor the amount due.
+  The amount is written as `ActualDiscountAmount` and survives the XML and JSON round trip.
+
 - `PdfLayout.withProfile(PdfProfile)` selects the kind of PDF that `toPdf` renders:
   - `PDF_A_3B` (the default, as before): PDF/A-3b, based on PDF 1.7. PDF/A-3 does not allow PDF 2.0.
   - `PDF_A_1B`: PDF/A-1b, PDF 1.4, as visual part for `toFacturX(invoice, pdfA, profile)`, which makes
@@ -21,6 +43,9 @@ reference in `docs/api/<version>.md`.
   documentation describe the profiles.
 
 ### Changed
+
+- The records `ExtendedInformation` and `LineExtension` have the new last component `otherTaxes`;
+  the builders and JSON without it are unchanged.
 
 - The record `PdfLayout` has the new component `profile`; the canonical constructor takes it as
   last argument. `of`, `defaults`, and the `with` methods are unchanged.

@@ -311,7 +311,8 @@ class ExtendedTest {
                                                                                      10,
                                                                                      27)),
                                                     extended.financialAdjustments(),
-                                                    extended.additionalAccountingAccounts()));
+                                                    extended.additionalAccountingAccounts(),
+                                                    extended.otherTaxes()));
   }
 
   /**
