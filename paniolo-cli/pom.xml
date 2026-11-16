@@ -153,6 +153,25 @@
           </execution>
         </executions>
       </plugin>
+      <!-- Checks the license notices of the packaged *-all.jar (LicenseNoticesIT). -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <version>${plugin.surefire.version}</version>
+        <configuration>
+          <systemPropertyVariables>
+            <paniolo.cli.shadedJar>${project.build.directory}/${project.build.finalName}-all.jar</paniolo.cli.shadedJar>
+          </systemPropertyVariables>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
 </project>

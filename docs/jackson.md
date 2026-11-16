@@ -49,7 +49,7 @@ upgrade request; it does not show a defect in Paniolo.
 
 ### Jackson 2 of veraPDF
 
-`org.verapdf:core` 1.30.3 depends on `com.fasterxml.jackson.core:jackson-databind` 2.22.3. veraPDF
+`org.verapdf:core` 1.30.4 depends on `com.fasterxml.jackson.core:jackson-databind` 2.22.3. veraPDF
 uses it only for its own report output (`org.verapdf.processor`: `JsonHandler`,
 `FeaturesNodeSerializer`, `VeraPDFExceptionSerializer`); `paniolo-pdfa` uses the foundry, the
 flavours, the test assertions, and the JavaScript evaluator of the validation, not the processor.

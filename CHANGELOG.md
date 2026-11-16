@@ -125,6 +125,18 @@ reference in `docs/api/<version>.md`.
   pages and the PDF title metadata keep the number. The validation report is unchanged; its heading
   contains the file name.
 
+- veraPDF 1.30.4 instead of 1.30.3. The update fixes a local file disclosure through custom XSLT
+  policies (GHSA-73f4-hgcx-xc59), PDF/UA rule handling and a parser race condition, and restores
+  the original Adobe XMP Toolkit license in `verapdf-xmp-core`. The dependencies are otherwise
+  unchanged.
+
+- The executable CLI JAR carries the complete third-party notices of StAX-Utils (BSD-3-Clause,
+  Christian Niles / Unit12, Sun Microsystems, John Kristian) and of veraPDF XMP Library Core
+  (BSD-3-Clause, Adobe Systems and veraPDF Consortium) in `META-INF/licenses/`, and
+  `META-INF/THIRD-PARTY.txt` links the Saxon-HE sources of the bundled version instead of the
+  Saxon 12 source archive. The integration test `LicenseNoticesIT` checks these notices in the
+  packaged JAR.
+
 ## [1.0.0-rc02] - 2026-11-15
 
 Second release candidate. See the [API reference for 1.0.0-rc02](docs/api/1.0.0-rc02.md).
