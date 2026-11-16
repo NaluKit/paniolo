@@ -59,6 +59,12 @@ reference in `docs/api/<version>.md`.
   are rejected with a message naming the restriction instead of "no readable TrueType font" or an
   error while saving the PDF. The PDF layout documentation explains the license of own fonts.
 
+- The heading on the first page of the PDFs of invoices, orders and delivery notes shows only the
+  document type (e.g. "Rechnung") instead of type and number. The number was shown twice, because
+  the fact block next to the heading already contains it. The continuation header of the following
+  pages and the PDF title metadata keep the number. The validation report is unchanged; its heading
+  contains the file name.
+
 ## [1.0.0-rc02] - 2026-11-15
 
 Second release candidate. See the [API reference for 1.0.0-rc02](docs/api/1.0.0-rc02.md).
