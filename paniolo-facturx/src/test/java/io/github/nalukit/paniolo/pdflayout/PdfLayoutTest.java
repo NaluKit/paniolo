@@ -55,6 +55,7 @@ import java.util.List;
 import java.util.Locale;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -346,8 +347,10 @@ class PdfLayoutTest {
       assertEquals(List.of(),
                    pdfaFailures(pdf));
       String text = text(pdf);
-      assertTrue(text.contains("Rechnung R-2026-001"),
+      assertTrue(text.contains("Rechnungsnummer R-2026-001"),
                  text);
+      assertFalse(text.contains("Rechnung R-2026-001"),
+                  "the number must not repeat in the heading: " + text);
       assertTrue(text.contains("Muster GmbH"),
                  text);
       assertTrue(text.contains("Kunde GmbH"),
@@ -472,7 +475,7 @@ class PdfLayoutTest {
                                 TestInvoices.simple("R-2026-002")
                                             .build(),
                                 PdfLayout.of(Locale.ENGLISH)));
-      assertTrue(text.contains("Invoice R-2026-002"),
+      assertTrue(text.contains("Invoice no. R-2026-002"),
                  text);
       assertTrue(text.contains("Amount due"),
                  text);
@@ -784,7 +787,7 @@ class PdfLayoutTest {
       assertEquals(1,
                    PANIOLO.attachments(pdf)
                           .size());
-      assertTrue(text(pdf).contains("Rechnung R-2026-004"));
+      assertTrue(text(pdf).contains("Rechnungsnummer R-2026-004"));
     }
 
     @Test

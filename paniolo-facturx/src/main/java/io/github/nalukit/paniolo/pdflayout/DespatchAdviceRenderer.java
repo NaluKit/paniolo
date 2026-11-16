@@ -84,6 +84,11 @@ final class DespatchAdviceRenderer
   }
 
   @Override
+  String headingTitle() {
+    return t.label("despatch.title");
+  }
+
+  @Override
   List<String[]> facts() {
     var rows = new ArrayList<String[]>();
     fact(rows,

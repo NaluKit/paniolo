@@ -222,6 +222,14 @@ abstract class DocumentRenderer {
   abstract String documentTitle();
 
   /**
+   * Heading on the first page. By default the document title; documents whose number appears in
+   * the fact block override it with the bare document type.
+   */
+  String headingTitle() {
+    return documentTitle();
+  }
+
+  /**
    * Label and value rows next to the window.
    */
   abstract List<String[]> facts();
@@ -537,7 +545,7 @@ abstract class DocumentRenderer {
   private void heading() {
     canvas.ensure(title.leading() + 8);
     canvas.space(title.leading());
-    canvas.text(documentTitle(),
+    canvas.text(headingTitle(),
                 title,
                 canvas.left,
                 canvas.y + title.descent());

@@ -88,6 +88,14 @@ final class OrderRenderer
   }
 
   @Override
+  String headingTitle() {
+    OrderTypeCode type = order.typeCode() == null ?
+                         OrderTypeCode.ORDER :
+                         order.typeCode();
+    return t.label("order.title." + type.getCode());
+  }
+
+  @Override
   List<String[]> facts() {
     var rows = new ArrayList<String[]>();
     fact(rows,

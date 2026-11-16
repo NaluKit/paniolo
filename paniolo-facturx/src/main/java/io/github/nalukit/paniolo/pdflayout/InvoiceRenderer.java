@@ -104,6 +104,11 @@ final class InvoiceRenderer
   }
 
   @Override
+  String headingTitle() {
+    return t.title(invoice.typeCode());
+  }
+
+  @Override
   List<String[]> facts() {
     var rows     = new ArrayList<String[]>();
     var extended = invoice.extended();

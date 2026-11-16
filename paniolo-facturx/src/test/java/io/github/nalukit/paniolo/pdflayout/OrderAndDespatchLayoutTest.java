@@ -108,7 +108,11 @@ class OrderAndDespatchLayoutTest {
             case ORDER_CHANGE -> "Bestelländerung";
             case ORDER_RESPONSE -> "Auftragsbestätigung";
           };
-          assertTrue(text.contains(title + " " + order.number()),
+          assertTrue(text.contains(title),
+                     name + ": " + text);
+          // The number may follow the title only in the continuation header of later pages.
+          assertTrue(text.contains("Bestellnummer " + order.number())
+                     || text.contains("Bestellnummer\n" + order.number()),
                      name + ": " + text);
         }
       }
@@ -153,7 +157,7 @@ class OrderAndDespatchLayoutTest {
                    PANIOLO.readOrder(pdf,
                                      true)
                           .number());
-      assertTrue(text(pdf).contains("Purchase order " + order.number()));
+      assertTrue(text(pdf).contains("Order no. " + order.number()));
     }
 
     @Test
@@ -204,7 +208,7 @@ class OrderAndDespatchLayoutTest {
                      PdfLayoutTest.pdfaFailures(pdf),
                      name);
         String text = text(pdf);
-        assertTrue(text.contains("Lieferschein LS-2026-42"),
+        assertTrue(text.contains("Lieferscheinnummer LS-2026-42"),
                    text);
         assertTrue(text.contains("B-2026-17"),
                    text);
