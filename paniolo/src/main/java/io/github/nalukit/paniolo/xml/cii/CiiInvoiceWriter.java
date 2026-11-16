@@ -821,11 +821,19 @@ public final class CiiInvoiceWriter
            .end();
       }
       if (account != null) {
+        // BT-84: an IBAN is IBANID, another account number ProprietaryID, never both. The schema
+        // sequence is IBANID, AccountName, ProprietaryID.
         xml.start("ram:PayeePartyCreditorFinancialAccount")
            .element("ram:IBANID",
+                    account.isProprietary() ?
+                    null :
                     account.iban())
            .element("ram:AccountName",
                     account.accountName())
+           .element("ram:ProprietaryID",
+                    account.isProprietary() ?
+                    account.iban() :
+                    null)
            .end();
       }
       if (firstBlock && extended != null && extended.payerBic() != null && payment.directDebit() != null) {

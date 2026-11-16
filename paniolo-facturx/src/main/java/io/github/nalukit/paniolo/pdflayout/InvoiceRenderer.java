@@ -549,7 +549,11 @@ final class InvoiceRenderer
       }
       for (CreditTransfer transfer : instruction.creditTransfers()) {
         row(rows,
+            transfer.isProprietary() ?
+            "payment.account" :
             "payment.iban",
+            transfer.isProprietary() ?
+            transfer.iban() :
             Texts.iban(transfer.iban()));
         row(rows,
             "payment.bic",

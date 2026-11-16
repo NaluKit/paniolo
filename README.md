@@ -767,6 +767,14 @@ All details in the example are fictitious.
   The code is kept as stated, not changed to `58`. Other codes, such as `49` or `ZZZ`, may also
   carry accounts, card, and mandate data; profile-specific restrictions are checked by validation.
   Credit transfers `30`/`58` can retain direct debit information in the model as well.
+- Account numbers that are no IBAN: `CreditTransfer.proprietary("EXAMPLE-ACCOUNT", "Muster GmbH", null)` or
+  `CreditTransfer.create().proprietaryId("EXAMPLE-ACCOUNT").build()` state a proprietary account number (BT-84).
+  CII writes it as `ram:ProprietaryID` and an IBAN as `ram:IBANID`; the reader keeps the kind
+  (`CreditTransfer.idType()`, `AccountIdType.IBAN` or `PROPRIETARY`). UBL has `cbc:ID` for both and carries no
+  kind, so a document read from UBL has `IBAN` accounts. `new CreditTransfer(iban, name, bic)` and `.iban(...)`
+  keep creating IBAN accounts; JSON stores the kind only for a proprietary account, and JSON without it is read as
+  IBAN. SEPA credit transfer `58` needs an IBAN: the official rules warn about anything else (BR-DE-19). The PDF
+  layout labels a proprietary account "Account no." instead of "IBAN".
 - Supporting documents (BG-24): `.addSupportingDocument(AdditionalSupportingDocument.create().reference("Timesheet")
   .attachment(Attachment.create().content(bytes).mimeCode("application/pdf").filename("timesheet.pdf").build()).build())`.
 - Allowances and charges also take a base amount, percentage, and reason code (BT-92 to BT-105).

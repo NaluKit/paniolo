@@ -30,6 +30,9 @@ import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImage;
 import org.apache.pdfbox.text.PDFTextStripper;
+import io.github.nalukit.paniolo.model.common.CreditTransfer;
+import io.github.nalukit.paniolo.model.common.PaymentInstruction;
+import io.github.nalukit.paniolo.model.common.value.PaymentMeansCode;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -368,6 +371,34 @@ class PdfLayoutTest {
                  text);
       assertTrue(text.contains("Seite 1 von 1"),
                  text);
+    }
+
+    @Test
+    @DisplayName("shows a proprietary account number as account number, not as IBAN")
+    void showsProprietaryAccount()
+        throws IOException {
+      var invoice = TestInvoices.simple("R-2026-006")
+                                .paymentInstruction(PaymentInstruction.create()
+                                                                      .meansCode(PaymentMeansCode.CODE_30)
+                                                                      .addCreditTransfer(CreditTransfer.proprietary("AB12345678",
+                                                                                                                    "Muster GmbH",
+                                                                                                                    null))
+                                                                      .remittanceInformation("R-2026-006")
+                                                                      .build())
+                                .build();
+      String german  = text(render("proprietary",
+                                   invoice,
+                                   PdfLayout.defaults()));
+      String english = text(render("proprietary-en",
+                                   invoice,
+                                   PdfLayout.of(Locale.ENGLISH)));
+      // Not grouped in blocks of four like an IBAN, and not labeled IBAN.
+      assertTrue(german.contains("Kontonummer AB12345678"),
+                 german);
+      assertFalse(german.contains("IBAN"),
+                  german);
+      assertTrue(english.contains("Account no. AB12345678"),
+                 english);
     }
 
     @Test

@@ -23,7 +23,6 @@ import io.github.nalukit.paniolo.model.common.Address;
 import io.github.nalukit.paniolo.model.common.Attachment;
 import io.github.nalukit.paniolo.model.common.CashDiscount;
 import io.github.nalukit.paniolo.model.common.Contact;
-import io.github.nalukit.paniolo.model.common.CreditTransfer;
 import io.github.nalukit.paniolo.model.common.DeliveryInformation;
 import io.github.nalukit.paniolo.model.common.DirectDebit;
 import io.github.nalukit.paniolo.model.common.DocumentAdjustment;
@@ -179,12 +178,8 @@ public final class CiiInvoiceReader
         continue;
       }
       if (account != null) {
-        String id = account.text("ram:IBANID");
-        builder.addCreditTransfer(new CreditTransfer(id == null ?
-                                                     account.text("ram:ProprietaryID") :
-                                                     id,
-                                                     account.text("ram:AccountName"),
-                                                     mean.text("ram:PayeeSpecifiedCreditorFinancialInstitution/ram:BICID")));
+        builder.addCreditTransfer(context.creditTransfer(account,
+                                                         mean.text("ram:PayeeSpecifiedCreditorFinancialInstitution/ram:BICID")));
       }
     }
     var card = first.find("ram:ApplicableTradeSettlementFinancialCard");

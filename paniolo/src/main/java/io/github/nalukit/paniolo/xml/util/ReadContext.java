@@ -19,6 +19,8 @@ package io.github.nalukit.paniolo.xml.util;
 
 import io.github.nalukit.paniolo.model.Invoice;
 import io.github.nalukit.paniolo.model.common.CashDiscount;
+import io.github.nalukit.paniolo.model.common.AccountIdType;
+import io.github.nalukit.paniolo.model.common.CreditTransfer;
 import io.github.nalukit.paniolo.model.common.InvoiceLine;
 import io.github.nalukit.paniolo.model.common.value.AllowanceChargeIdentification;
 import io.github.nalukit.paniolo.xml.AmountDeviation;
@@ -162,6 +164,43 @@ public final class ReadContext {
     warnings.add(new ReadWarning(ReadWarning.PAYMENT_MEANS,
                                  null,
                                  message));
+  }
+
+  /**
+   * Reads the payee account (BG-17) of a CII payment means block: {@code ram:IBANID} is an IBAN,
+   * {@code ram:ProprietaryID} another account number, and the model keeps the kind. The model has
+   * one identifier (BT-84) per account, so an account with both elements is reported: strict
+   * reading rejects it, lenient reading keeps the IBAN and reports the other identifier as
+   * {@link ReadWarning#IDENTIFIER}.
+   *
+   * @param account the {@code ram:PayeePartyCreditorFinancialAccount} element
+   * @param bic     the BIC (BT-86) of the block, or null
+   * @return the account
+   * @throws IllegalArgumentException in strict reading if both identifiers are stated, or if the
+   *                                  account states none
+   */
+  public CreditTransfer creditTransfer(XmlElement account,
+                                       String bic) {
+    String iban        = account.text("ram:IBANID");
+    String proprietary = account.text("ram:ProprietaryID");
+    if (iban != null && proprietary != null) {
+      String message = "Payment account states IBANID " + iban + " and ProprietaryID " + proprietary + "; the model keeps one payment account identifier (BT-84) per account, the IBAN is kept";
+      if (mode == ReadMode.STRICT) {
+        throw new IllegalArgumentException(message);
+      }
+      lost(ReadWarning.IDENTIFIER,
+           message);
+    }
+    String name = account.text("ram:AccountName");
+    return iban == null ?
+           new CreditTransfer(proprietary,
+                              name,
+                              bic,
+                              AccountIdType.PROPRIETARY) :
+           new CreditTransfer(iban,
+                              name,
+                              bic,
+                              AccountIdType.IBAN);
   }
 
   /**

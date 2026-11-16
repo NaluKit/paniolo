@@ -17,6 +17,9 @@
  */
 package io.github.nalukit.paniolo.json;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import io.github.nalukit.paniolo.model.common.AccountIdType;
+import io.github.nalukit.paniolo.model.common.CreditTransfer;
 import io.github.nalukit.paniolo.model.common.value.AllowanceChargeIdentification;
 import io.github.nalukit.paniolo.model.common.value.CurrencyCode;
 import io.github.nalukit.paniolo.model.common.value.DateTimeQualifier;
@@ -55,6 +58,10 @@ public final class PanioloJsonModule
    */
   public PanioloJsonModule() {
     super("paniolo");
+    // The kind of a payment account is stored only when it is not the IBAN: JSON written before
+    // the kind existed stays unchanged, and a missing kind is read as IBAN.
+    setMixInAnnotation(CreditTransfer.class,
+                       CreditTransferMixin.class);
     code(UnitCode.class,
          UnitCode::getCode,
          UnitCode::of,
@@ -114,6 +121,30 @@ public final class PanioloJsonModule
       return LocalTime.parse(text);
     } catch (DateTimeParseException e) {
       return null;
+    }
+  }
+
+  /**
+   * Leaves out the kind of the payment account (BT-84) while it is the default, the IBAN.
+   */
+  abstract static class CreditTransferMixin {
+    @JsonInclude(value = JsonInclude.Include.CUSTOM,
+                 valueFilter = IbanKind.class)
+    AccountIdType idType;
+  }
+
+  /**
+   * Value filter of {@link CreditTransferMixin}: Jackson leaves out a value that equals the filter.
+   */
+  static final class IbanKind {
+    @Override
+    public boolean equals(Object other) {
+      return other == AccountIdType.IBAN;
+    }
+
+    @Override
+    public int hashCode() {
+      return AccountIdType.IBAN.hashCode();
     }
   }
 

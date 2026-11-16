@@ -22,6 +22,7 @@ import io.github.nalukit.paniolo.model.common.AdditionalSupportingDocument;
 import io.github.nalukit.paniolo.model.common.Address;
 import io.github.nalukit.paniolo.model.common.Attachment;
 import io.github.nalukit.paniolo.model.common.Contact;
+import io.github.nalukit.paniolo.model.common.AccountIdType;
 import io.github.nalukit.paniolo.model.common.CreditTransfer;
 import io.github.nalukit.paniolo.model.common.DeliveryInformation;
 import io.github.nalukit.paniolo.model.common.ElectronicAddress;
@@ -234,6 +235,38 @@ class PanioloJsonTest {
       assertFalse(json.contains(absent),
                   () -> absent + " in " + json);
     }
+  }
+
+  @Test
+  void keepsTheKindOfThePaymentAccount() {
+    var iban        = new CreditTransfer("DE89370400440532013000",
+                                         "Muster GmbH",
+                                         "COBADEFFXXX");
+    var proprietary = CreditTransfer.proprietary("EXAMPLE-ACCOUNT",
+                                                 "Muster GmbH",
+                                                 null);
+    // The kind is stored only for a proprietary account.
+    String ibanJson = JSON.toJson(iban);
+    assertFalse(ibanJson.contains("idType"),
+                ibanJson);
+    assertEquals(iban,
+                 JSON.read(ibanJson,
+                           CreditTransfer.class));
+    String proprietaryJson = JSON.toJson(proprietary);
+    assertTrue(proprietaryJson.contains("\"idType\":\"PROPRIETARY\""),
+               proprietaryJson);
+    assertEquals(proprietary,
+                 JSON.read(proprietaryJson,
+                           CreditTransfer.class));
+    // Stored before the kind existed: an IBAN, as the writer always wrote it.
+    var legacy = JSON.read("{\"iban\":\"EXAMPLE-ACCOUNT\",\"accountName\":\"Muster GmbH\"}",
+                           CreditTransfer.class);
+    assertEquals(AccountIdType.IBAN,
+                 legacy.idType());
+    assertEquals(new CreditTransfer("EXAMPLE-ACCOUNT",
+                                    "Muster GmbH",
+                                    null),
+                 legacy);
   }
 
   @Test

@@ -42,6 +42,22 @@ reference in `docs/api/<version>.md`.
   `--pdf-profile` (`--profile` is the Factur-X profile of `to-facturx`). README and API
   documentation describe the profiles.
 
+- `CreditTransfer` keeps the kind of the payment account identifier (BT-84): the new component
+  `idType` (`AccountIdType.IBAN` or `PROPRIETARY`) tells an IBAN from another account number.
+  `CreditTransfer.proprietary(id, name, bic)` and `CreditTransfer.Builder.proprietaryId(String)`
+  state a proprietary account number, e.g. `EXAMPLE-ACCOUNT`; the builder rejects an `iban` and a
+  `proprietaryId` together. The CII writer writes it as `ram:ProprietaryID` and an IBAN as
+  `ram:IBANID`, never both; the CII and ZUGFeRD 1.0 readers keep the kind, so import and normalized
+  export no longer turn a `ProprietaryID` into an `IBANID`. An account with both elements is
+  rejected in strict mode; lenient reading keeps the IBAN and reports the other identifier as
+  `READ-IDENTIFIER`. UBL has `cbc:ID` for both and carries no kind; accounts read from UBL are
+  IBAN accounts. The constructor `new CreditTransfer(iban, accountName, bic)` and `Builder.iban`
+  still create IBAN accounts. JSON stores `idType` only for a proprietary account; JSON without it
+  is read as IBAN, so stored documents are unchanged. The PDF layout labels a proprietary account
+  "Account no." (Kontonummer, N° de compte) and does not group it like an IBAN. With payment means
+  `58` the official rules warn that BT-84 should be an IBAN (BR-DE-19). Reported as Mustang issue
+  1348.
+
 - `PdfLayout.withFoldMarks(boolean)` shows or hides the fold and hole marks of DIN 5008 form B:
   small gray lines at the left edge of page 1, 105 mm and 210 mm from the top (fold) and at
   148.5 mm (hole). Folded at the marks, the address lies in the window of a DL envelope. They are
@@ -56,6 +72,9 @@ reference in `docs/api/<version>.md`.
 
 - The records `ExtendedInformation` and `LineExtension` have the new last component `otherTaxes`;
   the builders and JSON without it are unchanged.
+
+- The record `CreditTransfer` has the new last component `idType`; the canonical constructor takes
+  it as last argument, the constructor with three arguments is unchanged.
 
 - The record `PdfLayout` has the new components `profile` and `foldMarks`; the canonical constructor
   takes them as last arguments. `of`, `defaults`, and the `with` methods are unchanged.
