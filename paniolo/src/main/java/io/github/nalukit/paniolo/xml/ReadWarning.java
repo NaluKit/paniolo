@@ -97,6 +97,19 @@ public record ReadWarning(String code, String lineId, String message) {
    */
   public static final String TAX_CATEGORY   = "READ-TAX-CATEGORY";
   /**
+   * A VAT category that has no rate other than zero (Z, E, AE, K, G) states another rate or none,
+   * e.g. an exempt breakdown (E) with 19 percent and a VAT amount of zero, which EN 16931 does not
+   * forbid for the VAT breakdown (BG-23). The model keeps the rate zero of the category; the message
+   * names the location and the stated rate. Strict reading rejects the document instead.
+   */
+  public static final String TAX_RATE       = "READ-TAX-RATE";
+  /**
+   * An invoicing period (BG-14, BG-26) states a date that is no calendar date, e.g. {@code 20139102},
+   * or an end date before its start date. The period was not read; the message names the location
+   * and the reason. Strict reading rejects the document instead.
+   */
+  public static final String PERIOD         = "READ-PERIOD";
+  /**
    * In a Factur-X EXTENDED document, a line, allowance, or charge states another VAT exemption reason
    * or code (BT-X-96, BT-X-97) than the VAT breakdown (BG-23) of its category and rate, or a further
    * breakdown repeats category and rate with another exemption reason. The model keeps one breakdown

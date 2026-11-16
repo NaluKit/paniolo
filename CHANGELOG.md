@@ -137,6 +137,49 @@ reference in `docs/api/<version>.md`.
   Saxon 12 source archive. The integration test `LicenseNoticesIT` checks these notices in the
   packaged JAR.
 
+- The model applies the payment rule of EN 16931 only: a credit transfer (30/58) requires an
+  account (BR-61). A card next to the credit transfer account (official Factur-X example
+  `factur-x-en16931.xml`), a payment card code without card information, and a direct debit (59)
+  that names the payee account are kept; `Invoice` no longer restricts a card next to the account
+  to EXTENDED-CTC-FR. The XRechnung rules BR-DE-23 to BR-DE-25 are reported by validation.
+
+- The item seller of a line (EXTENDED) and the subtype of a sub-line (BR-FXEXT-06) are no longer
+  checked by the model: the official French examples name item sellers by legal registration only
+  without the multi-vendor identifier, and the sub-invoice lines of the XRechnung extension in CII
+  state no subtype. Validation reports the rules of the profile.
+
+- Lenient reading keeps rate zero for a VAT category without rate other than zero (Z, E, AE, K,
+  G) that states another rate or none, e.g. an exempt VAT breakdown with 19 % and VAT amount zero,
+  and reports the new warning `READ-TAX-RATE`; strict reading rejects it with the location. An
+  invoicing period with an invalid date or an end before its start is dropped with the new warning
+  `READ-PERIOD` in lenient reading.
+
+- A payment means block without code (BT-81), which ZUGFeRD 1.0 allows, is read as `1`
+  (instrument not defined) with the warning `READ-PAYMENT-MEANS`; UBL and CII require the code,
+  so strict reading rejects it there. ZUGFeRD 1.0 direct debits are migrated with mandate
+  reference, creditor identifier (scheme agency of the payment means identifier), and debited
+  account instead of being rejected.
+
+- The message that rejects EXTENDED information outside EXTENDED names the content, e.g.
+  `seller contact (name and department), line 1 (gross price allowance or charge details)`, and the
+  profile of the invoice. Extracting the invoice of a PDF that carries an Order-X document or a
+  despatch advice instead names that file.
+
+### Fixed
+
+- `Country` has every ISO 3166-1 alpha-2 code and the code XI of the EN 16931 code list; reading
+  the French overseas departments (e.g. RE in the official Facture_DOM examples) failed with
+  "Unknown country".
+
+- UBL dates in the lexical form of `xs:date` with time zone, e.g. `2016-04-04+01:00`, are read.
+
+- The UBL reader takes the seller tax registration identifier (BT-32) from a `PartyTaxScheme` of
+  every scheme other than VAT, e.g. `TAX` of PEPPOL BIS, not only from `FC`.
+
+- Readers report a required value the document lacks, e.g. an allowance without amount or a
+  sub-invoice line without VAT category, as `IllegalArgumentException` that names it instead of a
+  `NullPointerException`.
+
 ## [1.0.0-rc02] - 2026-11-15
 
 Second release candidate. See the [API reference for 1.0.0-rc02](docs/api/1.0.0-rc02.md).

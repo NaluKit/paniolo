@@ -358,7 +358,9 @@ public final class XmlElement {
   }
 
   /**
-   * ISO date (yyyy-MM-dd) of the first element reached by the path, or null.
+   * ISO date (yyyy-MM-dd) of the first element reached by the path, or null. The optional time zone
+   * of the lexical form of {@code xs:date}, e.g. {@code 2016-04-04+01:00} or {@code 2016-04-04Z},
+   * is allowed; the model keeps the date as stated.
    *
    * @param path slash separated prefixed names
    * @return the date, or null
@@ -369,7 +371,7 @@ public final class XmlElement {
     return found == null ?
            null :
            parseDate(found.text(),
-                     DateTimeFormatter.ISO_LOCAL_DATE,
+                     DateTimeFormatter.ISO_DATE,
                      found);
   }
 

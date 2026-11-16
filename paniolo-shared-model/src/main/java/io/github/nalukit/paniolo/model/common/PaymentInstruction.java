@@ -24,85 +24,47 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Payment instructions (BG-16). Credit transfer (30/58) requires accounts, payment card
- * (48/54/55) requires card information and direct debit (59) requires a mandate. Payment to bank
- * account (42) may name accounts (BG-17): EN 16931 requires them for 30 and 58 only (BR-61) and
- * forbids them for no code, and ZUGFeRD 1.0 invoices commonly use 42 with an IBAN. Only an
- * EXTENDED-CTC-FR invoice may name a card next to the credit transfer accounts. All other codes,
- * e.g. mutually defined (ZZZ) or direct debit (49), may carry accounts, a card and a mandate;
- * profile rules on them are reported by the validation. Credit transfers (30/58) may also carry
- * direct debit information in the model; XRechnung restrictions on that combination are checked
- * by XML validation.
+ * Payment instructions (BG-16). The model applies the rule of EN 16931 only: credit transfer
+ * (30/58) requires at least one account (BR-61). Accounts (BG-17), payment card information (BG-18)
+ * and direct debit information (BG-19) may otherwise be combined as the document states them, as
+ * EN 16931 allows, e.g. a card next to the credit transfer account of the official Factur-X
+ * examples, a payment card code (54) without card information, or a direct debit (59) that names
+ * the payee account. The stricter combinations of XRechnung (BR-DE-23 to BR-DE-25) and other
+ * profile rules are reported by XML validation.
  *
  * @param meansCode             payment means code (BT-81); required
  * @param meansText             payment means text (BT-82), or null
  * @param remittanceInformation remittance information (BT-83), or null
- * @param creditTransfers       credit transfer accounts (BG-17); required for payment means 30 and 58,
- *                              not allowed for 48, 54, 55 and 59, optional for all other codes
- * @param paymentCard           payment card information (BG-18); required for payment means 48, 54 and 55;
- *                              next to credit transfer accounts (30/58) only in an EXTENDED-CTC-FR invoice;
- *                              not allowed for 42 and 59, optional for all other codes
- * @param directDebit           direct debit information (BG-19); required for payment means 59;
- *                              not allowed for 42, 48, 54 and 55, optional for all other codes
+ * @param creditTransfers       credit transfer accounts (BG-17); required for payment means 30 and 58
+ *                              (BR-61), optional for all other codes
+ * @param paymentCard           payment card information (BG-18), or null
+ * @param directDebit           direct debit information (BG-19), or null
  */
 public record PaymentInstruction(PaymentMeansCode meansCode, String meansText, String remittanceInformation, List<CreditTransfer> creditTransfers, PaymentCardInformation paymentCard, DirectDebit directDebit) {
   /**
    * Applies the checks of the model and copies the lists.
    *
    * @throws NullPointerException     if a required value is null
-   * @throws IllegalArgumentException if the accounts, card and mandate do not fit the payment means
+   * @throws IllegalArgumentException if a credit transfer (30/58) names no account
    */
   public PaymentInstruction {
     Objects.requireNonNull(meansCode,
                            "meansCode");
     creditTransfers = List.copyOf(creditTransfers);
-    switch (meansCode) {
-      // A card next to the account is allowed by the French profile EXTENDED-CTC-FR only, which
-      // the invoice checks (see hasCardWithCreditTransfer()).
-      // A direct debit next to the account is excluded by XRechnung (BR-DE-23), not by EN 16931; a
-      // received document states it, so validation reports it and the model keeps it.
-      case CODE_30, CODE_58 -> requireOnly(!creditTransfers.isEmpty(),
-                                           true,
-                                           true,
-                                           "Credit transfer requires at least one account");
-      case CODE_48, CODE_54, CODE_55 -> requireOnly(paymentCard != null,
-                                                    creditTransfers.isEmpty(),
-                                                    directDebit == null,
-                                                    "Payment card requires card information and no account or direct debit");
-      case CODE_59 -> requireOnly(directDebit != null,
-                                  creditTransfers.isEmpty(),
-                                  paymentCard == null,
-                                  "SEPA direct debit requires a mandate and no account or card");
-      case CODE_42 -> requireOnly(true,
-                                  true,
-                                  paymentCard == null && directDebit == null,
-                                  "Payment to bank account takes no card or mandate");
-      // EN 16931 forbids accounts, cards and mandates for no payment means code, and XRechnung
-      // (BR-DE-23 to BR-DE-25) restricts only 30/58, 48/54/55 and 59. ZZZ ("mutually defined"),
-      // direct debit (49) and all other codes may carry any of them.
-      default -> {
-      }
+    if ((meansCode == PaymentMeansCode.CODE_30 || meansCode == PaymentMeansCode.CODE_58) && creditTransfers.isEmpty()) {
+      throw new IllegalArgumentException("Credit transfer requires at least one account (BR-61)");
     }
   }
 
   /**
    * Returns whether both credit transfer accounts and payment card information are present,
-   * independently of the payment means code. The invoice uses this to restrict the combination
-   * to the French profile EXTENDED-CTC-FR (e.g. its official example UC10).
+   * independently of the payment means code. EN 16931 allows the combination; XRechnung forbids a
+   * card next to a credit transfer (BR-DE-23), which XML validation reports.
    *
    * @return true if at least one account and payment card information are present
    */
   public boolean hasCardWithCreditTransfer() {
     return paymentCard != null && !creditTransfers.isEmpty();
-  }
-
-  private static void requireOnly(boolean required,
-                                  boolean otherAbsent,
-                                  boolean thirdAbsent,
-                                  String message) {
-    if (!required || !otherAbsent || !thirdAbsent) {
-      throw new IllegalArgumentException(message);
-    }
   }
 
   /**

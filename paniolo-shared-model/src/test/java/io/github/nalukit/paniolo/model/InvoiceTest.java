@@ -643,7 +643,7 @@ class InvoiceTest {
   }
 
   @Test
-  void paymentMeansRequireMatchingPaymentGroup() {
+  void paymentMeansApplyTheRulesOfEn16931Only() {
     var account = CreditTransfer.create()
                                 .iban("DE89370400440532013000")
                                 .build();
@@ -659,7 +659,8 @@ class InvoiceTest {
                  () -> PaymentInstruction.create()
                                          .meansCode(PaymentMeansCode.CODE_58)
                                          .build());
-    // A card next to the account is left to the invoice, which allows it in EXTENDED-CTC-FR only.
+    // A card next to the account is allowed by EN 16931 (official Factur-X examples); XRechnung forbids
+    // it (BR-DE-23), which validation reports.
     assertTrue(PaymentInstruction.create()
                                  .meansCode(PaymentMeansCode.CODE_58)
                                  .addCreditTransfer(account)
@@ -674,14 +675,15 @@ class InvoiceTest {
                                    .directDebit(mandate)
                                    .build()
                                    .directDebit());
-    assertThrows(IllegalArgumentException.class,
-                 () -> PaymentInstruction.create()
-                                         .meansCode(PaymentMeansCode.CODE_54)
-                                         .build());
-    assertThrows(IllegalArgumentException.class,
-                 () -> PaymentInstruction.create()
-                                         .meansCode(PaymentMeansCode.CODE_59)
-                                         .build());
+    // Card information for 48/54/55 and the mandate for 59 are XRechnung rules (BR-DE-24, BR-DE-25),
+    // not EN 16931 rules; a received valid EN 16931 document may lack them.
+    assertNotNull(PaymentInstruction.create()
+                                    .meansCode(PaymentMeansCode.CODE_54)
+                                    .build());
+    assertNotNull(PaymentInstruction.create()
+                                    .meansCode(PaymentMeansCode.CODE_59)
+                                    .addCreditTransfer(account)
+                                    .build());
     // EN 16931 forbids accounts, cards and mandates for no code: mutually defined (ZZZ) and the
     // other codes may carry any of them.
     var mutuallyDefined = PaymentInstruction.create()
@@ -725,12 +727,13 @@ class InvoiceTest {
     assertNotNull(PaymentInstruction.create()
                                     .meansCode(PaymentMeansCode.CODE_42)
                                     .build());
-    assertThrows(IllegalArgumentException.class,
-                 () -> PaymentInstruction.create()
-                                         .meansCode(PaymentMeansCode.CODE_42)
-                                         .addCreditTransfer(account)
-                                         .directDebit(mandate)
-                                         .build());
+    assertEquals(mandate,
+                 PaymentInstruction.create()
+                                   .meansCode(PaymentMeansCode.CODE_42)
+                                   .addCreditTransfer(account)
+                                   .directDebit(mandate)
+                                   .build()
+                                   .directDebit());
   }
 
   @Test

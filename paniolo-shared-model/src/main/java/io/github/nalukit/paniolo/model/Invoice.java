@@ -148,17 +148,9 @@ public record Invoice(String number, LocalDate issueDate, InvoiceTypeCode typeCo
       throw new IllegalArgumentException("note must not be blank; only the Factur-X profiles EXTENDED and EXTENDED-CTC-FR allow a note with a content code only");
     }
     lines = List.copyOf(lines);
-    // The sub-invoice lines of a French multi-vendor invoice name their item seller by its legal
-    // registration only, the sub-invoice line by name, identifiers, and country (BR-FR-MV-03).
-    if (!processControl.isFrenchMultiVendor()) {
-      for (InvoiceLine line : lines) {
-        if (line.extended() != null) {
-          Party.requireAddress(line.extended()
-                                   .itemSeller(),
-                               "itemSeller");
-        }
-      }
-    }
+    // The item seller (Factur-X EXTENDED) is optional party information: the official French examples
+    // name it on sub-invoice lines by its legal registration only (BR-FR-MV-03), and which of its
+    // values a profile requires is checked by validation.
     if (statedTotals == null) {
       if (lines.isEmpty()) {
         throw new IllegalArgumentException("An invoice requires at least one line, or stated totals for the Factur-X profiles MINIMUM and BASIC WL");
@@ -243,9 +235,6 @@ public record Invoice(String number, LocalDate issueDate, InvoiceTypeCode typeCo
       checkStatedTotals(statedTotals,
                         adjustments,
                         extended);
-    }
-    if (paymentInstruction != null && paymentInstruction.hasCardWithCreditTransfer() && !ProcessControl.FACTURX_EXTENDED_CTC_FR.equals(processControl.specificationId())) {
-      throw new IllegalArgumentException("Credit transfer requires at least one account and no card or direct debit");
     }
     if (extended != null) {
       if (extended.taxExchangeRate() != null && taxCurrencyCode == null) {

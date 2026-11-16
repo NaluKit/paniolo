@@ -30,7 +30,7 @@ import java.util.List;
  * hierarchy, product details, and line level references and delivery details. Only the CII writer
  * with the EXTENDED specification identifier writes it.
  *
- * @param parentLineId                    identifier of the parent line (BT-X-304); requires a subtype
+ * @param parentLineId                    identifier of the parent line (BT-X-304); Factur-X EXTENDED requires a subtype then (BR-FXEXT-06, checked by validation)
  * @param subtype                         line subtype (BT-X-8), or null for a regular line
  * @param statusCode                      line status code (UNTDID 1229), or null
  * @param productId                       product identifier of the seller's system, or null
@@ -101,7 +101,7 @@ public record LineExtension(String parentLineId, LineSubtype subtype, String sta
     }
     Party.requireAddress(manufacturer,
                          "manufacturer");
-    // The invoice checks the item seller, which a French multi-vendor invoice states partially.
+    // The item seller is not checked: French sub-invoice lines state it partially (BR-FR-MV-03).
     Party.requireAddress(shipTo,
                          "shipTo");
     Party.requireAddress(ultimateShipTo,
@@ -109,10 +109,8 @@ public record LineExtension(String parentLineId, LineSubtype subtype, String sta
     if (parentLineId != null) {
       ModelChecks.required(parentLineId,
                            "parent line id");
-      // BR-FXEXT-06: a sub-line states its subtype.
-      if (subtype == null) {
-        throw new IllegalArgumentException("A line with parent line id " + parentLineId + " requires a subtype");
-      }
+      // Factur-X EXTENDED requires the subtype of a sub-line (BR-FXEXT-06), the sub-invoice lines of
+      // the XRechnung extension in CII state none; validation checks the rule of the profile.
     }
     for (BigDecimal quantity : new BigDecimal[] { chargeFreeQuantity,
                                                   packageQuantity,
@@ -299,7 +297,7 @@ public record LineExtension(String parentLineId, LineSubtype subtype, String sta
     /**
      * Sets {@link LineExtension#parentLineId() parentLineId}.
      *
-     * @param parentLineId identifier of the parent line (BT-X-304); requires a subtype
+     * @param parentLineId identifier of the parent line (BT-X-304); Factur-X EXTENDED requires a subtype then (BR-FXEXT-06, checked by validation)
      * @return this builder
      */
     public Builder parentLineId(String parentLineId) {

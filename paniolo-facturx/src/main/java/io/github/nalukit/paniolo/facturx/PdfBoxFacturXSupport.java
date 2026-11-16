@@ -1364,6 +1364,24 @@ public final class PdfBoxFacturXSupport
     }
   }
 
+  /**
+   * The diagnosis for a PDF without invoice XML: an embedded Order-X document or despatch advice is
+   * named, as is any other attached file, so that the caller can tell the kind of document.
+   */
+  private static String noInvoice(PDDocumentCatalog catalog) throws IOException {
+    var all = allFiles(catalog);
+    if (all.containsKey(ORDER_FILE)) {
+      return "The PDF contains no Factur-X / ZUGFeRD invoice XML but an Order-X document (" + ORDER_FILE + "); read it as an order";
+    }
+    if (all.containsKey(DESPATCH_FILE)) {
+      return "The PDF contains no Factur-X / ZUGFeRD invoice XML but a despatch advice (" + DESPATCH_FILE + "); read it as a despatch advice";
+    }
+    return all.isEmpty() ?
+           "The PDF contains no Factur-X / ZUGFeRD invoice XML and no embedded file" :
+           "The PDF contains no Factur-X / ZUGFeRD invoice XML; embedded files: " + String.join(", ",
+                                                                                                 new java.util.TreeSet<>(all.keySet()));
+  }
+
   @Override
   public EmbeddedInvoice extract(byte[] pdf) {
     Objects.requireNonNull(pdf,
@@ -1373,7 +1391,7 @@ public final class PdfBoxFacturXSupport
       Document          xmp     = parseXmp(catalog.getMetadata());
       var               files   = invoiceFiles(catalog);
       if (files.isEmpty()) {
-        throw new IllegalArgumentException("The PDF contains no Factur-X / ZUGFeRD invoice XML");
+        throw new IllegalArgumentException(noInvoice(catalog));
       }
       // The same generation and file as the container check.
       Selection selection = select(xmp,

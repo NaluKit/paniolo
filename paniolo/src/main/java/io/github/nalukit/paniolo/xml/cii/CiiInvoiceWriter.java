@@ -1730,6 +1730,61 @@ public final class CiiInvoiceWriter
     xml.end();
   }
 
+  /**
+   * Names the EXTENDED information of an invoice for the message that rejects it outside EXTENDED,
+   * e.g. {@code seller contact with name and department, line 2}.
+   */
+  private static String extendedContent(Invoice invoice) {
+    var found = new ArrayList<String>();
+    if (invoice.extended() != null) {
+      found.add("document information");
+    }
+    for (var side : new Object[][] { { "seller", invoice.seller() },
+                                     { "buyer", invoice.buyer() } }) {
+      var party = (io.github.nalukit.paniolo.model.common.Party) side[1];
+      var extended = party.extended();
+      if (extended != null && !extended.isDepartmentContactOnly()) {
+        found.add(side[0] + (extended.contact() != null && extended.roleCode() == null && extended.legalAddress() == null && extended.globalId() == null ?
+                             " contact (" + (extended.contact()
+                                                     .department() != null && extended.contact()
+                                                                                      .name() != null ?
+                                             "name and department" :
+                                             "type or fax") + ")" :
+                             " party information"));
+      }
+    }
+    for (int index = 0; index < invoice.adjustments()
+                                       .size(); index++) {
+      if (invoice.adjustments()
+                 .get(index)
+                 .extended() != null) {
+        found.add("document allowance or charge " + (index + 1));
+      }
+    }
+    if (invoice.notes()
+               .stream()
+               .anyMatch(note -> note.contentCode() != null)) {
+      found.add("note content code");
+    }
+    for (var line : invoice.lines()) {
+      if (line.extended() != null || line.classifications()
+                                         .stream()
+                                         .anyMatch(classification -> classification.className() != null)) {
+        found.add("line " + line.id() + (line.extended() != null && !line.extended()
+                                                                         .priceAdjustments()
+                                                                         .isEmpty() ?
+                                         " (gross price allowance or charge details)" :
+                                         ""));
+      }
+    }
+    return found.size() > 6 ?
+           String.join(", ",
+                       found.subList(0,
+                                     6)) + " and " + (found.size() - 6) + " more" :
+           String.join(", ",
+                       found);
+  }
+
   @Override
   public String toXml(Invoice invoice) {
     Objects.requireNonNull(invoice,
@@ -1749,7 +1804,8 @@ public final class CiiInvoiceWriter
       throw new IllegalArgumentException("Taxes of another type than VAT, e.g. the insurance tax AAM, can only be written in the Factur-X profile EXTENDED (ProcessControl.facturXExtended()); the profile of this invoice has no place for them, and writing it without them would change the amounts");
     }
     if (invoice.hasExtendedInformation() && !extendedProfile) {
-      throw new IllegalArgumentException("EXTENDED information requires the specification identifier of the Factur-X profile EXTENDED (ProcessControl.facturXExtended()) or EXTENDED-CTC-FR (ProcessControl.facturXExtendedCtcFr(...))");
+      throw new IllegalArgumentException("EXTENDED information (" + extendedContent(invoice) + ") requires the specification identifier of the Factur-X profile EXTENDED (ProcessControl.facturXExtended()) or EXTENDED-CTC-FR (ProcessControl.facturXExtendedCtcFr(...)); the profile " + invoice.processControl()
+                                                                                                                                                                                                                                                                                                                 .specificationId() + " has no place for it, and it is not dropped silently");
     }
     // KoSIT validates sub invoice lines, third party payments, and their MIME codes for UBL only (BR-DEX-15).
     if (invoice.hasXrechnungExtensionInformation()) {
