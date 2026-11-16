@@ -42,13 +42,19 @@ reference in `docs/api/<version>.md`.
   `--pdf-profile` (`--profile` is the Factur-X profile of `to-facturx`). README and API
   documentation describe the profiles.
 
+- `PdfLayout.withFoldMarks(boolean)` shows or hides the fold and hole marks of DIN 5008 form B:
+  small gray lines at the left edge of page 1, 105 mm and 210 mm from the top (fold) and at
+  148.5 mm (hole). Folded at the marks, the address lies in the window of a DL envelope. They are
+  shown by default; hide them for letter paper with preprinted marks. Documents without address
+  window, such as validation reports, have none.
+
 ### Changed
 
 - The records `ExtendedInformation` and `LineExtension` have the new last component `otherTaxes`;
   the builders and JSON without it are unchanged.
 
-- The record `PdfLayout` has the new component `profile`; the canonical constructor takes it as
-  last argument. `of`, `defaults`, and the `with` methods are unchanged.
+- The record `PdfLayout` has the new components `profile` and `foldMarks`; the canonical constructor
+  takes them as last arguments. `of`, `defaults`, and the `with` methods are unchanged.
 
 - The rendered PDFs use IBM Plex Sans Regular and Bold (SIL Open Font License 1.1), packaged with
   `paniolo-facturx`, instead of Liberation Sans of PDFBox. Bold text uses the real bold face instead

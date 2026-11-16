@@ -59,15 +59,20 @@ import java.util.Objects;
  *                          with paniolo-facturx)
  * @param boldFont          TrueType font for bold text, or null to embolden the regular font; with
  *                          no regular font, IBM Plex Sans Bold is used
- * @param accentColor       color of rules and headings as RGB, e.g. {@code 0x019ABC}
+ * @param accentColor       accent color as RGB, e.g. {@code 0x019ABC}: the rule below the title,
+ *                          the section headings, the rule above the amount due, and INFO notes of
+ *                          validation reports; see {@link #withAccentColor(int)}
  * @param footer            additional footer text on every page, e.g. management and register
  *                          court, or null
  * @param watermark         text printed diagonally across every page, e.g. {@code PREVIEW}, or
  *                          null; see {@link #withWatermark(String)}
  * @param profile           kind of PDF to render, {@link PdfProfile#PDF_A_3B} by default; see
  *                          {@link #withProfile(PdfProfile)}
+ * @param foldMarks         whether page 1 of a document with an address window shows the fold and
+ *                          hole marks of DIN 5008 form B at the left edge; {@code true} by
+ *                          default, see {@link #withFoldMarks(boolean)}
  */
-public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, boolean showLogo, LogoPosition logoPosition, byte[] regularFont, byte[] boldFont, int accentColor, String footer, String watermark, PdfProfile profile) {
+public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, boolean showLogo, LogoPosition logoPosition, byte[] regularFont, byte[] boldFont, int accentColor, String footer, String watermark, PdfProfile profile, boolean foldMarks) {
   /**
    * Accent color of the default layout: the teal of the Paniolo brand.
    */
@@ -135,7 +140,8 @@ public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, b
                          DEFAULT_ACCENT_COLOR,
                          null,
                          null,
-                         PdfProfile.PDF_A_3B);
+                         PdfProfile.PDF_A_3B,
+                         true);
   }
 
   private static byte[] copy(byte[] bytes) {
@@ -162,7 +168,8 @@ public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, b
                          accentColor,
                          footer,
                          watermark,
-                         profile);
+                         profile,
+                         foldMarks);
   }
 
   /**
@@ -200,7 +207,8 @@ public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, b
                          accentColor,
                          footer,
                          watermark,
-                         profile);
+                         profile,
+                         foldMarks);
   }
 
   /**
@@ -220,7 +228,8 @@ public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, b
                          accentColor,
                          footer,
                          watermark,
-                         profile);
+                         profile,
+                         foldMarks);
   }
 
   /**
@@ -241,7 +250,8 @@ public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, b
                          accentColor,
                          footer,
                          watermark,
-                         profile);
+                         profile,
+                         foldMarks);
   }
 
   /**
@@ -267,14 +277,31 @@ public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, b
                          accentColor,
                          footer,
                          watermark,
-                         profile);
+                         profile,
+                         foldMarks);
   }
 
   /**
-   * Returns a copy with another accent color.
+   * Returns a copy with another accent color. The accent color is the only color of the document
+   * besides gray and black. It is used for:
+   * <ul>
+   *   <li>the rule below the title (e.g. "Rechnung"),</li>
+   *   <li>the section headings (e.g. "Zahlung"),</li>
+   *   <li>the heavy rule above the amount due in the totals,</li>
+   *   <li>notes of level INFO in validation reports.</li>
+   * </ul>
+   * Body text, table rules, watermark, and fold marks stay gray or black. The accent color changes
+   * only the look: the XML, the profile, and the PDF/A conformance are not affected. The default
+   * is {@link #DEFAULT_ACCENT_COLOR}. Choose a color that is dark enough to read on white paper;
+   * a very light value makes headings and rules hard to see.
    *
-   * @param rgb color as RGB, e.g. {@code 0x01244F}
+   * <pre>{@code
+   * PdfLayout layout = PdfLayout.defaults().withAccentColor(0xC0392B);
+   * }</pre>
+   *
+   * @param rgb color as RGB between {@code 0x000000} and {@code 0xFFFFFF}, e.g. {@code 0x01244F}
    * @return the layout
+   * @throws IllegalArgumentException if the value is not an RGB value
    */
   public PdfLayout withAccentColor(int rgb) {
     return new PdfLayout(locale,
@@ -287,7 +314,8 @@ public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, b
                          rgb,
                          footer,
                          watermark,
-                         profile);
+                         profile,
+                         foldMarks);
   }
 
   /**
@@ -307,7 +335,8 @@ public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, b
                          accentColor,
                          footer,
                          watermark,
-                         profile);
+                         profile,
+                         foldMarks);
   }
 
   /**
@@ -335,7 +364,8 @@ public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, b
                          accentColor,
                          footer,
                          watermark,
-                         profile);
+                         profile,
+                         foldMarks);
   }
 
   /**
@@ -358,7 +388,33 @@ public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, b
                          accentColor,
                          footer,
                          watermark,
-                         profile);
+                         profile,
+                         foldMarks);
+  }
+
+  /**
+   * Returns a copy that shows or hides the fold and hole marks. They are small lines at the left
+   * edge of page 1, 105&nbsp;mm and 210&nbsp;mm from the top (fold) and 148.5&nbsp;mm (hole, a
+   * little longer), as in DIN 5008 form B: folded at the marks, the address lies in the window of a
+   * C6/5 (DL) envelope. Only documents with an address window have them. Hide them for letter paper
+   * that already has the marks preprinted.
+   *
+   * @param show whether page 1 shows the fold and hole marks
+   * @return the layout
+   */
+  public PdfLayout withFoldMarks(boolean show) {
+    return new PdfLayout(locale,
+                         showSenderAddress,
+                         logo,
+                         showLogo,
+                         logoPosition,
+                         regularFont,
+                         boldFont,
+                         accentColor,
+                         footer,
+                         watermark,
+                         profile,
+                         show);
   }
 
   /**
@@ -434,7 +490,8 @@ public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, b
                         accentColor,
                         footer,
                         watermark,
-                        profile);
+                        profile,
+                        foldMarks);
   }
 
   @Override

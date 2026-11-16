@@ -109,6 +109,11 @@ All documents use A4 after DIN 5008 form B, so the recipient fits a window envel
   scaled proportionally to fit 60 mm × 20 mm, so an aspect ratio of 3:1 fills the box; for sharp
   print at 300 dpi it should have about 710 × 240 pixels. Trim empty borders.
 - **Window**: sender line and the buyer's address; the country only if it differs from the seller's.
+- **Fold and hole marks**: small gray lines at the left edge of page 1, as in DIN 5008 form B: fold
+  marks 105 mm and 210 mm from the top (5 mm long) and the hole mark at 148.5 mm (8 mm long).
+  Folded at the marks, the address lies in the window of a DL envelope. They are shown by default;
+  `withFoldMarks(false)` hides them, e.g. for letter paper that has them preprinted. Documents
+  without address window (validation reports) have none.
 - **Document data**: invoice number, date, due date, service period, delivery date, tax point date,
   buyer reference (Leitweg-ID), purchase order, customer number, the buyer's VAT ID.
 - **Title** based on the invoice type (invoice, credit note, corrected invoice, partial invoice,

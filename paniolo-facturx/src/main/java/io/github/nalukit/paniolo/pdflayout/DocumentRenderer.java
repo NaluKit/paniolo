@@ -85,6 +85,11 @@ abstract class DocumentRenderer {
    */
   static final int WATERMARK_OPAQUE = 0xD6DADF;
 
+  /**
+   * Color of the fold and hole marks: a medium gray, visible but quiet.
+   */
+  static final int FOLD_MARK = 0x8A8F96;
+
   final PdfLayout layout;
   final Texts     t;
   final int       accent;
@@ -269,6 +274,7 @@ abstract class DocumentRenderer {
       canvas.close();
       footers(document);
       watermarks(document);
+      foldMarks(document);
       Party recipient = recipient();
       PdfA.finish(document,
                   layout.profile(),
@@ -1094,6 +1100,41 @@ abstract class DocumentRenderer {
     }
     return LosslessFactory.createFromImage(document,
                                            flat);
+  }
+
+  /**
+   * Fold and hole marks of DIN 5008 form B at the left edge of page 1: folds 105 mm and 210 mm from
+   * the top, hole mark in the middle at 148.5 mm. Folded at the marks, the address lies in the
+   * window of a DL envelope. Only for documents with an address window.
+   */
+  private void foldMarks(PDDocument document)
+      throws IOException {
+    if (!layout.foldMarks() || !addressWindow()) {
+      return;
+    }
+    try (var stream = new PDPageContentStream(document,
+                                              canvas.pages()
+                                                    .get(0),
+                                              PDPageContentStream.AppendMode.APPEND,
+                                              true,
+                                              true)) {
+      stream.saveGraphicsState();
+      for (float fromTop : new float[] { 105 * MM, 210 * MM }) {
+        Canvas.rule(stream,
+                    0,
+                    5 * MM,
+                    PAGE.getHeight() - fromTop,
+                    0.5f,
+                    FOLD_MARK);
+      }
+      Canvas.rule(stream,
+                  0,
+                  8 * MM,
+                  PAGE.getHeight() - 148.5f * MM,
+                  0.5f,
+                  FOLD_MARK);
+      stream.restoreGraphicsState();
+    }
   }
 
   /**

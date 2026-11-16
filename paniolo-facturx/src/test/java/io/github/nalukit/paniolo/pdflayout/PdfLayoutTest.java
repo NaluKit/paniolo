@@ -371,6 +371,41 @@ class PdfLayoutTest {
     }
 
     @Test
+    @DisplayName("draws three fold and hole marks at the left edge of page 1 unless hidden")
+    void drawsFoldMarks()
+        throws IOException {
+      var invoice = TestInvoices.simple("R-2026-005")
+                                .build();
+      byte[] with    = render("fold-marks",
+                              invoice,
+                              PdfLayout.defaults());
+      byte[] without = render("no-fold-marks",
+                              invoice,
+                              PdfLayout.defaults()
+                                       .withFoldMarks(false));
+      assertEquals(List.of(),
+                   pdfaFailures(with));
+      // Each mark is one stroked horizontal line starting at x = 0.
+      int marks = strokedLinesAtLeftEdge(with);
+      assertEquals(3,
+                   marks - strokedLinesAtLeftEdge(without));
+    }
+
+    private static int strokedLinesAtLeftEdge(byte[] pdf)
+        throws IOException {
+      try (var document = org.apache.pdfbox.Loader.loadPDF(pdf)) {
+        String content = new String(document.getPage(0)
+                                            .getContents()
+                                            .readAllBytes(),
+                                    java.nio.charset.StandardCharsets.ISO_8859_1);
+        return (int) java.util.regex.Pattern.compile("(?m)^0 [0-9.]+ m\\s*$")
+                                            .matcher(content)
+                                            .results()
+                                            .count();
+      }
+    }
+
+    @Test
     @DisplayName("breaks long invoices over pages and repeats the table header")
     void breaksPages()
         throws IOException {
@@ -857,7 +892,8 @@ class PdfLayoutTest {
                                        0,
                                        null,
                                        null,
-                                       io.github.nalukit.paniolo.config.PdfProfile.PDF_A_3B));
+                                       io.github.nalukit.paniolo.config.PdfProfile.PDF_A_3B,
+                                       true));
     }
 
     @Test
