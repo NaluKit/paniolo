@@ -43,7 +43,8 @@ import java.util.Objects;
  * <p>For letter paper with a preprinted letterhead, hide the sender's address with
  * {@code withShowSenderAddress(false)}; the sender line above the address window and the footer
  * remain. Combined with {@code withShowLogo(true)}, the letterhead shows only the logo, on the side
- * chosen with {@code withLogoPosition}.
+ * chosen with {@code withLogoPosition}. If the paper also has the fold and hole marks preprinted,
+ * hide the ones of the document with {@code withFoldMarks(false)}.
  *
  * @param locale            language of the labels and the number and date formats; German,
  *                          English and French are supported, other languages fall back to English
@@ -295,6 +296,11 @@ public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, b
    * is {@link #DEFAULT_ACCENT_COLOR}. Choose a color that is dark enough to read on white paper;
    * a very light value makes headings and rules hard to see.
    *
+   * <p>The color is a Java hexadecimal literal: {@code 0x} followed by six digits, two each for red,
+   * green, and blue (00 to FF). {@code 0x01244F} is red 1, green 36, blue 79, a dark navy blue. A web
+   * color such as {@code #01244F} becomes {@code 0x01244F}, or pass the text to
+   * {@link #withAccentColor(String)}.
+   *
    * <pre>{@code
    * PdfLayout layout = PdfLayout.defaults().withAccentColor(0xC0392B);
    * }</pre>
@@ -316,6 +322,36 @@ public record PdfLayout(Locale locale, boolean showSenderAddress, byte[] logo, b
                          watermark,
                          profile,
                          foldMarks);
+  }
+
+  /**
+   * Returns a copy with another accent color, given as a web color: six hexadecimal digits, with or
+   * without a leading {@code #}, in upper or lower case, e.g. {@code "#01244F"}. The same as
+   * {@link #withAccentColor(int)} with {@code 0x01244F}; see there for what the accent color
+   * changes.
+   *
+   * <pre>{@code
+   * PdfLayout layout = PdfLayout.defaults().withAccentColor("#C0392B");
+   * }</pre>
+   *
+   * @param hex color as {@code #RRGGBB} or {@code RRGGBB}; surrounding blanks are ignored
+   * @return the layout
+   * @throws NullPointerException     if the value is null
+   * @throws IllegalArgumentException if it is not exactly six hexadecimal digits, e.g. a short
+   *                                  form such as {@code #014}, a color name, or {@code 0x01244F}
+   */
+  public PdfLayout withAccentColor(String hex) {
+    Objects.requireNonNull(hex,
+                           "hex");
+    String digits = hex.strip();
+    if (digits.startsWith("#")) {
+      digits = digits.substring(1);
+    }
+    if (!digits.matches("[0-9a-fA-F]{6}")) {
+      throw new IllegalArgumentException("Accent color must be six hexadecimal digits like #01244F, but was '" + hex + "'");
+    }
+    return withAccentColor(Integer.parseInt(digits,
+                                            16));
   }
 
   /**

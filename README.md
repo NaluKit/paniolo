@@ -133,8 +133,8 @@ Supported:
 - XRechnung extension in UBL Invoice: nested sub invoice lines, third party payments, and XML
   attachments, validated with the KoSIT extension scenario.
 - Producing software of received PDFs, recognized from the signatures the Mustang project uses.
-- Rendering of the visual document of invoices, orders, and delivery notes (DIN 5008,
-  German, English, and French, logo, IBM Plex Sans or own fonts) with `paniolo-facturx`: PDF/A-3b
+- Rendering of the visual document of invoices, orders, and delivery notes (DIN 5008 with fold
+  marks, German, English, and French, logo, IBM Plex Sans or own fonts) with `paniolo-facturx`: PDF/A-3b
   (PDF 1.7) by default, PDF/A-1b (PDF 1.4) as input for `toFacturX`, or a plain PDF 1.7 or 2.0
   preview with watermark; see [PDF profiles](#pdf-profiles-of-topdf).
 - JSON storage of invoices, orders, and despatch advices with the checks of the model (`paniolo-json`).

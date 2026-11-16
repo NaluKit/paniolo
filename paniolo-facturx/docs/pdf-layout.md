@@ -20,7 +20,7 @@ PdfLayout layout = PdfLayout.of(Locale.ENGLISH)
                             .withLogo(Files.readAllBytes(Path.of("logo.png")))
                             .withShowLogo(true)                              // default: no logo
                             .withLogoPosition(PdfLayout.LogoPosition.RIGHT)  // default: LEFT
-                            .withAccentColor(0x01244F)
+                            .withAccentColor("#01244F")                      // or 0x01244F
                             .withFooter("Managing director: Erika Muster · Berlin HRB 12345 B");
 byte[] branded = paniolo.toFacturX(invoice,
                                    FacturXProfile.EN16931,
@@ -351,5 +351,5 @@ rejected with an `IllegalArgumentException` that names the restriction.
 ## Limits
 
 - No PDF/A-3a (tagged PDF), no PDF/A-2 and PDF/A-4, and no right-to-left scripts.
-- The layout is fixed apart from logo, fonts, accent color, footer, and language. For a fully own
+- The layout is fixed apart from logo, fonts, accent color, footer, fold marks, and language. For a fully own
   design, render your PDF/A yourself and use `toFacturX(invoice, pdf, profile)`.

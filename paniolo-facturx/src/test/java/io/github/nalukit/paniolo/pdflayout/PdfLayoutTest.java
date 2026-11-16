@@ -897,6 +897,32 @@ class PdfLayoutTest {
     }
 
     @Test
+    @DisplayName("takes the accent color as a web color")
+    void acceptsWebColor() {
+      var expected = PdfLayout.defaults()
+                              .withAccentColor(0x01244F);
+      assertEquals(expected,
+                   PdfLayout.defaults()
+                            .withAccentColor("#01244F"));
+      assertEquals(expected,
+                   PdfLayout.defaults()
+                            .withAccentColor(" 01244f "));
+      assertEquals(0xC0392B,
+                   PdfLayout.defaults()
+                            .withAccentColor("#c0392B")
+                            .accentColor());
+      for (String invalid : new String[] { "", "#", "#014", "#01244", "#01244FF", "0x01244F", "red", "#GG244F" }) {
+        assertThrows(IllegalArgumentException.class,
+                     () -> PdfLayout.defaults()
+                                    .withAccentColor(invalid),
+                     invalid);
+      }
+      assertThrows(NullPointerException.class,
+                   () -> PdfLayout.defaults()
+                                  .withAccentColor((String) null));
+    }
+
+    @Test
     @DisplayName("strips the watermark, treats a blank one as none, and compares it")
     void normalizesWatermark() {
       assertEquals("PREVIEW",

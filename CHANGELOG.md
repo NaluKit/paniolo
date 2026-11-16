@@ -48,6 +48,10 @@ reference in `docs/api/<version>.md`.
   shown by default; hide them for letter paper with preprinted marks. Documents without address
   window, such as validation reports, have none.
 
+- `PdfLayout.withAccentColor(String)` takes the accent color as a web color, e.g. `"#01244F"`
+  (six hexadecimal digits, `#` optional). Anything else, such as a short form or a color name,
+  fails with an `IllegalArgumentException`. `withAccentColor(int)` is unchanged.
+
 ### Changed
 
 - The records `ExtendedInformation` and `LineExtension` have the new last component `otherTaxes`;
