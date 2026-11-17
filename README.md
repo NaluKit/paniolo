@@ -892,12 +892,14 @@ result.warnings().forEach(w -> log(w.code(), w.lineId(), w.message()));
 | `READ-PAYABLE-AMOUNT` | Stated amount due (BT-115) differs from the calculated                             | The calculated amount is kept                                                                                                                                            |
 | `READ-REASON-CODE`    | Allowance reason code outside UNTDID 5189, e.g. the charge code `ABK`              | The code is dropped and the reason text kept; without a reason text the allowance is still rejected                                                                      |
 | `READ-PERCENTAGE`     | Allowance or charge percentage without its base amount                             | The percentage is dropped and the stated amount kept; no base amount is derived                                                                                          |
-| `READ-PAYMENT-MEANS`  | A further payment means block with other means, text, card, or mandate             | The block is not merged; the model keeps the first payment instruction (BG-16)                                                                                           |
+| `READ-PAYMENT-MEANS`  | A further payment means block with other means, text, card, or mandate, or a block without payment means code (BT-81) | The block is not merged; the model keeps the first payment instruction (BG-16). A block without code is read as `1` (instrument not defined); ZUGFeRD 1.0 allows it, so this applies in strict reading too |
 | `READ-TEXT-LINE`      | A ZUGFeRD 1.0 line with text only, without item and quantity                       | The text becomes an invoice note (BG-1)                                                                                                                                  |
 | `READ-OTHER-TAX`      | A tax of another type than VAT, e.g. the insurance tax `AAM` of Factur-X EXTENDED   | The tax is not read and never taken for VAT; the calculated totals lack it, and `NORMALIZED` export is refused (see below)                                                |
 | `READ-TAX-EXEMPTION`  | EXTENDED: a line, allowance, or charge states another VAT exemption reason or code than its VAT breakdown, or a further breakdown repeats category and rate with another reason | The model keeps one breakdown per category and rate (per sub-invoice for French multi-vendor invoices); the text of the first breakdown is kept and the amounts are merged |
 | `READ-GROSS-PRICE`    | UBL: a price discount (BT-147) without gross price (BT-148)                                                                                                                     | The gross price is derived as net price plus discount; the original document keeps its form, a normalized export states the derived gross price                            |
 | `READ-LINE-QUANTITY`  | The stated line net amount has the opposite sign of quantity x net price outside the profiles that allow a negative net price                                                   | The quantity (BT-129) takes the sign of the amount, the price stays; `result.deviations()` lists BT-129 and BT-131                                                         |
+| `READ-TAX-RATE`       | A VAT category without a rate other than zero (Z, E, AE, K, G) states another rate or none, e.g. an exempt VAT breakdown with 19 % and VAT amount zero                         | Rate zero is kept; strict reading rejects the document with the location                                                                                                  |
+| `READ-PERIOD`         | An invoicing period (BG-14, BG-26) with a date that is no calendar date, e.g. `20139102`, or an end before its start                                                           | The period is dropped; strict reading rejects the document with the location                                                                                             |
 
 Four warnings report values the model does not keep or interpret, or takes from somewhere else,
 without changing an amount.
@@ -920,6 +922,24 @@ reading. `result.stated()` keeps the original amounts and `result.deviations()` 
 differences, including totals that strict reading does not compare. Lines with quantity zero,
 a negative recalculated price outside EXTENDED (BR-27) that a negated quantity does not explain, and structural errors, are still rejected. `ReadMode.STRICT` is
 the default of all methods without a mode.
+
+### Writing a read invoice in another syntax
+
+Writing keeps the specification identifier (BT-24) of the invoice. An invoice read from a UBL
+document and written with `toXml(invoice, InvoiceSyntax.CII)` therefore states the identifier of
+the received document, e.g. the Peppol BIS Billing 3.0 identifier
+`urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0`. Paniolo never
+replaces it, as that would claim a profile the document was not checked against.
+
+Not every identifier fits every syntax. Peppol BIS Billing 3.0 defines a UBL binding only, and
+Factur-X / ZUGFeRD accept in CII only their own identifiers (FX-SCH-A-000556 for EN 16931 allows
+`urn:cen.eu:en16931:2017`). Paniolo validates such a CII document with the EN 16931 and
+XRechnung rules of the KoSIT configuration, which contain the Peppol rules for CII as well, so it
+passes there; validators that check every CII document as Factur-X, e.g. Mustang, reject it. For a
+Factur-X / ZUGFeRD document, build the invoice with the identifier of the target profile, e.g.
+`ProcessControl.en16931()` or `ProcessControl.facturXExtended()`, and choose a profile whose rules
+the content meets. Writing a profile rejects content that the profile cannot carry before any
+output is written (e.g. "Factur-X profile MINIMUM does not allow: …").
 
 ### Importing received invoices with their original amounts
 
