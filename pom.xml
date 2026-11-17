@@ -68,21 +68,21 @@
     <verapdf.version>1.30.4</verapdf.version>
     <jackson.version>3.1.8</jackson.version>
 
-    <plugin.central-publishing.version>0.8.0</plugin.central-publishing.version>
+    <plugin.central-publishing.version>0.12.0</plugin.central-publishing.version>
     <plugin.compiler.version>3.16.0</plugin.compiler.version>
     <plugin.cyclonedx.version>2.9.3</plugin.cyclonedx.version>
     <plugin.dependency-check.version>13.0.0</plugin.dependency-check.version>
     <!-- H2 driver of dependency-check-maven (driver.h2database.version of its parent POM); the
          plugin uses it and scripts/ci/check-owasp-db-age.sh reads the database with it -->
-    <plugin.dependency-check.h2.version>2.4.240</plugin.dependency-check.h2.version>
+    <plugin.dependency-check.h2.version>2.5.252</plugin.dependency-check.h2.version>
     <plugin.download.version>1.13.0</plugin.download.version>
     <plugin.enforcer.version>3.5.0</plugin.enforcer.version>
     <plugin.flatten.version>1.9.0</plugin.flatten.version>
-    <plugin.gpg.version>3.2.7</plugin.gpg.version>
+    <plugin.gpg.version>3.2.8</plugin.gpg.version>
     <plugin.javadoc.version>3.12.0</plugin.javadoc.version>
     <plugin.license.version>4.6</plugin.license.version>
     <plugin.resources.version>3.5.0</plugin.resources.version>
-    <plugin.source.version>3.3.1</plugin.source.version>
+    <plugin.source.version>3.4.0</plugin.source.version>
     <plugin.surefire.version>3.6.1</plugin.surefire.version>
 
     <maven.compiler.source>21</maven.compiler.source>
