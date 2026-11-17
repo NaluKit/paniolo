@@ -342,7 +342,7 @@ jobs:
         env:
           VERSION: ${{ steps.project.outputs.version }}
         run: scripts/release/collect-release-files.sh "$VERSION" release-files
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         if: steps.mode.outputs.release == 'true'
         with:
           name: OWASP report
