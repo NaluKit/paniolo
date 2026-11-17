@@ -180,6 +180,11 @@ reference in `docs/api/<version>.md`.
   sub-invoice line without VAT category, as `IllegalArgumentException` that names it instead of a
   `NullPointerException`.
 
+- Writing the Factur-X profile MINIMUM rejects a postal address of the buyer (BG-8), also one with
+  the country only, and the buyer VAT identifier (BT-48), which the MINIMUM schematron of
+  Factur-X 1.09 marks as not used. Before, such an invoice was written and failed its own
+  validation.
+
 ## [1.0.0-rc02] - 2026-11-15
 
 Second release candidate. See the [API reference for 1.0.0-rc02](docs/api/1.0.0-rc02.md).
