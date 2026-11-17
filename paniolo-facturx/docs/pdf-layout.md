@@ -39,6 +39,77 @@ byte[] orderPdf = paniolo.toPdf(order, layout);              // only the pages
 byte[] notePdf = paniolo.toPdf(advice, layout);
 ```
 
+A quotation is built from the same parties and lines as an invoice and rendered with `toPdf`.
+Optional lines are listed separately and are not part of the total; see
+[Quotations](#layout) for the layout:
+
+```java
+TaxCategory vat = TaxCategory.standard(new BigDecimal("19"));
+
+Party seller = Party.create()
+                    .name("Muster GmbH")
+                    .address(Address.create()
+                                    .street("Musterstraße 1")
+                                    .postalCode("10115")
+                                    .city("Berlin")
+                                    .country(Country.DE)
+                                    .build())
+                    .vatId("DE123456788")
+                    .contact(Contact.create()
+                                    .name("Erika Muster")
+                                    .telephone("+49 30 123456")
+                                    .email("angebot@example.org")
+                                    .build())
+                    .build();
+Party buyer = Party.create()
+                   .name("Kunde GmbH")
+                   .address(Address.create()
+                                   .street("Kundenweg 2")
+                                   .postalCode("20095")
+                                   .city("Hamburg")
+                                   .country(Country.DE)
+                                   .build())
+                   .identifier("K-4711")
+                   .build();
+
+Quotation quotation = Quotation.create()
+                               .number("ANG-2026-007")
+                               .issueDate(LocalDate.of(2026, 11, 2))
+                               .validUntil(LocalDate.of(2026, 12, 2))
+                               .seller(seller)
+                               .buyer(buyer)
+                               .buyerReference("ANF-12")
+                               .subject("Beratung Release 5")
+                               .addNote("Preise freibleibend")
+                               .deliveryTerms("Beginn in KW 48")
+                               .paymentTerms("14 Tage netto")
+                               .addLine(InvoiceLine.create()
+                                                   .id("1")
+                                                   .name("Beratung")
+                                                   .quantity(new BigDecimal("2"))
+                                                   .unitCode("HUR")
+                                                   .netUnitPrice(new BigDecimal("100"))
+                                                   .tax(vat)
+                                                   .build())
+                               .addOptionalLine(InvoiceLine.create()      // not in the total
+                                                           .id("2")
+                                                           .name("Schulung")
+                                                           .quantity(new BigDecimal("2"))
+                                                           .unitCode("HUR")
+                                                           .netUnitPrice(new BigDecimal("50"))
+                                                           .tax(vat)
+                                                           .build())
+                               .build();
+
+byte[] quotationPdf = paniolo.toPdf(quotation);                  // German, PDF/A-3b
+byte[] quotationEn  = paniolo.toPdf(quotation, PdfLayout.of(Locale.ENGLISH)
+                                                         .withShowLogo(true)
+                                                         .withLogo(Files.readAllBytes(Path.of("logo.png"))));
+```
+
+The total of this quotation is 238.00 EUR (2 × 100 net plus 19 % VAT); the optional training
+is shown below the totals. A quotation has no XML, so there is no `toFacturX` counterpart.
+
 For a preview, e.g. to check an invoice before it is sent, render only the page and add a
 watermark. It is printed large, diagonally, and semi-transparent across every page, with the
 text as given:
