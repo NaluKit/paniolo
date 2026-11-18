@@ -33,6 +33,9 @@ import java.util.Set;
  * totals. On the line level ({@link LineExtension#otherTaxes()}) it only describes the line and is
  * never added to the totals, so the same tax is not counted twice.
  *
+ * <p>The CII writer preserves these taxes in Factur-X EXTENDED. Writing them as UBL or in
+ * another profile is rejected; a normalized export does not silently discard them.
+ *
  * @param typeCode     tax type code; only {@link #INSURANCE_TAX} is supported
  * @param categoryCode tax category code as stated, e.g. {@code S}
  * @param rate         tax rate in percent, or null

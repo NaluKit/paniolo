@@ -1,9 +1,10 @@
 # Library Comparison
 
-Reviewed **16 November 2026**. Paniolo: local development revision
-`a9535dee224d2bab96fc46d20c8ecd9f19b5750d` (`HEAD-SNAPSHOT`), including features
+Paniolo reviewed **18 November 2026**: local development revision
+`ebaf391394e29b1ec50b7fd370567ec5a18d96c5` (`HEAD-SNAPSHOT`), including features
 listed as **Unreleased** in the [changelog](CHANGELOG.md). Mustangproject: **2.26.0**.
-Other projects: their public documentation at the review date, unless stated otherwise.
+The Mustang and other-project source/documentation review remains dated **16 November 2026**;
+those external findings have not been refreshed, unless stated otherwise.
 This is a source and documentation review, not a new interoperability or performance test.
 “Not documented” means that the reviewed sources do not establish the feature; it does not
 prove that an integration could not implement it.
@@ -16,7 +17,7 @@ advantage over Mustangproject is the integration architecture and the explicit h
 model changes and mapping losses. **Order-X, delivery notes, PDF rendering, arithmetic checks,
 and a CLI are shared capabilities**, rather than exclusive Paniolo features.
 
-- **One immutable model:** invoices, orders, and delivery notes use records and builders,
+- **One immutable model:** invoices, orders, quotations, and delivery notes use records and builders,
   accessed through the thread-safe `Paniolo` facade. Builders belong to one operation.
 - **Direct UBL and CII output:** both invoice syntaxes are written from the same model.
   Mustang's UBL output uses its CII-to-UBL conversion path.
@@ -50,7 +51,7 @@ Sources: [scope and API](README.md#scope), [module POMs](pom.xml),
 | Arithmetic checks | Model calculates totals; optional validation calculation check | Calculators and validator arithmetic check, which can be disabled | Both calculate and check amounts. Import normalization and validation acceptance remain separate questions. [P1, M5] |
 | PDF embedding/extraction | `paniolo-facturx` with PDFBox | Exporters/importers in `library` | Paniolo keeps PDF dependencies outside its XML module; Mustang also separates library, validator and CLI artifacts. [P2, M2] |
 | PDF/A conformance | Optional `paniolo-pdfa` with veraPDF | PDF validation via validator module | Neither embedding XML nor rendering a PDF by itself demonstrates complete PDF/A and invoice conformance. [P1, M8] |
-| Visual PDF | Model-based PDFBox layout for invoices, orders, delivery notes; quotations in Unreleased | XML visualization and PDF via XSLT/FOP | Different layout pipelines; Paniolo supports logo/fonts/colors/footer, not arbitrary layout templates. [P1, M9] |
+| Visual PDF | Model-based PDFBox layout for invoices, orders, quotations, delivery notes; PDF/A-3b by default, PDF/A-1b or PDF 1.7/2.0 preview | XML visualization and PDF via XSLT/FOP | Different layout pipelines; Paniolo supports logo/fonts/colors/footer, not arbitrary layout templates. New profiles and quotations are Unreleased. [P1, M9] |
 | Browser view | Client-side web component, XML/PDF input, attachments, validation view, de/en/fr | HTML visualization; validation-log visualization | Paniolo provides an embeddable interactive component; both provide human-readable views. [P3, M9] |
 | Received documents | Strict/lenient reading plus original XML and stated amounts through `importInvoice` | Invoice import with configurable recalculation behavior | Test supplier documents and retain originals. The historical import comparison is not evidence for the current revision. [P4, M1] |
 | Quotations | PDF, optional lines, conversion to invoice, JSON and CLI; **Unreleased**, no quotation XML | Equivalent workflow not established in reviewed sources | A documented Paniolo workflow, not a claim that Mustang cannot represent any quotation data. [P5] |

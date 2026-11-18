@@ -104,7 +104,8 @@ import java.util.function.Supplier;
 /**
  * Single entry point (facade) for writing, reading, converting and validating electronic business
  * documents: XRechnung / EN 16931 invoices in UBL and CII, Factur-X / ZUGFeRD hybrid PDFs, Order-X
- * orders and despatch advices (delivery notes) in UBL and CIDA.
+ * orders and despatch advices (delivery notes) in UBL and CIDA. Quotations are rendered as PDF;
+ * their model provides conversion to invoices and has no XML syntax.
  *
  * <h2>Getting started</h2>
  *
@@ -152,14 +153,14 @@ import java.util.function.Supplier;
  *           {@link #toFacturX(Invoice, FacturXProfile)},
  *           {@link #toFacturX(Invoice, FacturXProfile, PdfLayout, List)}, {@link #extractXml(byte[])},
  *           {@link #attachments(byte[])}, {@link #producer(byte[])}</td></tr>
- *   <tr><td>Visual PDF/A (rendered)</td>
+ *   <tr><td>Visual PDF (rendered, PDF/A-3b by default)</td>
  *       <td>{@link #toPdf(Invoice)}, {@link #toPdf(Invoice, PdfLayout)}, {@link #toPdf(Order)},
  *           {@link #toPdf(Order, PdfLayout)}, {@link #toPdf(Quotation)},
  *           {@link #toPdf(Quotation, PdfLayout)}, {@link #toPdf(DespatchAdvice)},
  *           {@link #toPdf(DespatchAdvice, PdfLayout)}, {@link #toOrderXPdf(Order)},
  *           {@link #toOrderXPdf(Order, PdfLayout, List)}, {@link #toDespatchAdvicePdf(DespatchAdvice)},
  *           {@link #toDespatchAdvicePdf(DespatchAdvice, PdfLayout, List)}</td></tr>
- *   <tr><td>Validation report as PDF/A</td>
+ *   <tr><td>Validation report as PDF</td>
  *       <td>{@link #toReportPdf(ValidationResult, String, byte[])},
  *           {@link #toReportPdf(ValidationResult, String, byte[], PdfLayout)}</td></tr>
  *   <tr><td>ZUGFeRD 1.0 migration</td>
@@ -2176,8 +2177,9 @@ public final class Paniolo
   }
 
   /**
-   * Renders a validation report as PDF/A-3b document, e.g. for archiving or for departments that
-   * work with documents rather than XML. Requires {@code paniolo-facturx}.
+   * Renders a validation report as PDF/A-3b by default or using the {@link PdfLayout#profile()
+   * profile} of the layout, e.g. for departments that work with documents rather than XML.
+   * Requires {@code paniolo-facturx}.
    *
    * <pre>{@code
    * byte[] received = Files.readAllBytes(path);
@@ -2199,7 +2201,7 @@ public final class Paniolo
    * @param fileName name of the validated file, or {@code null}
    * @param document the validated content, for its size and SHA-256, or {@code null}
    * @param layout   language, fonts, accent color and footer; logo and sender address are not used
-   * @return the PDF/A-3b report
+   * @return the PDF report in the profile of the layout
    * @throws IllegalArgumentException if a font of the layout cannot be read or embedded
    * @throws IllegalStateException    if {@code paniolo-facturx} is missing
    */

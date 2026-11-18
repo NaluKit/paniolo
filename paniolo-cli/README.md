@@ -277,6 +277,9 @@ paniolo to-pdf invoice.json --watermark PREVIEW --pdf-profile PREVIEW -o preview
 
 # Unpack a received Factur-X PDF
 paniolo extract-xml received.pdf -o received.xml
+
+# Read the PDF from standard input and write the embedded XML unchanged to standard output
+paniolo extract-xml - < received.pdf > received.xml
 paniolo attachments received.pdf --extract attachments/
 
 # Readable copy for the archive or an e-mail: one HTML file, opens offline, with the validation result

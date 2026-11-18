@@ -27,8 +27,9 @@ import io.github.nalukit.paniolo.spi.PdfLayoutSupport;
 import java.util.Objects;
 
 /**
- * Renders the visual PDF/A-3b document of an invoice, order, quotation, or despatch advice with Apache
- * PDFBox, registered for {@link java.util.ServiceLoader}. Use it through {@code Paniolo#toPdf},
+ * Renders the visual document of an invoice, order, quotation, or despatch advice, or a validation
+ * report with Apache PDFBox: PDF/A-3b by default or the {@link PdfLayout#profile() profile} of the
+ * layout. Registered for {@link java.util.ServiceLoader}. Use it through {@code Paniolo#toPdf},
  * {@code Paniolo#toFacturX(Invoice, FacturXProfile)}, {@code Paniolo#toOrderXPdf(Order)}, and
  * {@code Paniolo#toDespatchAdvicePdf(DespatchAdvice)}. Stateless and thread-safe.
  */

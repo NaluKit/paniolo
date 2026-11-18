@@ -19,8 +19,9 @@ dependencies are checked with OWASP Dependency-Check in every CI build.
 
 ## How releases are built
 
-Every push and pull request is built by GitHub Actions on Java 21 and 25 with all tests and the
-public invoice corpus, and checked with OWASP Dependency-Check, which fails the build for
+Code pushes to `dev` and `main`, and pull requests targeting those branches, are built by GitHub
+Actions on Java 21 and 25 with the tests and the public invoice corpus. Documentation-only pushes
+matching the workflow's ignored paths are skipped; pull requests still run. OWASP Dependency-Check fails the build for
 vulnerabilities with a CVSS score of 7 or higher. A weekly run repeats the checks on unchanged
 code. Releases are built by the same workflow from the `main` branch only:
 
@@ -37,7 +38,10 @@ code. Releases are built by the same workflow from the `main` branch only:
 
 ## Verifying a release
 
-The build is reproducible: building the released commit again yields byte-identical JARs.
+The build fixes archive timestamps and entry order, but this alone does not guarantee
+byte-identical JARs or SBOMs across environments. An independent rebuild of `1.0.0-rc02` found
+identical class bytes but different manifests and generated JavaDoc. Record the exact JDK,
+Maven version, operating system, and resolved build dependencies when comparing a rebuild.
 
 1. Check the provenance of a downloaded JAR with the GitHub CLI:
 
@@ -45,7 +49,8 @@ The build is reproducible: building the released commit again yields byte-identi
    gh attestation verify paniolo-<version>.jar --repo NaluKit/paniolo
    ```
 
-2. Rebuild the release with Temurin 21 and compare the checksums with those of the release:
+2. Rebuild the release with the same toolchain as its release workflow, including the exact
+   Temurin 21 build, and compare the checksums with those of the release:
 
    ```bash
    git checkout <version>
@@ -53,10 +58,14 @@ The build is reproducible: building the released commit again yields byte-identi
    mvn package -DskipTests -Dgpg.skip -P release -Drevision=<version> \
        -Dproject.build.outputTimestamp="$timestamp"
    scripts/release/collect-release-files.sh <version> rebuilt
-   diff rebuilt/SHA256SUMS <SHA256SUMS of the GitHub release>
+   diff rebuilt/SHA256SUMS downloaded-release/SHA256SUMS
    ```
 
-The SBOMs are produced by the same build and can be compared the same way. Releases up to
+Here `downloaded-release/SHA256SUMS` is the manifest from the GitHub release; first verify the
+downloaded assets against it. A rebuild mismatch requires inspection of the archive entries,
+manifests, generated documentation, and SBOM metadata; it does not by itself establish a code
+change or a compromised release. The rebuild commands skip tests and signatures and are not a
+release acceptance check. Releases up to
 `1.0.0-rc01` were built before these measures and carry neither SBOM nor attestation.
 
 ## Reporting a vulnerability

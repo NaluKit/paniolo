@@ -90,7 +90,7 @@ Beyond the formats, Paniolo:
   Mustang invoice objects to the model and names every value it cannot carry over, and the
   [migration guide](docs/migration-mustang.md) describes the explicit mapping;
 - **handles PDF attachments** (time sheets, delivery notes) and tells which software produced a PDF;
-- **renders** the visual PDF/A-3b pages of invoices, orders, and delivery notes with
+- **renders** the visual pages of invoices, orders, quotations, and delivery notes as PDF/A-3b by default with
   [`paniolo-facturx`](paniolo-facturx/docs/pdf-layout.md), so `toFacturX(invoice, profile)`,
   `toOrderXPdf(order)`, and `toDespatchAdvicePdf(advice)` create complete hybrid PDFs without a
   PDF of your own;
@@ -114,7 +114,8 @@ Supported:
   advance payments, financial adjustments, document and party details, sequence numbers and base
   quantities of document allowances and charges, the split of the VAT taxable amounts, sub-lines,
   line VAT and gross amounts, several allowances and charges on the gross price, product details,
-  and line references.
+  line references, and insurance tax (`AAM`) next to VAT; see
+  [insurance tax](paniolo-facturx/README.md#insurance-tax-aam).
 - French profile EXTENDED-CTC-FR of the e-invoicing reform (XP Z12-012): writing with the EXTENDED
   model, rejecting the EXTENDED content the profile does not allow, reading, and validating against
   the EXTENDED schema, the EXTENDED-CTC-FR Schematron, and, between French parties, the French
@@ -258,11 +259,11 @@ names the missing dependency.
 | Maven artifact                                                 | Purpose                                                                                                                                                                                                                                                     |
 |----------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [`paniolo`](paniolo/README.md)                                 | **Entry point for applications**: `Paniolo` facade; UBL and CII writers and readers ([XML](paniolo/docs/xml.md), [UBL](paniolo/docs/ubl.md), [CII](paniolo/docs/cii.md)), [validation](paniolo/docs/validation.md) with Saxon-HE, structured validation results and XML report; includes the model and the rules |
-| [`paniolo-shared-model`](paniolo-shared-model/README.md)       | Immutable model of invoices, orders, and despatch advices, builders, code lists, and total calculations; no runtime dependencies                                                                                                                            |
+| [`paniolo-shared-model`](paniolo-shared-model/README.md)       | Immutable model of invoices, orders, quotations, and despatch advices, builders, code lists, and total calculations; no runtime dependencies |
 | [`paniolo-rules`](paniolo-rules/README.md)                     | Official rules, pinned and checksum-verified: KoSIT XRechnung (current and older versions), Factur-X / ZUGFeRD of FeRD for all five profiles, ZUGFeRD 1.0, the French EXTENDED-CTC-FR and BR-FR rules, and the Order-X rules (XSD, Schematron XSLT) |
 | [`paniolo-facturx`](paniolo-facturx/README.md)                 | Optional PDF support: embeds and extracts invoices, orders, delivery notes, and attachments in PDF/A-3, container checks, producer detection, ZUGFeRD 1.0 migration (Apache PDFBox); renders the visual PDF/A-3b pages of invoices, orders, and delivery notes ([layout](paniolo-facturx/docs/pdf-layout.md): DIN 5008, German, English, and French, logo, IBM Plex Sans or own fonts) |
 | [`paniolo-pdfa`](paniolo-pdfa/README.md)                       | Optional PDF/A conformance checks for all PDFs validated by the facade (veraPDF)                                                                                                                                                                            |
-| [`paniolo-json`](paniolo-json/README.md)                       | Optional JSON storage of invoices, orders, and despatch advices (Jackson)                                                                                                                                                                                   |
+| [`paniolo-json`](paniolo-json/README.md)                       | Optional JSON storage of invoices, orders, quotations, and despatch advices (Jackson 3) |
 | [`paniolo-visualizer`](paniolo-visualizer/README.md)           | Optional browser visualizer: web component `<paniolo-viewer>` that renders UBL, CII, Factur-X / ZUGFeRD PDFs, ZUGFeRD 1.0, Order-X, despatch advices, and validation reports from bytes; standalone HTML from Java                                          |
 | [`paniolo-cli`](paniolo-cli/README.md)                         | Command line interface for scripts: validation, reading, conversion, inventory, and visualization; executable jar with PDF, JSON, and visualization support (picocli)                                                                                                                                               |
 | [`paniolo-mustang`](paniolo-mustang/README.md)                 | Optional migration adapter: maps a Mustang invoice (`IExportableTransaction`) to the Paniolo model and reports every value it cannot carry over; built for Mustang 2.26.0, newer versions checked at runtime and in a test matrix                          |
@@ -894,7 +895,7 @@ result.warnings().forEach(w -> log(w.code(), w.lineId(), w.message()));
 | `READ-PERCENTAGE`     | Allowance or charge percentage without its base amount                             | The percentage is dropped and the stated amount kept; no base amount is derived                                                                                          |
 | `READ-PAYMENT-MEANS`  | A further payment means block with other means, text, card, or mandate, or a block without payment means code (BT-81) | The block is not merged; the model keeps the first payment instruction (BG-16). A block without code is read as `1` (instrument not defined); ZUGFeRD 1.0 allows it, so this applies in strict reading too |
 | `READ-TEXT-LINE`      | A ZUGFeRD 1.0 line with text only, without item and quantity                       | The text becomes an invoice note (BG-1)                                                                                                                                  |
-| `READ-OTHER-TAX`      | A tax of another type than VAT, e.g. the insurance tax `AAM` of Factur-X EXTENDED   | The tax is not read and never taken for VAT; the calculated totals lack it, and `NORMALIZED` export is refused (see below)                                                |
+| `READ-OTHER-TAX`      | A tax type the model does not keep, other than VAT and the supported insurance tax `AAM` | The tax is not read and never taken for VAT; the calculated totals lack it, and `NORMALIZED` export is refused (see below) |
 | `READ-TAX-EXEMPTION`  | EXTENDED: a line, allowance, or charge states another VAT exemption reason or code than its VAT breakdown, or a further breakdown repeats category and rate with another reason | The model keeps one breakdown per category and rate (per sub-invoice for French multi-vendor invoices); the text of the first breakdown is kept and the amounts are merged |
 | `READ-GROSS-PRICE`    | UBL: a price discount (BT-147) without gross price (BT-148)                                                                                                                     | The gross price is derived as net price plus discount; the original document keeps its form, a normalized export states the derived gross price                            |
 | `READ-LINE-QUANTITY`  | The stated line net amount has the opposite sign of quantity x net price outside the profiles that allow a negative net price                                                   | The quantity (BT-129) takes the sign of the amount, the price stays; `result.deviations()` lists BT-129 and BT-131                                                         |
@@ -966,14 +967,19 @@ byte[] ubl     = paniolo.export(received, ExportVariant.NORMALIZED, InvoiceSynta
 
 The export variant is always an explicit choice: `ORIGINAL` returns the received XML (for a PDF
 the embedded invoice XML) and is never converted into another syntax; `NORMALIZED` writes the
-model with its recalculated amounts. The model keeps VAT only: if the document states another tax
-type such as the insurance tax `AAM` (`READ-OTHER-TAX`), `NORMALIZED` is refused, because the
-export would drop that tax and lower the amount due. `NORMALIZED_DROPPING_OTHER_TAXES` writes the
-model anyway and documents that the loss is accepted. The calculation check
+model with its recalculated amounts. The model keeps VAT and the insurance tax `AAM` separately;
+CII export preserves `AAM` in Factur-X EXTENDED and includes it in the total tax amount and amount
+due. Writing it as UBL or in another profile is rejected. If an unsupported tax type was left out
+with `READ-OTHER-TAX`, `NORMALIZED` is refused, because the export would drop that tax and lower
+the amount due. `NORMALIZED_DROPPING_OTHER_TAXES` writes the model anyway and documents that the
+loss of that unsupported tax is accepted. It does not bypass the writer's profile restrictions.
+The calculation check
 (`calculationCheck(true)`) then reports BT-110, BT-112 and BT-115 as `PANIOLO-CALC-NOT-CHECKED`
 instead of as differences.
 
-XML written by Paniolo reads back into an equal `Invoice`. Values without an EN 16931
+XML written by Paniolo reads back into an equal `Invoice` within the syntax's supported field
+mapping. UBL does not carry the payment account kind: a proprietary account read from UBL has
+`AccountIdType.IBAN`, while its account number is retained. Values without an EN 16931
 counterpart that the writers add (UBL card `NetworkID`, CII project name, the `NA` order
 placeholder) are dropped again, and the credit note due date in UBL payment terms is
 restored as a date.

@@ -19,7 +19,7 @@ the repository root with `mvn install`, use `HEAD-SNAPSHOT` instead; see
 </dependency>
 ```
 
-The XML writer modules already include this dependency transitively.
+The `paniolo` module includes this dependency transitively.
 
 ## Invoice model
 
@@ -35,12 +35,13 @@ The main types are:
 | `InvoicePeriod`, `DeliveryInformation`                                          | Invoicing period, delivery date, place, and address                                                                                                                                               |
 | `TaxCategory`                                                                   | VAT category, rate, and optional exemption information                                                                                                                                            |
 | `DocumentAdjustment`                                                            | Document allowance or charge with optional base amount, percentage, and reason code                                                                                                               |
-| `PaymentInstruction`, `CreditTransfer`, `PaymentCardInformation`, `DirectDebit` | Payment means                                                                                                                                                                                     |
+| `PaymentInstruction`, `CreditTransfer`, `AccountIdType`, `PaymentCardInformation`, `DirectDebit` | Payment means; credit transfer accounts distinguish IBAN and proprietary account numbers |
 | `CashDiscount`                                                                  | Cash discount (Skonto) in the XRechnung payment terms format (BT-20)                                                                                                                              |
 | `ThirdPartyPayment`                                                             | Third party payment of the XRechnung extension (BG-DEX-09)                                                                                                                                        |
 | `AdditionalSupportingDocument`, `Attachment`                                    | Referenced or embedded supporting documents                                                                                                                                                       |
 | `ProcessControl`                                                                | Business process and specification identifiers                                                                                                                                                    |
-| `InvoiceTotals`, `VatBreakdown`                                                 | Calculated monetary totals and VAT breakdowns                                                                                                                                                     |
+| `InvoiceTotals`, `VatBreakdown`                                                 | Calculated monetary totals and VAT breakdowns; document-level `OtherTax` amounts count in total tax and amount due |
+| `OtherTax` in `model.extended` | Insurance tax (`AAM`) apart from VAT; document-level taxes count in totals, line-level taxes describe the line only |
 | `DocumentTotals` | Stated totals and VAT breakdown of an invoice without lines (Factur-X MINIMUM and BASIC WL) |
 | `VatAmount` | Stated VAT category tax amount (BT-117) retained within the model's rounding tolerance |
 | `Order`, `OrderLine`, `OrderTotals` in `model.order`                            | Order-X orders, order changes, and order responses                                                                                                                                                |

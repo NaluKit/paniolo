@@ -90,9 +90,9 @@
     <maven.compiler.release>21</maven.compiler.release>
 
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <!-- Reproducible builds: fixed timestamp and order of the archive entries. The deploy job sets
-         it to the commit time of the released commit, so every build of that commit yields
-         byte-identical JARs; see "Verifying a release" in SECURITY.md. -->
+    <!-- Fixed timestamp and archive entry order support rebuild comparison. The deploy job sets
+         the timestamp to the release commit time; byte-identical JARs also depend on the toolchain
+         and generated content. See "Verifying a release" in SECURITY.md. -->
     <project.build.outputTimestamp>2026-01-01T00:00:00Z</project.build.outputTimestamp>
   </properties>
 

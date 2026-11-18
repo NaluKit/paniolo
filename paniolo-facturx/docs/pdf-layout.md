@@ -198,7 +198,8 @@ All documents use A4 after DIN 5008 form B, so the recipient fits a window envel
   due, and the VAT in the tax currency.
 - **VAT notes**: exemption reasons, or the usual note for reverse charge, intra-community supply,
   export, exempt, not subject to VAT, and zero rated.
-- **Payment**: payment means, IBAN in groups of four, BIC, account holder, remittance information,
+- **Payment**: payment means, IBAN in groups of four or a proprietary account number unchanged
+  ("Account no.", German "Kontonummer", French "N° de compte"), BIC, account holder, remittance information,
   due date, payment terms, cash discounts with the date until which they apply, card, SEPA direct
   debit with mandate and creditor ID, payee.
 - **References**: sales order, contract, project, despatch and receiving advice, tender, invoiced
@@ -241,7 +242,7 @@ reference, customer number, VAT ID. After the subject and notes come the lines o
 offer and the totals, which end with the total amount with VAT, as a quotation has no amount due.
 Optional lines follow in a table of their own and are not part of the totals. The terms show
 delivery, delivery terms, and payment terms. A quotation has no payment instruction and no XML,
-so there is no embedded XML; the PDF is PDF/A-3b without attachment.
+so there is no embedded XML; the PDF follows the selected layout profile (PDF/A-3b by default).
 
 **Despatch advices** (UBL and CIDA) as delivery notes: the despatching party's
 letterhead and the delivery customer in the window; despatch and delivery dates, estimated
@@ -262,6 +263,11 @@ separate matter from the French labels.
 
 Invoices without lines (Factur-X MINIMUM and BASIC WL) show their stated totals.
 
+For an EXTENDED invoice with insurance tax (`AAM`), the total with taxes and amount due include
+the document-level `OtherTax` amounts. The totals show one row per such tax after the VAT rows,
+with its rate and the amount it is calculated on if the invoice states them. Taxes on the lines
+only describe the line and get no row.
+
 ## PDF/A
 
 By default the documents conform to PDF/A-3b (checked with veraPDF in the tests): embedded font
@@ -274,7 +280,7 @@ PDF/A-3 is based on PDF 1.7 and does not allow PDF 2.0. Factur-X documents creat
 ## PDF profiles
 
 `PdfLayout.withProfile(PdfProfile)` selects the kind of PDF. It applies to `toPdf` for invoices,
-orders, and despatch advices and to `toReportPdf`; without it the result is PDF/A-3b.
+orders, quotations, and despatch advices and to `toReportPdf`; without it the result is PDF/A-3b.
 
 | Profile              | PDF | PDF/A | Transparency | Use                                                                     |
 |----------------------|-----|-------|--------------|-------------------------------------------------------------------------|

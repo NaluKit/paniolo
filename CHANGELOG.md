@@ -8,6 +8,13 @@ reference in `docs/api/<version>.md`.
 
 ### Added
 
+- Regression tests for a shared facade under concurrent XML and PDF processing:
+  `ConcurrentProcessingTest` checks cold validation setup, separation of findings and attachments,
+  recovery after failed requests, and repeated read/write round trips in a child JVM with a
+  128 MiB heap. `ConcurrentFacturXTest` checks parallel PDF creation and import in the profiles
+  EN 16931 and EXTENDED. These are bounded regression checks, not a guarantee for arbitrary
+  document sizes or sustained workloads.
+
 - `Quotation` (German "Angebot") in the new package `model.quotation` of `paniolo-shared-model`:
   the offer of a seller to a buyer with validity date, subject, delivery and payment terms text,
   allowances and charges, and `QuotationLine`s that are standard or optional. A quotation is no
@@ -95,6 +102,15 @@ reference in `docs/api/<version>.md`.
 
 ### Changed
 
+- Documentation now distinguishes supported insurance tax (`AAM`) from unsupported tax types,
+  describes payment account kinds and their UBL limitation, and covers quotations, selectable PDF
+  profiles, cash discount calculation, and read warnings in strict mode. The CLI guide includes
+  PDF input from standard input and unchanged XML output to standard output.
+- Release verification documentation no longer guarantees byte-identical rebuilds. Fixed archive
+  timestamps alone do not fix toolchain, manifest, generated JavaDoc, or SBOM differences; an
+  independent rc02 rebuild found equal class bytes but different archive bytes. Signatures,
+  provenance, downloaded-asset checksums, and rebuild comparison are separate checks.
+
 - The first page of a credit note (type codes 381 and 261) names its facts "Gutschriftsnummer" and
   "Gutschriftsdatum" (English "Credit note no.", French "N° d'avoir") instead of the invoice
   wording. A debit note (383) does the same with "Belastungsnummer" and
@@ -166,6 +182,10 @@ reference in `docs/api/<version>.md`.
   despatch advice instead names that file.
 
 ### Fixed
+
+- The visual invoice shows document-level taxes of another type than VAT (the insurance tax `AAM`
+  of the EXTENDED profile) as own row in the totals, with rate and basis amount if stated, so the
+  rows add up to the total with taxes; before, only the VAT rows were shown.
 
 - `Country` has every ISO 3166-1 alpha-2 code and the code XI of the EN 16931 code list; reading
   the French overseas departments (e.g. RE in the official Facture_DOM examples) failed with

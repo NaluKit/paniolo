@@ -61,6 +61,11 @@ complete XRechnung example (business-rule validation is separate):
   Components added to the model later, such as the payee identifier schemes
   (`identifierSchemeId`, `legalRegistrationSchemeId`), are therefore simply absent in older JSON
   and load as `null`.
+- Payment accounts store `idType: "PROPRIETARY"` for a non-IBAN account; IBAN accounts omit
+  `idType`. JSON without it is read as an IBAN account for compatibility. The component `iban`
+  holds the account identifier in both cases; inspect `CreditTransfer.idType()` for its kind.
+  EXTENDED insurance taxes are stored in `ExtendedInformation.otherTaxes` and
+  `LineExtension.otherTaxes`; absent lists in older JSON are empty.
 - Derived totals and VAT breakdowns are calculated again from the loaded object. Explicit
   model components such as `statedTotals`, `statedNetAmount`, and `vatAmounts` are stored, including
   a stated VAT breakdown for an invoice without lines.

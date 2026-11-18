@@ -28,6 +28,11 @@ import io.github.nalukit.paniolo.model.common.validation.ModelChecks;
  * account, {@link #proprietary(String, String, String)} and {@link Builder#proprietaryId(String)} a
  * proprietary one.
  *
+ * <p>CII preserves the kind as {@code IBANID} or {@code ProprietaryID}. UBL carries only
+ * {@code cbc:ID}: Paniolo keeps the account number but reads its kind as {@link AccountIdType#IBAN}.
+ * Paniolo JSON stores {@code idType} for proprietary accounts only; JSON without that property
+ * is read as an IBAN account for compatibility.
+ *
  * @param iban        payment account identifier (BT-84), an IBAN or, by {@code idType}, another
  *                    account number; must not be blank
  * @param accountName payment account name (BT-85), or null

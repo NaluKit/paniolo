@@ -28,9 +28,10 @@ import java.time.Instant;
 import java.util.Objects;
 
 /**
- * Service provider that renders the visual document of an invoice, order, or despatch
- * advice, PDF/A-3b (PDF 1.7) unless the {@code profile} of the layout says otherwise, implemented by {@code paniolo-facturx} and found with
- * {@link java.util.ServiceLoader}. Implementations must be thread-safe.
+ * Service provider that renders the visual document of an invoice, order, quotation, or despatch
+ * advice, or a validation report. The output is PDF/A-3b (PDF 1.7) by default or follows the
+ * {@link PdfLayout#profile() profile} of the layout. Implemented by {@code paniolo-facturx} and
+ * found with {@link java.util.ServiceLoader}. Implementations must be thread-safe.
  */
 public interface PdfLayoutSupport {
 
@@ -47,8 +48,8 @@ public interface PdfLayoutSupport {
                 PdfLayout layout);
 
   /**
-   * Renders an Order-X order, order change, or order response as PDF/A-3b document without
-   * embedded XML.
+   * Renders an Order-X order, order change, or order response without embedded XML, using the
+   * {@link PdfLayout#profile() profile} of the layout (PDF/A-3b by default).
    *
    * @param order  the order
    * @param layout language, logo, fonts, and colors
@@ -61,7 +62,8 @@ public interface PdfLayoutSupport {
   }
 
   /**
-   * Renders a quotation as PDF/A-3b document without embedded XML.
+   * Renders a quotation without embedded XML, using the {@link PdfLayout#profile() profile} of
+   * the layout (PDF/A-3b by default).
    *
    * @param quotation the quotation
    * @param layout    language, logo, fonts, and colors
@@ -74,7 +76,8 @@ public interface PdfLayoutSupport {
   }
 
   /**
-   * Renders a despatch advice as delivery note, a PDF/A-3b document without embedded XML.
+   * Renders a despatch advice as delivery note without embedded XML, using the
+   * {@link PdfLayout#profile() profile} of the layout (PDF/A-3b by default).
    *
    * @param advice the despatch advice
    * @param layout language, logo, fonts, and colors
@@ -87,8 +90,8 @@ public interface PdfLayoutSupport {
   }
 
   /**
-   * Renders a validation report as PDF/A-3b document, e.g. for archiving or for departments without
-   * access to the machine-readable report.
+   * Renders a validation report using the {@link PdfLayout#profile() profile} of the layout
+   * (PDF/A-3b by default), e.g. for departments without access to the machine-readable report.
    *
    * @param report the validation result with the information about the validated document
    * @param layout language, fonts, colors, and footer; logo and sender address are not used

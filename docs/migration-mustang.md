@@ -14,13 +14,16 @@ The guide is based on a runnable sample integration in the test sources of `pani
 To keep the Mustang objects for now, use the optional module [`paniolo-mustang`](../paniolo-mustang/README.md). `MustangInvoiceAdapter` maps a real `org.mustangproject.Invoice` (any `IExportableTransaction`, tested with Mustang 2.26.0) to the Paniolo `Invoice` and reports every value it cannot carry over as `MappingLoss`; `toInvoice` refuses such invoices. Amounts are calculated as in Mustang's export; the test compares line amounts and totals with Mustang's own XRechnung XML. `MustangInvoiceAdapter.FIELDS` contains the mapping of all getters of the current export interfaces. The Paniolo core stays free of Mustang: only the module depends on it, with scope `provided`.
 
 ```java
-MustangMapping mapping = MustangInvoiceAdapter.builder()
+Invoice migrated = MustangInvoiceAdapter.builder()
                                               .processControl(ProcessControl.facturXExtended())
                                               .zone(ZoneId.of("Europe/Berlin"))
                                               .build()
-                                              .map(mustangInvoice);
-byte[] pdf = Paniolo.create().toFacturX(mapping.invoice(), pdfA, FacturXProfile.EXTENDED);
+                                              .toInvoice(mustangInvoice);
+byte[] pdf = Paniolo.create().toFacturX(migrated, pdfA, FacturXProfile.EXTENDED);
 ```
+
+`toInvoice` rejects mappings with losses. Use `map` only when the application will inspect
+`MustangMapping.losses()` and explicitly decide how to handle each loss before exporting.
 
 The rest of this guide describes the explicit mapping without the adapter; its field table is based on the reproduced interfaces as of 2.24.
 
@@ -127,6 +130,13 @@ PaymentInstruction.create()
 // Cash discount available as XRechnung text only (IZUGFeRDCashDiscount.getAsXRechnung):
 invoice.cashDiscounts(CashDiscount.parse(cashDiscount.getAsXRechnung()).discounts());
 ```
+
+The example maps Mustang's `getOwnIBAN()` as an IBAN. When the application supplies a separate
+non-IBAN account number, construct `CreditTransfer.proprietary(id, name, bic)` instead: CII
+writes `ProprietaryID`, while UBL carries only the account number and Paniolo reads its kind as
+IBAN. Do not pass a proprietary account number to the IBAN constructor. This is an explicit
+mapping decision. For newer Mustang getters, check the adapter's
+[runtime compatibility rules](../paniolo-mustang/README.md#newer-mustang-versions).
 
 ### Attachments
 

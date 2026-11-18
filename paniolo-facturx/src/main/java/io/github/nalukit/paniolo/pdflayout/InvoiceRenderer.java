@@ -41,6 +41,7 @@ import io.github.nalukit.paniolo.model.extended.GrossPriceAdjustment;
 import io.github.nalukit.paniolo.model.extended.IncludedProduct;
 import io.github.nalukit.paniolo.model.extended.LogisticsServiceCharge;
 import io.github.nalukit.paniolo.model.extended.ObjectIdentifier;
+import io.github.nalukit.paniolo.model.extended.OtherTax;
 import io.github.nalukit.paniolo.model.extended.PaymentTerm;
 import io.github.nalukit.paniolo.model.extended.PaymentTermsAdjustment;
 import io.github.nalukit.paniolo.model.extended.ProductCharacteristic;
@@ -445,6 +446,14 @@ class InvoiceRenderer
       rows.add(plain(text,
                      money(vat.taxAmount())));
     }
+    // EXTENDED taxes of another type (e.g. AAM) on the document level count in the total with
+    // taxes, so each gets a row; the ones on the lines only describe the line.
+    if (extended != null) {
+      for (OtherTax other : extended.otherTaxes()) {
+        rows.add(plain(otherTaxText(other),
+                       money(other.amount())));
+      }
+    }
     rows.add(showsAmountDue() ?
              strong(t.label("totals.gross"),
                     money(totals.taxInclusiveAmount())) :
@@ -505,6 +514,26 @@ class InvoiceRenderer
       }
     }
     totals(rows);
+  }
+
+  /**
+   * The label of a tax of another type than VAT, with its rate and the amount it is calculated on
+   * if the invoice states them.
+   */
+  private String otherTaxText(OtherTax other) {
+    String name = t.label("totals.otherTax." + other.typeCode());
+    if (other.rate() != null && other.basisAmount() != null) {
+      return t.label("totals.otherTaxRateBasis",
+                     name,
+                     t.percent(other.rate()),
+                     money(other.basisAmount()));
+    }
+    if (other.rate() != null) {
+      return t.label("totals.otherTaxRate",
+                     name,
+                     t.percent(other.rate()));
+    }
+    return name;
   }
 
   /**
