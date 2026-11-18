@@ -7,7 +7,7 @@ release; older versions receive no patches. To get security fixes, update to the
 
 | Version                | Supported | Notes                                                                 |
 |------------------------|-----------|-----------------------------------------------------------------------|
-| `1.0.x`                | Yes       | Current release line (`1.0.0-rc02`), published to Maven Central.      |
+| `1.0.x`                | Yes       | Current release line (`1.0.0`), published to Maven Central.      |
 | `HEAD-SNAPSHOT`        | No        | Development builds of the `dev` branch. Not for production use.       |
 
 Each new release replaces the previous one as the only supported version.
