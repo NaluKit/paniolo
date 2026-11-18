@@ -27,7 +27,7 @@ component and the document, e.g. for archives or e-mails; the CLI does the same 
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo-visualizer</artifactId>
-  <version>1.0.0-rc02</version>
+  <version>1.0.0</version>
 </dependency>
 ```
 

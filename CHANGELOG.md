@@ -6,6 +6,10 @@ reference in `docs/api/<version>.md`.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-18
+
+First stable release. See the [API reference for 1.0.0](docs/api/1.0.0.md).
+
 ### Added
 
 - Regression tests for a shared facade under concurrent XML and PDF processing:
@@ -548,6 +552,7 @@ Second release candidate. See the [API reference for 1.0.0-rc02](docs/api/1.0.0-
 First release candidate, published to Maven Central under the group ID `io.github.nalukit`. See
 the [API reference for 1.0.0-rc01](docs/api/1.0.0-rc01.md).
 
-[Unreleased]: https://github.com/NaluKit/paniolo/compare/1.0.0-rc02...HEAD
+[Unreleased]: https://github.com/NaluKit/paniolo/compare/1.0.0...HEAD
+[1.0.0]: https://github.com/NaluKit/paniolo/releases/tag/1.0.0
 [1.0.0-rc02]: https://github.com/NaluKit/paniolo/releases/tag/1.0.0-rc02
 [1.0.0-rc01]: https://github.com/NaluKit/paniolo/releases/tag/1.0.0-rc01

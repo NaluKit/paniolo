@@ -28,16 +28,16 @@ For daily use, put a small wrapper on the `PATH`, e.g. `~/bin/paniolo`:
 
 ```sh
 #!/bin/sh
-exec java -jar /opt/paniolo/paniolo-cli-1.0.0-rc02-all.jar "$@"
+exec java -jar /opt/paniolo/paniolo-cli-1.0.0-all.jar "$@"
 ```
 
 The default source build uses `HEAD-SNAPSHOT`; replace the wrapper's file name with the version
 you built or downloaded. To build a different version, add `-Drevision=<version>` to Maven.
 The examples below describe the current source; the released API is documented in the
-[versioned reference](../docs/api/1.0.0-rc02.md).
+[versioned reference](../docs/api/1.0.0.md).
 
 The build attaches this jar with the classifier `all`; the plain artifact `paniolo-cli` contains
-only the CLI classes. The release `1.0.0-rc02` is available as a download from GitHub Packages (see
+only the CLI classes. The release `1.0.0` is available as a download from GitHub Packages (see
 below); see also the [installation status](../README.md#installation).
 
 Unlike the library modules, `paniolo-cli` is **not published to Maven Central**. The CI workflow

@@ -29,7 +29,7 @@ the model and embeds the XML in one step (`toFacturX(invoice, profile)`, `toOrde
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo-facturx</artifactId>
-  <version>1.0.0-rc02</version>
+  <version>1.0.0</version>
 </dependency>
 ```
 
