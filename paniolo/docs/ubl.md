@@ -56,6 +56,12 @@ The adapter writes party details, electronic addresses, payment instructions, de
 dates, notes, document allowances and charges, VAT breakdowns, totals, and invoice lines
 from the supported model fields. Totals are calculated from the invoice model.
 
+UBL carries the payment account number in `cbc:ID` without distinguishing IBAN and proprietary
+identifiers. The account number survives a round trip, but Paniolo reads the kind as
+`AccountIdType.IBAN`. CII preserves that distinction. Invoices with supported non-VAT taxes
+(`OtherTax`, currently insurance tax `AAM`) cannot be written as UBL; use CII with Factur-X
+EXTENDED instead of discarding the tax and changing the amount due.
+
 UBL CreditNote has no document-level `DueDate` element. When a credit note has a due date
 in the model, the writer includes it as text in the payment terms. UBL Invoice writes it
 as a date element.

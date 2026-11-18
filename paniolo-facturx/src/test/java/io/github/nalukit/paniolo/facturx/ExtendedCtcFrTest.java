@@ -342,7 +342,8 @@ class ExtendedCtcFrTest {
       assertEquals(read.invoice(),
                    PANIOLO.read(written));
     }
-    // Other profiles keep a credit transfer without card.
+    // EN 16931 allows the card next to the credit transfer account in the other profiles as well
+    // (official example factur-x-en16931.xml); XRechnung forbids it (BR-DE-23), which validation reports.
     var en16931 = FacturXInvoices.invoice(FacturXProfile.EN16931,
                                           InvoiceTypeCode.CODE_380);
     var instruction = en16931.build()
@@ -353,17 +354,17 @@ class ExtendedCtcFrTest {
                                      .paymentCard(new PaymentCardInformation("4970xx0265",
                                                                              "MON NOM MA CARTE"))
                                      .build();
-    var error = assertThrows(IllegalArgumentException.class,
-                             () -> en16931.paymentInstruction(withCard)
-                                          .build());
-    assertEquals("Credit transfer requires at least one account and no card or direct debit",
-                 error.getMessage());
+    assertEquals(withCard,
+                 en16931.paymentInstruction(withCard)
+                        .build()
+                        .paymentInstruction());
   }
 
   /**
    * The lines of a French multi-vendor invoice name their item seller partially: a sub-invoice
    * line by name, identifiers, and country, its detail lines by legal registration only
-   * (BR-FR-MV-03, Mustang issue #1103). Other invoices require a complete item seller.
+   * (BR-FR-MV-03, Mustang issue #1103). The official example UC11 does so without the multi-vendor
+   * identifier, so the model leaves the item seller to validation in every invoice.
    */
   @Test
   void keepsThePartialItemSellersOfAMultiVendorInvoice() {
@@ -411,20 +412,19 @@ class ExtendedCtcFrTest {
       assertEquals(invoice,
                    read.invoice());
     }
-    // Outside the multi-vendor framework the item seller stays a complete party.
+    // Outside the multi-vendor framework the partial item sellers are kept as well.
     var single = FacturXInvoices.invoice(FacturXProfile.EXTENDED_CTC_FR,
                                          InvoiceTypeCode.CODE_380)
-                                .lines(lines);
-    var error = assertThrows(IllegalArgumentException.class,
-                             single::build);
-    assertEquals("The itemSeller requires a postal address with more than the country, e.g. city and post code",
-                 error.getMessage());
-    var nameless = FacturXInvoices.invoice(FacturXProfile.EXTENDED_CTC_FR,
-                                           InvoiceTypeCode.CODE_380)
-                                  .lines(List.of(lines.get(1)));
-    assertEquals("The itemSeller requires a name",
-                 assertThrows(IllegalArgumentException.class,
-                              nameless::build).getMessage());
+                                .lines(lines)
+                                .build();
+    String singleXml = PANIOLO.toXml(single,
+                                     InvoiceSyntax.CII);
+    for (var mode : ReadMode.values()) {
+      assertEquals(single,
+                   PANIOLO.read(singleXml,
+                                mode)
+                          .invoice());
+    }
     // The seller and buyer of every invoice keep their required name, and a party without
     // name needs an identification.
     var anonymous = FacturXInvoices.invoice(FacturXProfile.EXTENDED_CTC_FR,

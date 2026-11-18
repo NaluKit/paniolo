@@ -43,6 +43,15 @@ against the model. It does not compare every stated total or guarantee lossless 
 external documents. `ReadMode.LENIENT` accepts the documented deviations; structural model
 restrictions still apply. See [reading an invoice](../../README.md#reading-an-invoice).
 
+Payment account identifiers retain their kind: an IBAN uses `ram:IBANID`, a proprietary account
+number uses `ram:ProprietaryID`. Construct the latter with `CreditTransfer.proprietary(id, name,
+bic)` or `CreditTransfer.Builder.proprietaryId`. If an input account states both identifiers,
+strict reading rejects it; lenient reading keeps the IBAN and reports `READ-IDENTIFIER`.
+
+Insurance tax (`AAM`) is kept separately from VAT in `OtherTax` and contributes to the totals
+at document level. CII output supports it in Factur-X EXTENDED; other output profiles are
+rejected. See [insurance tax](../../paniolo-facturx/README.md#insurance-tax-aam).
+
 For the specification identifier of the Factur-X profile BASIC (`ProcessControl.facturXBasic()`),
 the writer rejects invoices with content that profile does not allow and lists all such fields; see
 [paniolo-facturx](../../paniolo-facturx/README.md#what-is-written). With the specification identifier

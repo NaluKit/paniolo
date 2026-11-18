@@ -45,8 +45,15 @@ if (!result.isValid()) {
 
 Profile selection is explicit. `ValidationProfile.xrechnung` reads the corresponding
 standard CIUS scenario and its severity overrides from the bundle's `scenarios.xml`.
-This module contains no rules and never downloads rules at runtime; they come from
-`paniolo-rules` or from a bundle directory you provide.
+The validation package never downloads rules at runtime. The `paniolo` module brings
+`paniolo-rules` transitively; a bundle directory you provide can replace the packaged rules.
+
+The facade matches the complete XRechnung specification identifier (BT-24) to a supported
+version and scenario for the document type. An identifier that states XRechnung but matches
+none produces `XR-SPECIFICATION-UNSUPPORTED` as an error, even if BR-DE-21 is only a warning.
+The configured rules still run. `InvoiceValidator` directly applies the profile you selected;
+it does not perform the facade's identifier selection. See
+[XRechnung specification identifier](../../README.md#xrechnung-specification-identifier).
 
 `InvoiceValidator` accepts a `String`, `byte[]`, or `InputStream`. The caller retains
 ownership of input streams. Validator instances compile their rules once and can be

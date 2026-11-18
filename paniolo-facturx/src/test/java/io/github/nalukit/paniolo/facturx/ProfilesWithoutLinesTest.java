@@ -272,6 +272,29 @@ class ProfilesWithoutLinesTest {
                     .contains("payment due date (BT-9)"),
                error.getMessage());
 
+    // The MINIMUM schematron of Factur-X 1.09 marks the postal address and the tax registration of
+    // the buyer as not used, also an address with the country only.
+    var buyerDetails = Invoice.create()
+                              .number("M-3")
+                              .issueDate(LocalDate.of(2026,
+                                                      10,
+                                                      27))
+                              .processControl(ProcessControl.facturXMinimum())
+                              .seller(minimum().seller())
+                              .buyer(Party.create()
+                                          .name("Kunde GmbH")
+                                          .address(Address.ofCountry(Country.FR))
+                                          .vatId("FR12345678901")
+                                          .build())
+                              .statedTotals(minimum().statedTotals())
+                              .build();
+    var buyerError = assertThrows(IllegalArgumentException.class,
+                                  () -> new CiiInvoiceWriter().toXml(buyerDetails));
+    assertTrue(buyerError.getMessage()
+                         .contains("buyer postal address (BG-8)") && buyerError.getMessage()
+                                                                               .contains("buyer VAT identifier (BT-48)"),
+               buyerError.getMessage());
+
     // BASIC WL needs the line total and the VAT breakdown, and has the BASIC header restrictions.
     var withoutBreakdown = Invoice.create()
                                   .number("W-2")

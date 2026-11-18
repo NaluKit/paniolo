@@ -941,6 +941,39 @@ class PanioloCliTest {
                        .contains("watermark"),
                rejected.err());
 
+    Path a1 = dir.resolve("a1.pdf");
+    var pdfA1 = run("to-pdf",
+                    "--pdf-profile",
+                    "pdf_a_1b",
+                    "-o",
+                    a1.toString(),
+                    invoiceJson.toString());
+    assertEquals(PanioloCli.EXIT_OK,
+                 pdfA1.exitCode(),
+                 pdfA1.err());
+    assertTrue(new String(Files.readAllBytes(a1),
+                          java.nio.charset.StandardCharsets.ISO_8859_1).startsWith("%PDF-1.4"));
+    Path pdf20 = dir.resolve("preview20.pdf");
+    assertEquals(PanioloCli.EXIT_OK,
+                 run("to-pdf",
+                     "--pdf-profile",
+                     "PREVIEW_2_0",
+                     "-o",
+                     pdf20.toString(),
+                     invoiceJson.toString()).exitCode());
+    assertTrue(new String(Files.readAllBytes(pdf20),
+                          java.nio.charset.StandardCharsets.ISO_8859_1).startsWith("%PDF-2.0"));
+    assertEquals(PanioloCli.EXIT_ERROR,
+                 run("to-facturx",
+                     "--profile",
+                     "EN16931",
+                     "--pdf-profile",
+                     "PREVIEW",
+                     "-o",
+                     dir.resolve("preview-facturx2.pdf")
+                        .toString(),
+                     invoiceJson.toString()).exitCode());
+
     Path orderPdf = dir.resolve("rendered-order.pdf");
     var order = run("order",
                     "to-pdf",

@@ -13,9 +13,12 @@ What the facade covers:
 - **Factur-X / ZUGFeRD** hybrid PDFs in all profiles: create, read, extract, validate (container,
   PDF/A, XML), attachments, producing software; migration of ZUGFeRD 1.0.
 - **Order-X** orders, order changes, and order responses as XML and PDF.
+- **Quotations** rendered as PDF and converted to invoices through the model's `toInvoice` methods;
+  quotations have no XML syntax and can be stored with `paniolo-json`.
 - **Despatch advices** (delivery notes) as UBL DespatchAdvice (Peppol BIS 3), CIDA XML, and PDF.
-- **Rendering** of the visual PDF/A-3b pages of all these documents, so no PDF of your own is
-  needed (with [`paniolo-facturx`](../paniolo-facturx/docs/pdf-layout.md)).
+- **Rendering** of the visual pages of all these documents, so no PDF of your own is
+  needed (with [`paniolo-facturx`](../paniolo-facturx/docs/pdf-layout.md)): PDF/A-3b by default,
+  PDF/A-1b or a PDF 1.7 / 2.0 preview through `PdfLayout.withProfile`.
 
 ## Dependency
 
@@ -27,7 +30,7 @@ the repository root with `mvn install`, use `HEAD-SNAPSHOT` instead; see
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo</artifactId>
-  <version>1.0.0-rc02</version>
+  <version>1.0.0</version>
 </dependency>
 ```
 
@@ -140,6 +143,9 @@ Paniolo paniolo = Paniolo.builder()
   `IllegalArgumentException`; `validate(bytes, type)` reports malformed XML as a validation
   finding instead, and with `unknownDocuments(UnknownDocumentHandling.REPORT_INVALID)` the
   detecting `validate` methods report every undetectable document as invalid.
+- **XRechnung identifiers**: BT-24 must exactly match a supported version and scenario for the
+  document type. An identifier that states XRechnung but matches none produces the error
+  `XR-SPECIFICATION-UNSUPPORTED`; findings from the configured rules remain visible.
 - **Profile fallback**: standalone XML with the plain EN 16931 identifier, Peppol identifiers,
   or an unrecognized specification identifier uses the EN 16931 and XRechnung rules. Findings
   of the XRechnung CIUS are lowered to information, with `XR-NOT-STATED` explaining the change;

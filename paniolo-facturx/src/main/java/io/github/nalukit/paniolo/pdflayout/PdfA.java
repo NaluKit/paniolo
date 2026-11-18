@@ -17,6 +17,7 @@
  */
 package io.github.nalukit.paniolo.pdflayout;
 
+import io.github.nalukit.paniolo.config.PdfProfile;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.common.PDMetadata;
 import org.apache.pdfbox.pdmodel.graphics.color.PDOutputIntent;
@@ -35,8 +36,10 @@ import java.util.Locale;
 import java.util.TimeZone;
 
 /**
- * Makes a document PDF/A-3b: sRGB output intent, document information and the same values in
- * the XMP metadata, document language.
+ * Finishes a document for its profile. PDF/A-1b and PDF/A-3b: sRGB output intent, document
+ * information and the same values in the XMP metadata, document language, and the PDF version
+ * of the part (1.4, 1.7). Preview: PDF 1.7 or 2.0 with document information, XMP metadata, and language
+ * only.
  */
 final class PdfA {
   static final String PRODUCER = "Paniolo PDF layout";
@@ -45,24 +48,37 @@ final class PdfA {
   }
 
   static void finish(PDDocument document,
+                     PdfProfile profile,
                      String title,
                      String author,
                      String subject,
                      Locale locale)
       throws IOException {
-    document.setVersion(1.7f);
+    float version = switch (profile) {
+      case PDF_A_1B -> 1.4f;
+      case PREVIEW_2_0 -> 2.0f;
+      case PREVIEW, PDF_A_3B -> 1.7f;
+    };
+    document.setVersion(version);
+    if (version >= 2.0f) {
+      // PDFBox writes the version of PDF 1.4 and later to the catalog only; the header needs it too.
+      document.getDocument()
+              .setVersion(version);
+    }
     var catalog = document.getDocumentCatalog();
     catalog.setLanguage(locale.toLanguageTag());
 
-    byte[] icc = ICC_Profile.getInstance(ColorSpace.CS_sRGB)
-                            .getData();
-    var intent = new PDOutputIntent(document,
-                                    new ByteArrayInputStream(icc));
-    intent.setInfo("sRGB IEC61966-2.1");
-    intent.setOutputCondition("sRGB IEC61966-2.1");
-    intent.setOutputConditionIdentifier("sRGB IEC61966-2.1");
-    intent.setRegistryName("http://www.color.org");
-    catalog.addOutputIntent(intent);
+    if (!profile.isPreview()) {
+      byte[] icc = ICC_Profile.getInstance(ColorSpace.CS_sRGB)
+                              .getData();
+      var intent = new PDOutputIntent(document,
+                                      new ByteArrayInputStream(icc));
+      intent.setInfo("sRGB IEC61966-2.1");
+      intent.setOutputCondition("sRGB IEC61966-2.1");
+      intent.setOutputConditionIdentifier("sRGB IEC61966-2.1");
+      intent.setRegistryName("http://www.color.org");
+      catalog.addOutputIntent(intent);
+    }
 
     Calendar now = new GregorianCalendar(TimeZone.getTimeZone(ZoneOffset.UTC));
     now.set(Calendar.MILLISECOND,
@@ -83,10 +99,7 @@ final class PdfA {
                  <?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>
                  <x:xmpmeta xmlns:x="adobe:ns:meta/">
                   <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
-                   <rdf:Description rdf:about="" xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/">
-                    <pdfaid:part>3</pdfaid:part>
-                    <pdfaid:conformance>B</pdfaid:conformance>
-                   </rdf:Description>
+                   %6$s
                    <rdf:Description rdf:about="" xmlns:dc="http://purl.org/dc/elements/1.1/">
                     <dc:title><rdf:Alt><rdf:li xml:lang="x-default">%1$s</rdf:li></rdf:Alt></dc:title>
                     %2$s
@@ -108,10 +121,26 @@ final class PdfA {
                                                   "<dc:creator><rdf:Seq><rdf:li>" + escape(author) + "</rdf:li></rdf:Seq></dc:creator>",
                                                   escape(subject),
                                                   PRODUCER,
-                                                  date);
+                                                  date,
+                                                  identification(profile));
     var metadata = new PDMetadata(document);
     metadata.importXMPMetadata(xmp.getBytes(StandardCharsets.UTF_8));
     catalog.setMetadata(metadata);
+  }
+
+  private static String identification(PdfProfile profile) {
+    return switch (profile) {
+      case PREVIEW, PREVIEW_2_0 -> "";
+      case PDF_A_1B -> identification(1);
+      case PDF_A_3B -> identification(3);
+    };
+  }
+
+  private static String identification(int part) {
+    return "<rdf:Description rdf:about=\"\" xmlns:pdfaid=\"http://www.aiim.org/pdfa/ns/id/\">\n" +
+           "    <pdfaid:part>" + part + "</pdfaid:part>\n" +
+           "    <pdfaid:conformance>B</pdfaid:conformance>\n" +
+           "   </rdf:Description>";
   }
 
   private static String escape(String value) {

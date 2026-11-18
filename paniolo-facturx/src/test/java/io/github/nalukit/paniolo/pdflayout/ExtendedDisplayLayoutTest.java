@@ -43,6 +43,7 @@ import io.github.nalukit.paniolo.model.extended.LineExtension;
 import io.github.nalukit.paniolo.model.extended.LineSubtype;
 import io.github.nalukit.paniolo.model.extended.LogisticsServiceCharge;
 import io.github.nalukit.paniolo.model.extended.ObjectIdentifier;
+import io.github.nalukit.paniolo.model.extended.OtherTax;
 import io.github.nalukit.paniolo.model.extended.ProductCharacteristic;
 import io.github.nalukit.paniolo.model.extended.ProductInstance;
 import io.github.nalukit.paniolo.model.extended.TaxExchangeRate;
@@ -431,6 +432,38 @@ class ExtendedDisplayLayoutTest {
                    () -> locale + ": " + expected + " in\n" + text);
       }
     });
+  }
+
+  @Test
+  void showsTheInsuranceTaxRowNextToVat() {
+    var invoice = TestInvoices.simple("X-3")
+                      .processControl(ProcessControl.facturXExtended())
+                      .extended(ExtendedInformation.create()
+                                                   .addOtherTax(new OtherTax(OtherTax.INSURANCE_TAX,
+                                                                             "S",
+                                                                             new BigDecimal("3.00"),
+                                                                             new BigDecimal("100.00"),
+                                                                             new BigDecimal("3.00")))
+                                                   .build())
+                      .build();
+    String english = text(PANIOLO.toPdf(invoice,
+                                        PdfLayout.of(Locale.ENGLISH)));
+    assertTrue(english.contains("Insurance tax 3 % on"),
+               english);
+    assertTrue(text(PANIOLO.toPdf(invoice,
+                                  PdfLayout.of(Locale.GERMAN))).contains("Versicherungsteuer 3 % auf"));
+    assertTrue(text(PANIOLO.toPdf(invoice,
+                                  PdfLayout.of(Locale.FRENCH))).contains("Taxe d'assurance"));
+  }
+
+  @Test
+  void showsNoInsuranceTaxRowWithoutDocumentLevelTax() {
+    String text = text(PANIOLO.toPdf(TestInvoices.simple("X-4")
+                                                 .processControl(ProcessControl.facturXExtended())
+                                                 .build(),
+                                     PdfLayout.of(Locale.ENGLISH)));
+    assertFalse(text.contains("Insurance tax"),
+                text);
   }
 
   @Test

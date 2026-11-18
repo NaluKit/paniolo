@@ -1,6 +1,6 @@
 # Paniolo JSON
 
-`paniolo-json` stores invoices, orders, and despatch advices of the
+`paniolo-json` stores invoices, orders, quotations, and despatch advices of the
 [Paniolo model](../paniolo-shared-model/README.md) as JSON and loads them again, for example for
 drafts, message queues, or REST interfaces. It depends only on `paniolo-shared-model` and Jackson 3
 Databind (`tools.jackson.core:jackson-databind`, Apache License 2.0), which is why it is optional.
@@ -10,7 +10,7 @@ It requires Java 21.
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo-json</artifactId>
-  <version>1.0.0-rc02</version>
+  <version>1.0.0</version>
 </dependency>
 ```
 
@@ -20,7 +20,7 @@ It requires Java 21.
 PanioloJson json = PanioloJson.create();                 // thread-safe, create once
 
 String text = json.toJson(invoice);                      // or toPrettyJson, toBytes
-Invoice loaded = json.read(text, Invoice.class);         // also Order, DespatchAdvice, ...
+Invoice loaded = json.read(text, Invoice.class);         // also Order, Quotation, DespatchAdvice, ...
 ```
 
 To use an own Jackson 3 mapper, for example in Spring Boot 4, apply the same settings to its
@@ -61,6 +61,11 @@ complete XRechnung example (business-rule validation is separate):
   Components added to the model later, such as the payee identifier schemes
   (`identifierSchemeId`, `legalRegistrationSchemeId`), are therefore simply absent in older JSON
   and load as `null`.
+- Payment accounts store `idType: "PROPRIETARY"` for a non-IBAN account; IBAN accounts omit
+  `idType`. JSON without it is read as an IBAN account for compatibility. The component `iban`
+  holds the account identifier in both cases; inspect `CreditTransfer.idType()` for its kind.
+  EXTENDED insurance taxes are stored in `ExtendedInformation.otherTaxes` and
+  `LineExtension.otherTaxes`; absent lists in older JSON are empty.
 - Derived totals and VAT breakdowns are calculated again from the loaded object. Explicit
   model components such as `statedTotals`, `statedNetAmount`, and `vatAmounts` are stored, including
   a stated VAT breakdown for an invoice without lines.
@@ -111,3 +116,4 @@ JSON, invalid documents, and an own mapper with an own module (`OwnMapperTest`).
 `JsonRoundTripTest` in `paniolo-facturx` stores and loads the test invoices of all Factur-X
 profiles (including EXTENDED with sub-lines, MINIMUM and BASIC WL, and read ZUGFeRD 1.0
 documents), all Order-X documents, and a despatch advice.
+`QuotationJsonTest` stores and loads a quotation with optional lines and checks the model rules on load.

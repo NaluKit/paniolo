@@ -63,7 +63,7 @@ import java.util.regex.Pattern;
  *       (EN 16931)</td></tr>
  *   <tr><td>{@link #NOT_CHECKED}</td><td>the amounts could not be recalculated, e.g. because sub-lines
  *       do not add up (BR-DEX-02) or the structure is not supported; if the document states a tax
- *       other than VAT (e.g. AAM), only BT-110, BT-112 and BT-115 are not checked and named so</td>
+ *       other than VAT and AAM, only BT-110, BT-112 and BT-115 are not checked and named so</td>
  *       <td>&ndash;</td></tr>
  * </table>
  */
@@ -228,7 +228,7 @@ public final class CalculationCheck {
                                                                              .totals()
                                                                              .vatBreakdowns()
                                                                              .size())));
-    // Taxes of another type than VAT (e.g. AAM) are not in the model: the totals that include them
+    // Taxes of another type than VAT and the insurance tax AAM are not in the model: the totals that include them
     // cannot be recalculated, so a difference there is no finding about the sender.
     var otherTaxes = imported.warnings()
                              .stream()

@@ -30,7 +30,7 @@ import java.util.List;
  * hierarchy, product details, and line level references and delivery details. Only the CII writer
  * with the EXTENDED specification identifier writes it.
  *
- * @param parentLineId                    identifier of the parent line (BT-X-304); requires a subtype
+ * @param parentLineId                    identifier of the parent line (BT-X-304); Factur-X EXTENDED requires a subtype then (BR-FXEXT-06, checked by validation)
  * @param subtype                         line subtype (BT-X-8), or null for a regular line
  * @param statusCode                      line status code (UNTDID 1229), or null
  * @param productId                       product identifier of the seller's system, or null
@@ -80,6 +80,8 @@ import java.util.List;
  *                                        e.g. {@code 5}, {@code 29}, {@code 72}) as the line states it,
  *                                        or null; a subtotal or information line may state it without
  *                                        a VAT category
+ * @param otherTaxes                      taxes of another type than VAT, e.g. the insurance tax AAM, that
+ *                                        describe the line; they do not count in the totals
  */
 public record LineExtension(String parentLineId, LineSubtype subtype, String statusCode, String productId, String industryItemId, String modelId, String modelName, String brandName, List<String> batchIds, List<ProductCharacteristic> characteristics,
                             List<ProductInstance> instances, Party manufacturer, List<IncludedProduct> includedProducts, String deliveryTermsCode, DocumentReference sellerOrderReference, DocumentReference quotationReference,
@@ -87,7 +89,7 @@ public record LineExtension(String parentLineId, LineSubtype subtype, String sta
                             Party ultimateShipTo, LocalDate actualDeliveryDate, DocumentReference despatchAdviceReference, DocumentReference receivingAdviceReference, DocumentReference deliveryNoteReference, DocumentReference precedingInvoiceReference,
                             String noteContentCode, String noteSubjectCode, List<TypedDocumentReference> additionalReferences, String accountingTypeCode, BigDecimal taxTotal, BigDecimal grossTotal,
                             List<GrossPriceAdjustment> priceAdjustments, List<AccountingAccount> additionalAccountingAccounts,
-                            List<ObjectIdentifier> furtherObjectIdentifiers, String taxDueDateTypeCode) {
+                            List<ObjectIdentifier> furtherObjectIdentifiers, String taxDueDateTypeCode, List<OtherTax> otherTaxes) {
   /**
    * Applies the checks of the model and copies the lists.
    *
@@ -99,7 +101,7 @@ public record LineExtension(String parentLineId, LineSubtype subtype, String sta
     }
     Party.requireAddress(manufacturer,
                          "manufacturer");
-    // The invoice checks the item seller, which a French multi-vendor invoice states partially.
+    // The item seller is not checked: French sub-invoice lines state it partially (BR-FR-MV-03).
     Party.requireAddress(shipTo,
                          "shipTo");
     Party.requireAddress(ultimateShipTo,
@@ -107,10 +109,8 @@ public record LineExtension(String parentLineId, LineSubtype subtype, String sta
     if (parentLineId != null) {
       ModelChecks.required(parentLineId,
                            "parent line id");
-      // BR-FXEXT-06: a sub-line states its subtype.
-      if (subtype == null) {
-        throw new IllegalArgumentException("A line with parent line id " + parentLineId + " requires a subtype");
-      }
+      // Factur-X EXTENDED requires the subtype of a sub-line (BR-FXEXT-06), the sub-invoice lines of
+      // the XRechnung extension in CII state none; validation checks the rule of the profile.
     }
     for (BigDecimal quantity : new BigDecimal[] { chargeFreeQuantity,
                                                   packageQuantity,
@@ -139,6 +139,10 @@ public record LineExtension(String parentLineId, LineSubtype subtype, String sta
     additionalAccountingAccounts = additionalAccountingAccounts == null ?
                                    List.of() :
                                    List.copyOf(additionalAccountingAccounts);
+    // Missing in JSON written before other taxes were added.
+    otherTaxes = otherTaxes == null ?
+                 List.of() :
+                 List.copyOf(otherTaxes);
     furtherObjectIdentifiers = furtherObjectIdentifiers == null ?
                                List.of() :
                                List.copyOf(furtherObjectIdentifiers);
@@ -222,7 +226,8 @@ public record LineExtension(String parentLineId, LineSubtype subtype, String sta
                              List.of(),
                              additionalAccountingAccounts,
                              furtherObjectIdentifiers,
-                             taxDueDateTypeCode);
+                             taxDueDateTypeCode,
+                             otherTaxes);
   }
 
   /**
@@ -279,6 +284,7 @@ public record LineExtension(String parentLineId, LineSubtype subtype, String sta
     private BigDecimal                   grossTotal;
     private List<GrossPriceAdjustment>   priceAdjustments                = new ArrayList<>();
     private List<AccountingAccount>      additionalAccountingAccounts    = new ArrayList<>();
+    private List<OtherTax> otherTaxes = new ArrayList<>();
     private List<ObjectIdentifier>       furtherObjectIdentifiers        = new ArrayList<>();
     private String                       taxDueDateTypeCode;
 
@@ -291,7 +297,7 @@ public record LineExtension(String parentLineId, LineSubtype subtype, String sta
     /**
      * Sets {@link LineExtension#parentLineId() parentLineId}.
      *
-     * @param parentLineId identifier of the parent line (BT-X-304); requires a subtype
+     * @param parentLineId identifier of the parent line (BT-X-304); Factur-X EXTENDED requires a subtype then (BR-FXEXT-06, checked by validation)
      * @return this builder
      */
     public Builder parentLineId(String parentLineId) {
@@ -699,6 +705,18 @@ public record LineExtension(String parentLineId, LineSubtype subtype, String sta
     }
 
     /**
+     * Adds a tax of another type than VAT, e.g. the insurance tax AAM, that describes the line;
+     * it does not count in the totals.
+     *
+     * @param value the tax to add
+     * @return this builder
+     */
+    public Builder addOtherTax(OtherTax value) {
+      this.otherTaxes.add(value);
+      return this;
+    }
+
+    /**
      * Adds a further invoiced object identifier (BT-128) after the one of the line.
      *
      * @param value the object identifier to add
@@ -753,7 +771,8 @@ public record LineExtension(String parentLineId, LineSubtype subtype, String sta
                                priceAdjustments,
                                additionalAccountingAccounts,
                                furtherObjectIdentifiers,
-                               taxDueDateTypeCode);
+                               taxDueDateTypeCode,
+                               otherTaxes);
     }
 
     /**

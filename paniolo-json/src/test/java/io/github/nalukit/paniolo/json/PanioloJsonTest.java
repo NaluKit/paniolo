@@ -22,6 +22,7 @@ import io.github.nalukit.paniolo.model.common.AdditionalSupportingDocument;
 import io.github.nalukit.paniolo.model.common.Address;
 import io.github.nalukit.paniolo.model.common.Attachment;
 import io.github.nalukit.paniolo.model.common.Contact;
+import io.github.nalukit.paniolo.model.common.AccountIdType;
 import io.github.nalukit.paniolo.model.common.CreditTransfer;
 import io.github.nalukit.paniolo.model.common.DeliveryInformation;
 import io.github.nalukit.paniolo.model.common.ElectronicAddress;
@@ -39,6 +40,11 @@ import io.github.nalukit.paniolo.model.common.value.InvoiceTypeCode;
 import io.github.nalukit.paniolo.model.common.value.PaymentMeansCode;
 import io.github.nalukit.paniolo.model.common.value.TextSubjectQualifier;
 import io.github.nalukit.paniolo.model.common.value.UnitCode;
+import io.github.nalukit.paniolo.model.extended.ExtendedInformation;
+import io.github.nalukit.paniolo.model.extended.LineExtension;
+import io.github.nalukit.paniolo.model.extended.OtherTax;
+import io.github.nalukit.paniolo.model.extended.PaymentTerm;
+import io.github.nalukit.paniolo.model.extended.PaymentTermsAdjustment;
 import io.github.nalukit.paniolo.model.order.OrderTypeCode;
 import org.junit.jupiter.api.Test;
 
@@ -138,6 +144,57 @@ class PanioloJsonTest {
   }
 
   @Test
+  void keepsTheInsuranceTaxApartFromVat() {
+    var tax = OtherTax.insuranceTax("S",
+                                    new BigDecimal("19"),
+                                    new BigDecimal("137.58"));
+    var extended = ExtendedInformation.create()
+                                      .addOtherTax(tax)
+                                      .build();
+    var read = JSON.read(JSON.toJson(extended),
+                         ExtendedInformation.class);
+    assertEquals(extended,
+                 read);
+    assertEquals(List.of(tax),
+                 read.otherTaxes());
+    assertEquals(new BigDecimal("26.14"),
+                 read.otherTaxes()
+                     .get(0)
+                     .amount());
+    var line = LineExtension.create()
+                            .addOtherTax(tax)
+                            .build();
+    assertEquals(line,
+                 JSON.read(JSON.toJson(line),
+                           LineExtension.class));
+    // JSON written before other taxes existed has no such member.
+    assertEquals(List.of(),
+                 JSON.read("{}",
+                           ExtendedInformation.class)
+                     .otherTaxes());
+  }
+
+  @Test
+  void keepsTheCalculatedDiscountAmount() {
+    var term = new PaymentTerm("Skonto",
+                               null,
+                               null,
+                               null,
+                               new PaymentTermsAdjustment(null,
+                                                          14,
+                                                          new BigDecimal("1190.00"),
+                                                          new BigDecimal("3"),
+                                                          null).withComputedAmount());
+    var read = JSON.read(JSON.toJson(term),
+                         PaymentTerm.class);
+    assertEquals(term,
+                 read);
+    assertEquals(new BigDecimal("35.70"),
+                 read.discount()
+                     .amount());
+  }
+
+  @Test
   void storesAndLoadsAnInvoice() {
     var    invoice = invoice();
     String json    = JSON.toJson(invoice);
@@ -178,6 +235,38 @@ class PanioloJsonTest {
       assertFalse(json.contains(absent),
                   () -> absent + " in " + json);
     }
+  }
+
+  @Test
+  void keepsTheKindOfThePaymentAccount() {
+    var iban        = new CreditTransfer("DE89370400440532013000",
+                                         "Muster GmbH",
+                                         "COBADEFFXXX");
+    var proprietary = CreditTransfer.proprietary("EXAMPLE-ACCOUNT",
+                                                 "Muster GmbH",
+                                                 null);
+    // The kind is stored only for a proprietary account.
+    String ibanJson = JSON.toJson(iban);
+    assertFalse(ibanJson.contains("idType"),
+                ibanJson);
+    assertEquals(iban,
+                 JSON.read(ibanJson,
+                           CreditTransfer.class));
+    String proprietaryJson = JSON.toJson(proprietary);
+    assertTrue(proprietaryJson.contains("\"idType\":\"PROPRIETARY\""),
+               proprietaryJson);
+    assertEquals(proprietary,
+                 JSON.read(proprietaryJson,
+                           CreditTransfer.class));
+    // Stored before the kind existed: an IBAN, as the writer always wrote it.
+    var legacy = JSON.read("{\"iban\":\"EXAMPLE-ACCOUNT\",\"accountName\":\"Muster GmbH\"}",
+                           CreditTransfer.class);
+    assertEquals(AccountIdType.IBAN,
+                 legacy.idType());
+    assertEquals(new CreditTransfer("EXAMPLE-ACCOUNT",
+                                    "Muster GmbH",
+                                    null),
+                 legacy);
   }
 
   @Test

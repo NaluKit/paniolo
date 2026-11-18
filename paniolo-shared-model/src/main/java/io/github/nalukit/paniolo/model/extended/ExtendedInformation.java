@@ -63,12 +63,14 @@ import java.util.List;
  * @param financialAdjustments            adjustments of the amount due
  * @param additionalAccountingAccounts    further buyer accounting accounts after the buyer
  *                                        accounting reference (BT-19) and its type, in document order
+ * @param otherTaxes                      taxes of another type than VAT, e.g. the insurance tax AAM; they
+ *                                        count in the totals BT-110, BT-112, and BT-115
  */
 public record ExtendedInformation(Party salesAgent, Party buyerAgent, Party buyerTaxRepresentative, Party productEndUser, Party shipFrom, Party ultimateShipTo, Party invoicer, Party invoicee, Party payer, String deliveryTermsCode,
                                   DocumentReference quotationReference, DocumentReference deliveryNoteReference, List<DocumentReference> ultimateCustomerOrderReferences, List<PaymentTerm> paymentTerms, List<LogisticsServiceCharge> logisticsServiceCharges,
                                   List<AdvancePayment> advancePayments, String documentName, String languageId, Boolean copyIndicator, Boolean testIndicator, LocalDate effectiveDate, String invoiceIssuerReference, String transportModeCode,
                                   String deliveryTermsLocationName, Country deliveryTermsLocationCountry, String billingPeriodDescription, String buyerAccountingTypeCode, String payerAccountName, String payerBic, TaxExchangeRate taxExchangeRate,
-                                  List<FinancialAdjustment> financialAdjustments, List<AccountingAccount> additionalAccountingAccounts) {
+                                  List<FinancialAdjustment> financialAdjustments, List<AccountingAccount> additionalAccountingAccounts, List<OtherTax> otherTaxes) {
   /**
    * Applies the checks of the model and copies the lists.
    *
@@ -109,6 +111,10 @@ public record ExtendedInformation(Party salesAgent, Party buyerAgent, Party buye
     additionalAccountingAccounts = additionalAccountingAccounts == null ?
                                    List.of() :
                                    List.copyOf(additionalAccountingAccounts);
+    // Missing in JSON written before other taxes were added.
+    otherTaxes = otherTaxes == null ?
+                 List.of() :
+                 List.copyOf(otherTaxes);
   }
 
   /**
@@ -169,6 +175,7 @@ public record ExtendedInformation(Party salesAgent, Party buyerAgent, Party buye
     private TaxExchangeRate              taxExchangeRate;
     private List<FinancialAdjustment>    financialAdjustments            = new ArrayList<>();
     private List<AccountingAccount>      additionalAccountingAccounts    = new ArrayList<>();
+    private List<OtherTax> otherTaxes = new ArrayList<>();
 
     /**
      * Creates a builder with the defaults of the model; usually obtained with {@link ExtendedInformation#create()}.
@@ -529,6 +536,17 @@ public record ExtendedInformation(Party salesAgent, Party buyerAgent, Party buye
     }
 
     /**
+     * Adds a tax of another type than VAT, e.g. the insurance tax AAM.
+     *
+     * @param value the tax to add
+     * @return this builder
+     */
+    public Builder addOtherTax(OtherTax value) {
+      this.otherTaxes.add(value);
+      return this;
+    }
+
+    /**
      * Constructs a new {@link ExtendedInformation} from the current values.
      *
      * @return the constructed value after the model checks succeed
@@ -565,7 +583,8 @@ public record ExtendedInformation(Party salesAgent, Party buyerAgent, Party buye
                                      payerBic,
                                      taxExchangeRate,
                                      financialAdjustments,
-                                     additionalAccountingAccounts);
+                                     additionalAccountingAccounts,
+                                     otherTaxes);
     }
   }
 }

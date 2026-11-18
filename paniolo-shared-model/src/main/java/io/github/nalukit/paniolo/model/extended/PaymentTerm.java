@@ -80,6 +80,27 @@ public record PaymentTerm(String description, LocalDate dueDate, BigDecimal part
   }
 
   /**
+   * Returns this term with the amount of the cash discount calculated, see
+   * {@link PaymentTermsAdjustment#withComputedAmount(BigDecimal)}. The penalty, the due date, and
+   * the partial amount stay unchanged.
+   *
+   * @param contextBaseAmount the base amount from the calling context, used if the discount has none; or null
+   * @return this term if it has no discount, otherwise a copy with the calculated discount amount
+   * @throws IllegalStateException if the discount has no amount and no base amount is available
+   */
+  public PaymentTerm withComputedDiscount(BigDecimal contextBaseAmount) {
+    if (discount == null) {
+      return this;
+    }
+    return new PaymentTerm(description,
+                           dueDate,
+                           partialAmount,
+                           penalty,
+                           discount.withComputedAmount(contextBaseAmount),
+                           payee);
+  }
+
+  /**
    * Starts named construction of a {@link PaymentTerm} using the builder defaults.
    *
    * @return a new builder; not shared with other calls

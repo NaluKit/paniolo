@@ -1,0 +1,136 @@
+StAX-Utils (net.java.dev.stax-utils:stax-utils:20070216)
+=========================================================
+
+This JAR bundles the unmodified classes of StAX-Utils in package javanet.staxutils
+and its subpackages. StAX-Utils is distributed under BSD-3-Clause license terms,
+as declared by its upstream POM. Its source files carry the three copyright
+notices reproduced below, each with its own conditions and disclaimer:
+
+  1. Christian Niles, Unit12 (unit12.net), 2004
+     most classes in javanet.staxutils, javanet.staxutils.events,
+     javanet.staxutils.helpers, javanet.staxutils.io and javanet.staxutils.error
+
+  2. Sun Microsystems, Inc., 2004
+     ContentHandlerToXMLEventWriter, ContentHandlerToXMLStreamWriter,
+     EntityDeclarationImpl, EventHelper, IndentingXMLEventWriter,
+     StAXReaderToContentHandler, StAXResult, StAXSource,
+     XMLEventReaderToContentHandler, XMLStreamReaderToContentHandler
+
+  3. John Kristian, 2006
+     IndentingXMLEventWriter, IndentingXMLStreamWriter,
+     StaxUtilsXMLOutputFactory, XMLEventStreamWriter,
+     helpers.EventWriterDelegate, helpers.FilterXMLOutputFactory,
+     helpers.StreamWriterDelegate
+
+A few source files have no license header of their own (Indentation,
+DummyLocator, StaticLocation, StaticNamespaceContext, error.IllegalStreamStateException,
+helpers.UnknownLocation, helpers.XMLFilterImplEx); they are distributed under the
+same BSD terms of the StAX-Utils project.
+
+Source for the bundled version (direct download):
+  https://repo.maven.apache.org/maven2/net/java/dev/stax-utils/stax-utils/20070216/stax-utils-20070216-sources.jar
+
+
+--------------------------------------------------------------------------------
+1. Christian Niles, Unit12
+--------------------------------------------------------------------------------
+
+Copyright (c) 2004, Christian Niles, unit12.net
+Copyright (c) 2004, Christian Niles, Unit12
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+    *   Redistributions of source code must retain the above copyright
+        notice, this list of conditions and the following disclaimer.
+
+    *   Redistributions in binary form must reproduce the above copyright
+        notice, this list of conditions and the following disclaimer in the
+        documentation and/or other materials provided with the distribution.
+
+    *   Neither the name of Christian Niles, Unit12, nor the names of its
+        contributors may be used to endorse or promote products derived from
+        this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+
+
+--------------------------------------------------------------------------------
+2. Sun Microsystems, Inc.
+--------------------------------------------------------------------------------
+
+Copyright (c) 2004, Sun Microsystems, Inc.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+
+    * Redistributions in binary form must reproduce the above
+      copyright notice, this list of conditions and the following
+      disclaimer in the documentation and/or other materials provided
+      with the distribution.
+
+    * Neither the name of Sun Microsystems, Inc. nor the names of its
+      contributors may be used to endorse or promote products derived
+      from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+--------------------------------------------------------------------------------
+3. John Kristian
+--------------------------------------------------------------------------------
+
+Copyright (c) 2006, John Kristian
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+    *   Redistributions of source code must retain the above copyright
+        notice, this list of conditions and the following disclaimer.
+
+    *   Redistributions in binary form must reproduce the above copyright
+        notice, this list of conditions and the following disclaimer in the
+        documentation and/or other materials provided with the distribution.
+
+    *   Neither the name of StAX-Utils nor the names of its contributors
+        may be used to endorse or promote products derived from this
+        software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.

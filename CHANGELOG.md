@@ -6,6 +6,209 @@ reference in `docs/api/<version>.md`.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-18
+
+First stable release. See the [API reference for 1.0.0](docs/api/1.0.0.md).
+
+### Added
+
+- Regression tests for a shared facade under concurrent XML and PDF processing:
+  `ConcurrentProcessingTest` checks cold validation setup, separation of findings and attachments,
+  recovery after failed requests, and repeated read/write round trips in a child JVM with a
+  128 MiB heap. `ConcurrentFacturXTest` checks parallel PDF creation and import in the profiles
+  EN 16931 and EXTENDED. These are bounded regression checks, not a guarantee for arbitrary
+  document sizes or sustained workloads.
+
+- `Quotation` (German "Angebot") in the new package `model.quotation` of `paniolo-shared-model`:
+  the offer of a seller to a buyer with validity date, subject, delivery and payment terms text,
+  allowances and charges, and `QuotationLine`s that are standard or optional. A quotation is no
+  e-invoice document and has no XML syntax. `totals()` calculates as for the invoice; optional
+  lines count only if accepted. `toInvoice(number, issueDate)` creates the invoice of the standard
+  offer, `toInvoice(number, issueDate, acceptedOptionalLineIds)` adds the accepted optional lines,
+  and `toInvoiceBuilder(...)` returns the invoice builder to complete payment instruction, due
+  date, or the EXTENDED `reference()` of the quotation before building.
+
+- `Paniolo.toPdf(Quotation)` and `toPdf(Quotation, PdfLayout)` render a quotation as visual PDF/A-3b
+  document without embedded XML (`paniolo-facturx`, German, English, and French): heading
+  "Angebot", quotation number and date, validity, the lines of the standard offer with totals that
+  end with the total amount with VAT, the optional lines apart from the totals, and delivery and
+  payment terms. It shows no payment instruction and no amount due. The SPI `PdfLayoutSupport`
+  has the new default method `render(Quotation, PdfLayout)`.
+
+- `PanioloJson` stores and loads a `Quotation` like the other documents: `json.toJson(quotation)`
+  and `json.read(text, Quotation.class)`. The JSON has the record components of `Quotation` and
+  `QuotationLine` (with the flag `optional`); loading applies the checks of the model.
+
+- The CLI has the command group `paniolo quotation`: `to-pdf FILE` renders a quotation as PDF
+  (with the layout options of `to-pdf`), and `to-invoice FILE --number NO [--date DATE]
+  [--accept ID]...` writes the invoice of the standard offer plus the accepted optional lines as
+  JSON, which `to-xml`, `to-facturx`, and `to-pdf` take on.
+
+- The insurance tax `AAM` of the Factur-X profile EXTENDED is kept next to VAT. The new record
+  `OtherTax` holds tax type, category, rate, basis amount and tax amount apart from the VAT
+  category, rate and breakdown. `ExtendedInformation.otherTaxes()` holds the document level taxes,
+  which count in BT-110, BT-112 and the amount due (1,017.57 EUR net and 26.14 EUR insurance tax
+  give 1,043.71 EUR); `LineExtension.otherTaxes()` describes a line and is never counted again.
+  `OtherTax.insuranceTax(category, rate, basis)` calculates the amount, rounded half up to cents.
+  The CII reader reads `AAM` at the lines and the document in strict and lenient mode, and the CII
+  writer writes it, never as VAT. Writing it in another profile than EXTENDED or as UBL fails with
+  a message instead of losing it. The calculation check recalculates the totals of such invoices.
+  Other tax types stay reported as `READ-OTHER-TAX` (rejected in strict mode). The official rules of
+  EXTENDED treat every header tax block like a VAT breakdown of its category (BR-E-09,
+  BR-FXEXT-S-01), so a category must be chosen that they accept.
+
+- `PaymentTermsAdjustment.withComputedAmount()` and `withComputedAmount(contextBaseAmount)` calculate
+  a missing cash discount or penalty amount from base amount and percentage, rounded half up to
+  cents (1,190.00 EUR at 3 % gives 35.70 EUR). An amount that is set stays unchanged. The base
+  amount of the adjustment takes precedence; the base amount of the calling context is used only
+  if the adjustment has none. Without any base amount an `IllegalStateException` reports the
+  missing basis; nothing is guessed. `PaymentTerm.withComputedDiscount(contextBaseAmount)` does the
+  same for the discount of a term. The calculation changes neither the due date nor the amount due.
+  The amount is written as `ActualDiscountAmount` and survives the XML and JSON round trip.
+
+- `PdfLayout.withProfile(PdfProfile)` selects the kind of PDF that `toPdf` renders:
+  - `PDF_A_3B` (the default, as before): PDF/A-3b, based on PDF 1.7. PDF/A-3 does not allow PDF 2.0.
+  - `PDF_A_1B`: PDF/A-1b, PDF 1.4, as visual part for `toFacturX(invoice, pdfA, profile)`, which makes
+    PDF/A-3 of it. PDF/A-1 has no transparency: the watermark is drawn as opaque light text below the
+    content, and PNG logos with transparency are placed on white.
+  - `PREVIEW`: plain PDF 1.7 without PDF/A, e.g. with a watermark.
+  - `PREVIEW_2_0`: the same as PDF 2.0 (header and catalog version).
+
+  The methods that embed XML reject the preview profiles. The CLI selects the profile with
+  `--pdf-profile` (`--profile` is the Factur-X profile of `to-facturx`). README and API
+  documentation describe the profiles.
+
+- `CreditTransfer` keeps the kind of the payment account identifier (BT-84): the new component
+  `idType` (`AccountIdType.IBAN` or `PROPRIETARY`) tells an IBAN from another account number.
+  `CreditTransfer.proprietary(id, name, bic)` and `CreditTransfer.Builder.proprietaryId(String)`
+  state a proprietary account number, e.g. `EXAMPLE-ACCOUNT`; the builder rejects an `iban` and a
+  `proprietaryId` together. The CII writer writes it as `ram:ProprietaryID` and an IBAN as
+  `ram:IBANID`, never both; the CII and ZUGFeRD 1.0 readers keep the kind, so import and normalized
+  export no longer turn a `ProprietaryID` into an `IBANID`. An account with both elements is
+  rejected in strict mode; lenient reading keeps the IBAN and reports the other identifier as
+  `READ-IDENTIFIER`. UBL has `cbc:ID` for both and carries no kind; accounts read from UBL are
+  IBAN accounts. The constructor `new CreditTransfer(iban, accountName, bic)` and `Builder.iban`
+  still create IBAN accounts. JSON stores `idType` only for a proprietary account; JSON without it
+  is read as IBAN, so stored documents are unchanged. The PDF layout labels a proprietary account
+  "Account no." (Kontonummer, N° de compte) and does not group it like an IBAN. With payment means
+  `58` the official rules warn that BT-84 should be an IBAN (BR-DE-19). Reported as Mustang issue
+  1348.
+
+- `PdfLayout.withFoldMarks(boolean)` shows or hides the fold and hole marks of DIN 5008 form B:
+  small gray lines at the left edge of page 1, 105 mm and 210 mm from the top (fold) and at
+  148.5 mm (hole). Folded at the marks, the address lies in the window of a DL envelope. They are
+  shown by default; hide them for letter paper with preprinted marks. Documents without address
+  window, such as validation reports, have none.
+
+- `PdfLayout.withAccentColor(String)` takes the accent color as a web color, e.g. `"#01244F"`
+  (six hexadecimal digits, `#` optional). Anything else, such as a short form or a color name,
+  fails with an `IllegalArgumentException`. `withAccentColor(int)` is unchanged.
+
+### Changed
+
+- Documentation now distinguishes supported insurance tax (`AAM`) from unsupported tax types,
+  describes payment account kinds and their UBL limitation, and covers quotations, selectable PDF
+  profiles, cash discount calculation, and read warnings in strict mode. The CLI guide includes
+  PDF input from standard input and unchanged XML output to standard output.
+- Release verification documentation no longer guarantees byte-identical rebuilds. Fixed archive
+  timestamps alone do not fix toolchain, manifest, generated JavaDoc, or SBOM differences; an
+  independent rc02 rebuild found equal class bytes but different archive bytes. Signatures,
+  provenance, downloaded-asset checksums, and rebuild comparison are separate checks.
+
+- The first page of a credit note (type codes 381 and 261) names its facts "Gutschriftsnummer" and
+  "Gutschriftsdatum" (English "Credit note no.", French "N° d'avoir") instead of the invoice
+  wording. A debit note (383) does the same with "Belastungsnummer" and
+  "Belastungsdatum" (English "Debit note no.", French "N° de note de débit"). Other
+  document types keep their labels.
+
+- The records `ExtendedInformation` and `LineExtension` have the new last component `otherTaxes`;
+  the builders and JSON without it are unchanged.
+
+- The record `CreditTransfer` has the new last component `idType`; the canonical constructor takes
+  it as last argument, the constructor with three arguments is unchanged.
+
+- The record `PdfLayout` has the new components `profile` and `foldMarks`; the canonical constructor
+  takes them as last arguments. `of`, `defaults`, and the `with` methods are unchanged.
+
+- The rendered PDFs use IBM Plex Sans Regular and Bold (SIL Open Font License 1.1), packaged with
+  `paniolo-facturx`, instead of Liberation Sans of PDFBox. Bold text uses the real bold face instead
+  of emboldening the regular font. Digits are slightly wider, so line and page breaks of existing
+  documents can differ. Own fonts of `PdfLayout.withFonts` are unchanged.
+
+- `PdfLayout.withFonts` fonts whose embedding permissions (`fsType`) forbid embedding or subsetting
+  are rejected with a message naming the restriction instead of "no readable TrueType font" or an
+  error while saving the PDF. The PDF layout documentation explains the license of own fonts.
+
+- The heading on the first page of the PDFs of invoices, orders and delivery notes shows only the
+  document type (e.g. "Rechnung") instead of type and number. The number was shown twice, because
+  the fact block next to the heading already contains it. The continuation header of the following
+  pages and the PDF title metadata keep the number. The validation report is unchanged; its heading
+  contains the file name.
+
+- veraPDF 1.30.4 instead of 1.30.3. The update fixes a local file disclosure through custom XSLT
+  policies (GHSA-73f4-hgcx-xc59), PDF/UA rule handling and a parser race condition, and restores
+  the original Adobe XMP Toolkit license in `verapdf-xmp-core`. The dependencies are otherwise
+  unchanged.
+
+- The executable CLI JAR carries the complete third-party notices of StAX-Utils (BSD-3-Clause,
+  Christian Niles / Unit12, Sun Microsystems, John Kristian) and of veraPDF XMP Library Core
+  (BSD-3-Clause, Adobe Systems and veraPDF Consortium) in `META-INF/licenses/`, and
+  `META-INF/THIRD-PARTY.txt` links the Saxon-HE sources of the bundled version instead of the
+  Saxon 12 source archive. The integration test `LicenseNoticesIT` checks these notices in the
+  packaged JAR.
+
+- The model applies the payment rule of EN 16931 only: a credit transfer (30/58) requires an
+  account (BR-61). A card next to the credit transfer account (official Factur-X example
+  `factur-x-en16931.xml`), a payment card code without card information, and a direct debit (59)
+  that names the payee account are kept; `Invoice` no longer restricts a card next to the account
+  to EXTENDED-CTC-FR. The XRechnung rules BR-DE-23 to BR-DE-25 are reported by validation.
+
+- The item seller of a line (EXTENDED) and the subtype of a sub-line (BR-FXEXT-06) are no longer
+  checked by the model: the official French examples name item sellers by legal registration only
+  without the multi-vendor identifier, and the sub-invoice lines of the XRechnung extension in CII
+  state no subtype. Validation reports the rules of the profile.
+
+- Lenient reading keeps rate zero for a VAT category without rate other than zero (Z, E, AE, K,
+  G) that states another rate or none, e.g. an exempt VAT breakdown with 19 % and VAT amount zero,
+  and reports the new warning `READ-TAX-RATE`; strict reading rejects it with the location. An
+  invoicing period with an invalid date or an end before its start is dropped with the new warning
+  `READ-PERIOD` in lenient reading.
+
+- A payment means block without code (BT-81), which ZUGFeRD 1.0 allows, is read as `1`
+  (instrument not defined) with the warning `READ-PAYMENT-MEANS`; UBL and CII require the code,
+  so strict reading rejects it there. ZUGFeRD 1.0 direct debits are migrated with mandate
+  reference, creditor identifier (scheme agency of the payment means identifier), and debited
+  account instead of being rejected.
+
+- The message that rejects EXTENDED information outside EXTENDED names the content, e.g.
+  `seller contact (name and department), line 1 (gross price allowance or charge details)`, and the
+  profile of the invoice. Extracting the invoice of a PDF that carries an Order-X document or a
+  despatch advice instead names that file.
+
+### Fixed
+
+- The visual invoice shows document-level taxes of another type than VAT (the insurance tax `AAM`
+  of the EXTENDED profile) as own row in the totals, with rate and basis amount if stated, so the
+  rows add up to the total with taxes; before, only the VAT rows were shown.
+
+- `Country` has every ISO 3166-1 alpha-2 code and the code XI of the EN 16931 code list; reading
+  the French overseas departments (e.g. RE in the official Facture_DOM examples) failed with
+  "Unknown country".
+
+- UBL dates in the lexical form of `xs:date` with time zone, e.g. `2016-04-04+01:00`, are read.
+
+- The UBL reader takes the seller tax registration identifier (BT-32) from a `PartyTaxScheme` of
+  every scheme other than VAT, e.g. `TAX` of PEPPOL BIS, not only from `FC`.
+
+- Readers report a required value the document lacks, e.g. an allowance without amount or a
+  sub-invoice line without VAT category, as `IllegalArgumentException` that names it instead of a
+  `NullPointerException`.
+
+- Writing the Factur-X profile MINIMUM rejects a postal address of the buyer (BG-8), also one with
+  the country only, and the buyer VAT identifier (BT-48), which the MINIMUM schematron of
+  Factur-X 1.09 marks as not used. Before, such an invoice was written and failed its own
+  validation.
+
 ## [1.0.0-rc02] - 2026-11-15
 
 Second release candidate. See the [API reference for 1.0.0-rc02](docs/api/1.0.0-rc02.md).
@@ -349,6 +552,7 @@ Second release candidate. See the [API reference for 1.0.0-rc02](docs/api/1.0.0-
 First release candidate, published to Maven Central under the group ID `io.github.nalukit`. See
 the [API reference for 1.0.0-rc01](docs/api/1.0.0-rc01.md).
 
-[Unreleased]: https://github.com/NaluKit/paniolo/compare/1.0.0-rc02...HEAD
+[Unreleased]: https://github.com/NaluKit/paniolo/compare/1.0.0...HEAD
+[1.0.0]: https://github.com/NaluKit/paniolo/releases/tag/1.0.0
 [1.0.0-rc02]: https://github.com/NaluKit/paniolo/releases/tag/1.0.0-rc02
 [1.0.0-rc01]: https://github.com/NaluKit/paniolo/releases/tag/1.0.0-rc01

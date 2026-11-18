@@ -1,7 +1,9 @@
 # Paniolo Factur-X / ZUGFeRD
 
 `paniolo-facturx` adds PDF support to the [`Paniolo`](../paniolo/README.md) facade. It depends on
-`paniolo` and Apache PDFBox 3 (Apache License 2.0) and is found through `java.util.ServiceLoader`:
+`paniolo` and Apache PDFBox 3 (Apache License 2.0), packages the font IBM Plex Sans (SIL Open
+Font License 1.1, see `META-INF/NOTICE`) for the rendered pages, and is found through
+`java.util.ServiceLoader`:
 add the dependency and the facade methods below work, there is nothing to configure. Applications
 without it keep a PDF-free class path.
 
@@ -14,7 +16,7 @@ without it keep a PDF-free class path.
 | ZUGFeRD 1.0 PDFs                                                  | `read(pdf)`, `migrateZugferd1`                                                  |
 | Order-X PDFs (`order-x.xml`)                                      | `toOrderXPdf`, `readOrder(pdf)`, `validateOrder(pdf)`                           |
 | PDF delivery notes (`cida.xml`)                                   | `toDespatchAdvicePdf`, `readDespatchAdvice(pdf)`, `validateDespatchAdvice(pdf)` |
-| Rendered PDF/A-3b pages ([PDF layout](docs/pdf-layout.md))        | `toPdf`, `toReportPdf`, `toFacturX(invoice, profile)`, `toOrderXPdf(order)`     |
+| Rendered pages: PDF/A-3b, PDF/A-1b, preview ([PDF layout](docs/pdf-layout.md)) | `toPdf`, `toReportPdf`, `toFacturX(invoice, profile)`, `toOrderXPdf(order)`     |
 
 The visual part comes from you as a PDF/A-1, -2, or -3 document; Paniolo adds the XML, the
 association, and the XMP metadata. Without a PDF of your own, this module renders the pages from
@@ -27,7 +29,7 @@ the model and embeds the XML in one step (`toFacturX(invoice, profile)`, `toOrde
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo-facturx</artifactId>
-  <version>1.0.0-rc02</version>
+  <version>1.0.0</version>
 </dependency>
 ```
 
@@ -370,8 +372,10 @@ Invoice lines carry their EXTENDED information in `InvoiceLine.extended()` (`Lin
 
 Only regular lines (no subtype or `DETAIL`) count in the totals and the VAT breakdown (BR-FXEXT-CO-10); subtotal (`GROUP`) and
 information lines are written with their own amounts. The
-model checks that every parent line exists (BR-FXEXT-11), that a sub-line states its subtype (BR-FXEXT-06), and that a subtotal
-equals the sum of its regular and subtotal sub-lines (BR-FXEXT-08). Regular lines need quantity,
+model checks that every parent line exists (BR-FXEXT-11) and that a subtotal
+equals the sum of its regular and subtotal sub-lines (BR-FXEXT-08). The profile's validation rules
+check whether a sub-line must state its subtype (BR-FXEXT-06); the model does not require it.
+Regular lines need quantity,
 unit, net price, and VAT category; subtotal and information lines may leave out the VAT category
 and the net price (BR-FXEXT-CO-04), and quantity and unit too if they have no net price. Plain name and
 value pairs stay item attributes (BG-32). For lines with allowances or charges the writer also
@@ -398,6 +402,36 @@ EXTENDED is validated against the official EXTENDED schema and Schematron (see b
 and EN 16931 alone would reject some EXTENDED content: D16B allows only one preceding invoice and no
 invoice reference on advance payments, and EN 16931 counts subtotal and information lines and does
 not count logistics service charges in the VAT breakdown (`BR-S-08`).
+
+### Insurance tax (AAM)
+
+`OtherTax` keeps insurance tax apart from VAT. Add the document-level tax with
+`ExtendedInformation.Builder.addOtherTax`; it counts in the total tax amount (BT-110), the total
+with taxes (BT-112), and the amount due (BT-115). For example, 1,017.57 EUR net plus 26.14 EUR
+insurance tax gives 1,043.71 EUR due before payments and rounding. A tax in
+`LineExtension.otherTaxes` describes the line and is not added to the totals again.
+
+```java
+OtherTax insurance = OtherTax.insuranceTax("S", new BigDecimal("19"), new BigDecimal("137.57"));
+ExtendedInformation extended = ExtendedInformation.create().addOtherTax(insurance).build();
+```
+
+Use `ProcessControl.facturXExtended()` and CII: the writer preserves `TypeCode=AAM` next to
+`VAT`. Writing these taxes as UBL or in another profile is rejected. Both strict and lenient CII
+reading retain `AAM`, and the optional calculation check includes it in the totals. The official
+EXTENDED rules apply category checks to every header tax block (including BR-E-09 and
+BR-FXEXT-S-01), so the tax category must satisfy those rules. Other non-VAT tax types remain
+unsupported: strict reading rejects them, lenient reading reports `READ-OTHER-TAX`, and normalized
+export requires an explicit choice to accept their loss.
+
+### Calculating a cash discount
+
+`PaymentTermsAdjustment.withComputedAmount()` calculates a missing discount or penalty amount
+from its base amount and percentage, rounded half up to cents. The overload
+`withComputedAmount(contextBaseAmount)` uses the context only if the adjustment has no base;
+without either base it throws `IllegalStateException`. A stated amount stays unchanged.
+`PaymentTerm.withComputedDiscount(contextBaseAmount)` applies this to a term's discount.
+These methods change neither the due date nor the invoice amount due.
 
 ## Profile EXTENDED-CTC-FR
 

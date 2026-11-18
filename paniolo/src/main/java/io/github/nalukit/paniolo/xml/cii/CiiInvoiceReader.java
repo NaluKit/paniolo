@@ -23,7 +23,6 @@ import io.github.nalukit.paniolo.model.common.Address;
 import io.github.nalukit.paniolo.model.common.Attachment;
 import io.github.nalukit.paniolo.model.common.CashDiscount;
 import io.github.nalukit.paniolo.model.common.Contact;
-import io.github.nalukit.paniolo.model.common.CreditTransfer;
 import io.github.nalukit.paniolo.model.common.DeliveryInformation;
 import io.github.nalukit.paniolo.model.common.DirectDebit;
 import io.github.nalukit.paniolo.model.common.DocumentAdjustment;
@@ -31,7 +30,6 @@ import io.github.nalukit.paniolo.model.common.DocumentTotals;
 import io.github.nalukit.paniolo.model.common.ElectronicAddress;
 import io.github.nalukit.paniolo.model.common.InvoiceLine;
 import io.github.nalukit.paniolo.model.common.InvoiceNote;
-import io.github.nalukit.paniolo.model.common.InvoicePeriod;
 import io.github.nalukit.paniolo.model.common.ItemClassification;
 import io.github.nalukit.paniolo.model.common.LineAdjustment;
 import io.github.nalukit.paniolo.model.common.Party;
@@ -49,7 +47,6 @@ import io.github.nalukit.paniolo.model.common.value.CurrencyCode;
 import io.github.nalukit.paniolo.model.common.value.DateTimeQualifier;
 import io.github.nalukit.paniolo.model.common.value.DutyTaxFeeCategory;
 import io.github.nalukit.paniolo.model.common.value.InvoiceTypeCode;
-import io.github.nalukit.paniolo.model.common.value.PaymentMeansCode;
 import io.github.nalukit.paniolo.model.common.value.UnitCode;
 import io.github.nalukit.paniolo.model.extended.AccountingAccount;
 import io.github.nalukit.paniolo.model.extended.AdjustmentExtension;
@@ -64,6 +61,7 @@ import io.github.nalukit.paniolo.model.extended.LineExtension;
 import io.github.nalukit.paniolo.model.extended.LineSubtype;
 import io.github.nalukit.paniolo.model.extended.LogisticsServiceCharge;
 import io.github.nalukit.paniolo.model.extended.ObjectIdentifier;
+import io.github.nalukit.paniolo.model.extended.OtherTax;
 import io.github.nalukit.paniolo.model.extended.PartyExtension;
 import io.github.nalukit.paniolo.model.extended.PaymentTerm;
 import io.github.nalukit.paniolo.model.extended.PaymentTermsAdjustment;
@@ -156,9 +154,9 @@ public final class CiiInvoiceReader
                                                        ReadContext context) {
     var first = means.get(0);
     var builder = PaymentInstruction.create()
-                                    .meansCode(XmlElement.code(first.text("ram:TypeCode"),
-                                                               PaymentMeansCode::of,
-                                                               "payment means code"))
+                                    .meansCode(context.paymentMeansCode(first.text("ram:TypeCode"),
+                                                                        false,
+                                                                        first))
                                     .meansText(first.text("ram:Information"))
                                     .remittanceInformation(settlement.text("ram:PaymentReference"));
     for (int index = 0; index < means.size(); index++) {
@@ -178,12 +176,8 @@ public final class CiiInvoiceReader
         continue;
       }
       if (account != null) {
-        String id = account.text("ram:IBANID");
-        builder.addCreditTransfer(new CreditTransfer(id == null ?
-                                                     account.text("ram:ProprietaryID") :
-                                                     id,
-                                                     account.text("ram:AccountName"),
-                                                     mean.text("ram:PayeeSpecifiedCreditorFinancialInstitution/ram:BICID")));
+        builder.addCreditTransfer(context.creditTransfer(account,
+                                                         mean.text("ram:PayeeSpecifiedCreditorFinancialInstitution/ram:BICID")));
       }
     }
     var card = first.find("ram:ApplicableTradeSettlementFinancialCard");
@@ -390,8 +384,8 @@ public final class CiiInvoiceReader
   }
 
   /**
-   * Returns the VAT blocks of a list of tax blocks and reports every block of another tax type,
-   * e.g. the insurance tax {@code AAM} of Factur-X EXTENDED, without reading it. A block without
+   * Returns the VAT blocks of a list of tax blocks and reports every block of another tax type
+   * without reading it. A block without
    * tax type code counts as VAT, as older documents leave it out.
    *
    * @param taxes    the tax blocks in document order
@@ -404,41 +398,77 @@ public final class CiiInvoiceReader
                                    String lineId,
                                    String location,
                                    ReadContext context) {
+    return vatTaxes(taxes,
+                    lineId,
+                    location,
+                    context,
+                    null);
+  }
+
+  /**
+   * Like {@link #vatTaxes(List, String, String, ReadContext)}, but a tax of a type the model keeps
+   * next to VAT (see {@link OtherTax#SUPPORTED}) with a category and an amount is added to
+   * {@code otherTaxes} instead of being reported. It is never read as VAT.
+   *
+   * @param taxes      the tax blocks in document order
+   * @param lineId     the line the blocks belong to, or null for the document level
+   * @param location   the location for messages, e.g. {@code line 2} or {@code header}
+   * @param context    the state of the read
+   * @param otherTaxes receives the taxes of the supported other types, or null to report them
+   * @return the VAT blocks in document order
+   */
+  static List<XmlElement> vatTaxes(List<XmlElement> taxes,
+                                   String lineId,
+                                   String location,
+                                   ReadContext context,
+                                   List<OtherTax> otherTaxes) {
     var vat = new ArrayList<XmlElement>();
     for (int index = 0; index < taxes.size(); index++) {
       var    tax  = taxes.get(index);
       String type = tax.text("ram:TypeCode");
       if (type == null || "VAT".equals(type.strip())) {
         vat.add(tax);
+        continue;
+      }
+      String     category = tax.text("ram:CategoryCode");
+      BigDecimal rate = Objects.requireNonNullElse(tax.decimal("ram:RateApplicablePercent"),
+                                                   tax.decimal("ram:ApplicablePercent"));
+      BigDecimal basis  = tax.decimal("ram:BasisAmount");
+      BigDecimal amount = tax.decimal("ram:CalculatedAmount");
+      if (otherTaxes != null && OtherTax.SUPPORTED.contains(type.strip()) && category != null && !category.isBlank() && amount != null) {
+        otherTaxes.add(new OtherTax(type.strip(),
+                                    category.strip(),
+                                    rate,
+                                    basis,
+                                    amount));
       } else {
         context.otherTax(type.strip(),
                          lineId,
                          location + " tax " + (index + 1),
-                         tax.text("ram:CategoryCode"),
-                         Objects.requireNonNullElse(tax.decimal("ram:RateApplicablePercent"),
-                                                    tax.decimal("ram:ApplicablePercent")),
-                         tax.decimal("ram:BasisAmount"),
-                         tax.decimal("ram:CalculatedAmount"));
+                         category,
+                         rate,
+                         basis,
+                         amount);
       }
     }
     return vat;
   }
 
-  private static TaxCategory tax(XmlElement tax) {
+  private static TaxCategory tax(XmlElement tax,
+                                 ReadContext context,
+                                 String lineId) {
     if (tax == null) {
       return null;
     }
     var code = XmlElement.code(tax.text("ram:CategoryCode"),
                                DutyTaxFeeCategory::of,
                                "VAT category");
-    // Outside-scope breakdowns state a zero rate for XRechnung; the model keeps no rate.
-    BigDecimal rate = code == DutyTaxFeeCategory.O ?
-                      null :
-                      tax.decimal("ram:RateApplicablePercent");
-    return new TaxCategory(code,
-                           rate,
-                           tax.text("ram:ExemptionReason"),
-                           tax.text("ram:ExemptionReasonCode"));
+    return context.taxCategory(code,
+                               tax.decimal("ram:RateApplicablePercent"),
+                               tax.text("ram:ExemptionReason"),
+                               tax.text("ram:ExemptionReasonCode"),
+                               lineId,
+                               tax);
   }
 
   /**
@@ -446,7 +476,8 @@ public final class CiiInvoiceReader
    */
   private static DocumentTotals statedTotals(List<XmlElement> taxes,
                                              XmlElement summation,
-                                             BigDecimal statedTax) {
+                                             BigDecimal statedTax,
+                                             ReadContext context) {
     var totals = DocumentTotals.create()
                                .lineTotal(summation.decimal("ram:LineTotalAmount"))
                                .taxBasisTotal(summation.decimal("ram:TaxBasisTotalAmount"))
@@ -454,7 +485,9 @@ public final class CiiInvoiceReader
                                          BigDecimal.ZERO :
                                          statedTax);
     for (var tax : taxes) {
-      totals.addVatBreakdown(tax(tax),
+      totals.addVatBreakdown(tax(tax,
+                                 context,
+                                 null),
                              tax.decimal("ram:BasisAmount"),
                              tax.decimal("ram:CalculatedAmount"));
     }
@@ -471,7 +504,8 @@ public final class CiiInvoiceReader
                                XmlElement delivery,
                                XmlElement settlement,
                                Map<String, TaxCategory> categories,
-                               ReadContext exemptions) {
+                               ReadContext exemptions,
+                               ReadContext readContext) {
     extended.testIndicator(context.booleanOrNull("ram:TestIndicator/udt:Indicator"))
             .documentName(header.text("ram:Name"))
             .copyIndicator(header.booleanOrNull("ram:CopyIndicator/udt:Indicator"))
@@ -521,7 +555,9 @@ public final class CiiInvoiceReader
       var service = services.get(index);
       extended.addLogisticsServiceCharge(new LogisticsServiceCharge(service.text("ram:Description"),
                                                                     service.decimal("ram:AppliedAmount"),
-                                                                    InvoiceConsistency.complete(tax(service.find("ram:AppliedTradeTax")),
+                                                                    InvoiceConsistency.complete(tax(service.find("ram:AppliedTradeTax"),
+                                                                                                    readContext,
+                                                                                                    null),
                                                                                                 categories,
                                                                                                 null,
                                                                                                 "Logistics service charge " + (index + 1),
@@ -531,7 +567,9 @@ public final class CiiInvoiceReader
       var tax = advance.find("ram:IncludedTradeTax");
       extended.addAdvancePayment(new AdvancePayment(advance.decimal("ram:PaidAmount"),
                                                     advance.basicDate("ram:FormattedReceivedDateTime/qdt:DateTimeString"),
-                                                    tax(tax),
+                                                    tax(tax,
+                                                        readContext,
+                                                        null),
                                                     tax == null ?
                                                     null :
                                                     tax.decimal("ram:CalculatedAmount"),
@@ -576,12 +614,14 @@ public final class CiiInvoiceReader
     var settlement = item.find("ram:SpecifiedLineTradeSettlement");
     var product    = item.find("ram:SpecifiedTradeProduct");
     String lineId = item.text("ram:AssociatedDocumentLineDocument/ram:LineID");
+    var lineOtherTaxes = new ArrayList<OtherTax>();
     var lineTaxes = settlement == null ?
                     List.<XmlElement>of() :
                     vatTaxes(settlement.children("ram:ApplicableTradeTax"),
                              lineId,
                              "line " + lineId,
-                             context);
+                             context,
+                             lineOtherTaxes);
     // A subtotal (GROUP) or information line may state a VAT block without category, with the code
     // of the date its VAT becomes due only (Factur-X 1.07.3); it then has no VAT category.
     var lineTax = lineTaxes.stream()
@@ -612,7 +652,9 @@ public final class CiiInvoiceReader
                              .priceBaseQuantity(baseQuantity == null ?
                                                 BigDecimal.ONE :
                                                 baseQuantity)
-                             .tax(InvoiceConsistency.complete(tax(lineTax),
+                             .tax(InvoiceConsistency.complete(tax(lineTax,
+                                                                  context,
+                                                                  lineId),
                                                               categories,
                                                               lineId,
                                                               "Line " + lineId,
@@ -663,8 +705,9 @@ public final class CiiInvoiceReader
     if (settlement != null) {
       var period = settlement.find("ram:BillingSpecifiedPeriod");
       if (period != null) {
-        builder.period(new InvoicePeriod(period.basicDate("ram:StartDateTime/udt:DateTimeString"),
-                                         period.basicDate("ram:EndDateTime/udt:DateTimeString")));
+        builder.period(context.period(period,
+                                      false,
+                                      lineId));
       }
       for (var adjustment : settlement.children("ram:SpecifiedTradeAllowanceCharge")) {
         boolean charge = adjustment.booleanValue("ram:ChargeIndicator/udt:Indicator");
@@ -691,7 +734,8 @@ public final class CiiInvoiceReader
       }
       builder.buyerAccountingReference(settlement.text("ram:ReceivableSpecifiedTradeAccountingAccount/ram:ID"));
     }
-    builder.extended(lineExtension(item));
+    builder.extended(lineExtension(item,
+                                   lineOtherTaxes));
     return context.netAmount(builder.build(),
                              item.decimal("ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeSettlementLineMonetarySummation/ram:LineTotalAmount"));
   }
@@ -713,13 +757,15 @@ public final class CiiInvoiceReader
   /**
    * Reads the line information of the profile EXTENDED.
    */
-  private static LineExtension lineExtension(XmlElement item) {
+  private static LineExtension lineExtension(XmlElement item,
+                                             List<OtherTax> otherTaxes) {
     var document = item.find("ram:AssociatedDocumentLineDocument");
     var product  = item.find("ram:SpecifiedTradeProduct");
     var agree    = item.find("ram:SpecifiedLineTradeAgreement");
     var delivery = item.find("ram:SpecifiedLineTradeDelivery");
     var settle   = item.find("ram:SpecifiedLineTradeSettlement");
     var extended = LineExtension.create();
+    otherTaxes.forEach(extended::addOtherTax);
     if (document != null) {
       String subtype = document.text("ram:LineStatusReasonCode");
       extended.parentLineId(document.text("ram:ParentLineID"))
@@ -896,6 +942,12 @@ public final class CiiInvoiceReader
                          ReadMode mode) {
     Objects.requireNonNull(document,
                            "document");
+    return ReadContext.requiredValues(() -> readDocument(document,
+                                                         mode));
+  }
+
+  private ReadResult readDocument(Document document,
+                                  ReadMode mode) {
     var readContext = new ReadContext(mode);
     var root = XmlElement.of(document.getDocumentElement(),
                              NAMESPACES);
@@ -1017,15 +1069,20 @@ public final class CiiInvoiceReader
                                             CurrencyCode::of,
                                             "currency"));
 
+    var headerOtherTaxes = new ArrayList<OtherTax>();
     var headerTaxes = vatTaxes(settlement.children("ram:ApplicableTradeTax"),
                                null,
                                "header",
-                               readContext);
+                               readContext,
+                               headerOtherTaxes);
     var breakdowns = new ArrayList<TaxCategory>();
     var statedVat  = new StatedVatAmounts();
     for (var tax : headerTaxes) {
-      breakdowns.add(tax(tax));
-      statedVat.add(tax(tax),
+      var breakdown = tax(tax,
+                          readContext,
+                          null);
+      breakdowns.add(breakdown);
+      statedVat.add(breakdown,
                     tax.decimal("ram:CalculatedAmount"));
     }
     taxPoint(builder,
@@ -1034,8 +1091,9 @@ public final class CiiInvoiceReader
                                                           exemptions);
     var period     = settlement.find("ram:BillingSpecifiedPeriod");
     if (period != null) {
-      builder.invoicePeriod(new InvoicePeriod(period.basicDate("ram:StartDateTime/udt:DateTimeString"),
-                                              period.basicDate("ram:EndDateTime/udt:DateTimeString")));
+      builder.invoicePeriod(readContext.period(period,
+                                               false,
+                                               null));
     }
     int adjustmentNumber = 0;
     for (var adjustment : settlement.children("ram:SpecifiedTradeAllowanceCharge")) {
@@ -1053,7 +1111,9 @@ public final class CiiInvoiceReader
                                                                           adjustment.text("ram:ReasonCode"),
                                                                           adjustment.text("ram:Reason"),
                                                                           null),
-                                                   InvoiceConsistency.complete(tax(adjustment.find("ram:CategoryTradeTax")),
+                                                   InvoiceConsistency.complete(tax(adjustment.find("ram:CategoryTradeTax"),
+                                                                                   readContext,
+                                                                                   null),
                                                                                categories,
                                                                                null,
                                                                                "Document " + (charge ?
@@ -1065,6 +1125,7 @@ public final class CiiInvoiceReader
     // Terms with a partial amount, penalty, or discount are EXTENDED terms; the first plain term
     // carries BT-20, BT-9 and the mandate reference, further plain terms are EXTENDED terms too.
     var        extended = ExtendedInformation.create();
+    headerOtherTaxes.forEach(extended::addOtherTax);
     XmlElement terms    = null;
     for (var term : settlement.children("ram:SpecifiedTradePaymentTerms")) {
       if (term.find("ram:PartialPaymentAmount") != null || term.find("ram:ApplicableTradePaymentPenaltyTerms") != null || term.find("ram:ApplicableTradePaymentDiscountTerms") != null || term.find("ram:PayeeTradeParty") != null) {
@@ -1121,7 +1182,8 @@ public final class CiiInvoiceReader
       }
       builder.statedTotals(statedTotals(headerTaxes,
                                         summation,
-                                        statedTax));
+                                        statedTax,
+                                        readContext));
       if (summation.find("ram:TotalPrepaidAmount") == null) {
         // MINIMUM has no paid amount (BT-113); a lower amount due implies one.
         BigDecimal grand = summation.decimal("ram:GrandTotalAmount");
@@ -1138,7 +1200,8 @@ public final class CiiInvoiceReader
              delivery,
              settlement,
              categories,
-             exemptions);
+             exemptions,
+             readContext);
     builder.extended(extended.build());
     return readContext.result(statedVat.build(builder),
                               statedAmounts(summation,

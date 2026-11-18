@@ -44,6 +44,7 @@ class DocumentFamilyCliTest {
 
   static Path orderJson;
   static Path adviceJson;
+  static Path quotationJson;
   static Path visualPdf;
   static Path xrechnung;
 
@@ -55,6 +56,7 @@ class DocumentFamilyCliTest {
       throws IOException {
     orderJson  = copy("order.json");
     adviceJson = copy("despatch-advice.json");
+    quotationJson = copy("quotation.json");
     visualPdf  = copy("visual.pdf");
     xrechnung  = copy("xrechnung.xml");
   }
@@ -244,6 +246,94 @@ class DocumentFamilyCliTest {
     assertFalse(advice.exitCode() == PanioloCli.EXIT_OK && advice.err()
                                                                   .contains("Unsupported"),
                 advice.err());
+  }
+
+  @Test
+  void rendersAQuotationAsPdf()
+      throws IOException {
+    Path pdf = dir.resolve("quotation.pdf");
+    var result = run("quotation",
+                     "to-pdf",
+                     quotationJson.toString(),
+                     "-o",
+                     pdf.toString());
+    assertEquals(PanioloCli.EXIT_OK,
+                 result.exitCode(),
+                 result.err());
+    assertTrue(Files.size(pdf) > 1000);
+    assertTrue(new String(Files.readAllBytes(pdf),
+                          StandardCharsets.ISO_8859_1).startsWith("%PDF"));
+  }
+
+  @Test
+  void createsTheInvoiceOfAQuotation()
+      throws IOException {
+    var standard = run("quotation",
+                       "to-invoice",
+                       "--number",
+                       "R-77",
+                       "--date",
+                       "2026-12-01",
+                       quotationJson.toString());
+    assertEquals(PanioloCli.EXIT_OK,
+                 standard.exitCode(),
+                 standard.err());
+    assertTrue(standard.out()
+                       .contains("\"number\" : \"R-77\""),
+               standard.out());
+    assertTrue(standard.out()
+                       .contains("\"issueDate\" : \"2026-12-01\""),
+               standard.out());
+    assertTrue(standard.out()
+                       .contains("Beratung"));
+    assertFalse(standard.out()
+                        .contains("Schulung"),
+                "the optional line is not part of the standard offer");
+
+    var accepted = run("quotation",
+                       "to-invoice",
+                       "--number",
+                       "R-78",
+                       "--accept",
+                       "2",
+                       quotationJson.toString());
+    assertEquals(PanioloCli.EXIT_OK,
+                 accepted.exitCode(),
+                 accepted.err());
+    assertTrue(accepted.out()
+                       .contains("Schulung"));
+
+    // The invoice JSON goes on with the invoice commands.
+    Path invoice = dir.resolve("from-quotation.json");
+    Files.writeString(invoice,
+                      accepted.out());
+    assertEquals(PanioloCli.EXIT_OK,
+                 run("to-pdf",
+                     invoice.toString(),
+                     "-o",
+                     dir.resolve("from-quotation.pdf")
+                        .toString()).exitCode());
+  }
+
+  @Test
+  void rejectsInvalidQuotationArguments() {
+    assertEquals(PanioloCli.EXIT_ERROR,
+                 run("quotation",
+                     "to-invoice",
+                     "--number",
+                     "R-79",
+                     "--accept",
+                     "1",
+                     quotationJson.toString()).exitCode(),
+                 "line 1 is not optional");
+    assertEquals(PanioloCli.EXIT_ERROR,
+                 run("quotation",
+                     "to-invoice",
+                     "--number",
+                     "R-79",
+                     "--date",
+                     "01.12.2026",
+                     quotationJson.toString()).exitCode());
   }
 
   private static InventoryCommand.Entry classify(String xml) {

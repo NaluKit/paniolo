@@ -21,12 +21,10 @@ import io.github.nalukit.paniolo.model.Invoice;
 import io.github.nalukit.paniolo.model.common.AdditionalSupportingDocument;
 import io.github.nalukit.paniolo.model.common.CashDiscount;
 import io.github.nalukit.paniolo.model.common.Contact;
-import io.github.nalukit.paniolo.model.common.CreditTransfer;
 import io.github.nalukit.paniolo.model.common.DeliveryInformation;
 import io.github.nalukit.paniolo.model.common.DocumentAdjustment;
 import io.github.nalukit.paniolo.model.common.InvoiceLine;
 import io.github.nalukit.paniolo.model.common.InvoiceNote;
-import io.github.nalukit.paniolo.model.common.InvoicePeriod;
 import io.github.nalukit.paniolo.model.common.ItemClassification;
 import io.github.nalukit.paniolo.model.common.LineAdjustment;
 import io.github.nalukit.paniolo.model.common.Party;
@@ -40,7 +38,7 @@ import io.github.nalukit.paniolo.model.common.value.Country;
 import io.github.nalukit.paniolo.model.common.value.CurrencyCode;
 import io.github.nalukit.paniolo.model.common.value.DutyTaxFeeCategory;
 import io.github.nalukit.paniolo.model.common.value.InvoiceTypeCode;
-import io.github.nalukit.paniolo.model.common.value.PaymentMeansCode;
+import io.github.nalukit.paniolo.model.common.DirectDebit;
 import io.github.nalukit.paniolo.model.common.value.UnitCode;
 import io.github.nalukit.paniolo.model.extended.ExtendedInformation;
 import io.github.nalukit.paniolo.model.extended.LogisticsServiceCharge;
@@ -69,8 +67,9 @@ import java.util.stream.Collectors;
  * to Factur-X as BASIC to BASIC, COMFORT to EN 16931, and EXTENDED to EXTENDED.
  *
  * <p>Outside the target profile EXTENDED, logistics service charges become document charges and
- * cash discount terms become {@link CashDiscount}s. Content the model cannot carry, such as late
- * payment penalties outside EXTENDED or direct debits without mandate reference, is rejected.
+ * cash discount terms become {@link CashDiscount}s. A direct debit keeps its mandate reference, the
+ * creditor identifier, and the debited account as ZUGFeRD 1.0 states them. Content the model cannot
+ * carry, such as late payment penalties outside EXTENDED, is rejected.
  */
 public final class ZugferdV1InvoiceReader
     implements InvoiceXmlReader {
@@ -145,20 +144,7 @@ public final class ZugferdV1InvoiceReader
            null;
   }
 
-  private static TaxCategory tax(XmlElement tax) {
-    if (tax == null) {
-      return null;
-    }
-    var code = XmlElement.code(tax.text("ram:CategoryCode"),
-                               DutyTaxFeeCategory::of,
-                               "VAT category");
-    return new TaxCategory(code,
-                           code == DutyTaxFeeCategory.O ?
-                           null :
-                           tax.decimal("ram:ApplicablePercent"),
-                           tax.text("ram:ExemptionReason"),
-                           null);
-  }
+
 
   /**
    * ZUGFeRD 1.0 allows several content elements per note; CII D16B has one.
@@ -190,6 +176,12 @@ public final class ZugferdV1InvoiceReader
                          ReadMode mode) {
     Objects.requireNonNull(document,
                            "document");
+    return ReadContext.requiredValues(() -> readDocument(document,
+                                                         mode));
+  }
+
+  private ReadResult readDocument(Document document,
+                                  ReadMode mode) {
     var root = XmlElement.of(document.getDocumentElement(),
                              NAMESPACES);
     if (!"CrossIndustryDocument".equals(root.localName()) || !RSM.equals(root.namespace())) {
@@ -237,21 +229,18 @@ public final class ZugferdV1InvoiceReader
                                         terms.decimal(amountName));
     }
 
-    private static PaymentInstruction paymentInstruction(List<XmlElement> means,
-                                                         XmlElement settlement) {
+    private PaymentInstruction paymentInstruction(List<XmlElement> means,
+                                                  XmlElement settlement) {
       var first = means.get(0);
-      if (first.find("ram:PayerPartyDebtorFinancialAccount") != null) {
-        throw new IllegalArgumentException("ZUGFeRD 1.0 direct debits carry no mandate reference (BT-89) and cannot be migrated");
-      }
       String information = first.children("ram:Information")
                                 .stream()
                                 .map(XmlElement::text)
                                 .filter(Objects::nonNull)
                                 .collect(Collectors.joining(" "));
       var builder = PaymentInstruction.create()
-                                      .meansCode(XmlElement.code(first.text("ram:TypeCode"),
-                                                                 PaymentMeansCode::of,
-                                                                 "payment means code"))
+                                      .meansCode(context.paymentMeansCode(first.text("ram:TypeCode"),
+                                                                          true,
+                                                                          first))
                                       .meansText(information.isBlank() ?
                                                  null :
                                                  information)
@@ -259,13 +248,22 @@ public final class ZugferdV1InvoiceReader
       for (var mean : means) {
         var account = mean.find("ram:PayeePartyCreditorFinancialAccount");
         if (account != null) {
-          String id = account.text("ram:IBANID");
-          builder.addCreditTransfer(new CreditTransfer(id == null ?
-                                                       account.text("ram:ProprietaryID") :
-                                                       id,
-                                                       account.text("ram:AccountName"),
-                                                       mean.text("ram:PayeeSpecifiedCreditorFinancialInstitution/ram:BICID")));
+          builder.addCreditTransfer(context.creditTransfer(account,
+                                                           mean.text("ram:PayeeSpecifiedCreditorFinancialInstitution/ram:BICID")));
         }
+      }
+      // ZUGFeRD 1.0 states the mandate reference (BT-89) as identifier of the payment means and the
+      // creditor identifier (BT-90) as its scheme agency, next to the debited account (BT-91).
+      String debited = first.text("ram:PayerPartyDebtorFinancialAccount/ram:IBANID");
+      var    mandate = first.find("ram:ID");
+      if (debited != null || mandate != null) {
+        builder.directDebit(new DirectDebit(mandate == null ?
+                                            null :
+                                            mandate.text(),
+                                            mandate == null ?
+                                            null :
+                                            mandate.attribute("schemeAgencyID"),
+                                            debited));
       }
       return builder.build();
     }
@@ -417,8 +415,9 @@ public final class ZugferdV1InvoiceReader
                                                             exemptions);
       var period     = settlement.find("ram:BillingSpecifiedPeriod");
       if (period != null) {
-        builder.invoicePeriod(new InvoicePeriod(period.basicDate("ram:StartDateTime/udt:DateTimeString"),
-                                                period.basicDate("ram:EndDateTime/udt:DateTimeString")));
+        builder.invoicePeriod(context.period(period,
+                                             false,
+                                             null));
       }
       int adjustmentNumber = 0;
       for (var adjustment : settlement.children("ram:SpecifiedTradeAllowanceCharge")) {
@@ -612,7 +611,14 @@ public final class ZugferdV1InvoiceReader
                                  String what,
                                  String lineId) {
       if (block.text("ram:CategoryCode") != null) {
-        return tax(block);
+        return context.taxCategory(XmlElement.code(block.text("ram:CategoryCode"),
+                                                   DutyTaxFeeCategory::of,
+                                                   "VAT category"),
+                                   block.decimal("ram:ApplicablePercent"),
+                                   block.text("ram:ExemptionReason"),
+                                   null,
+                                   lineId,
+                                   block);
       }
       BigDecimal rate = block.decimal("ram:ApplicablePercent");
       if (rate == null || rate.signum() <= 0) {
@@ -793,8 +799,9 @@ public final class ZugferdV1InvoiceReader
       if (settlement != null) {
         var period = settlement.find("ram:BillingSpecifiedPeriod");
         if (period != null) {
-          builder.period(new InvoicePeriod(period.basicDate("ram:StartDateTime/udt:DateTimeString"),
-                                           period.basicDate("ram:EndDateTime/udt:DateTimeString")));
+          builder.period(context.period(period,
+                                        false,
+                                        lineId));
         }
         for (var adjustment : settlement.children("ram:SpecifiedTradeAllowanceCharge")) {
           boolean charge = adjustment.booleanValue("ram:ChargeIndicator/udt:Indicator");

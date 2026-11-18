@@ -1,0 +1,86 @@
+veraPDF XMP Library Core (org.verapdf:verapdf-xmp-core)
+========================================================
+
+This JAR bundles the unmodified classes of veraPDF XMP Library Core in
+package org.verapdf.xmp and its subpackages. The component is based on the
+Adobe XMP Toolkit for Java 5.1.3 (XMPCore) and is distributed under the
+BSD 3-Clause License, as declared by its upstream POM and by the LICENSE.txt
+of its source module. Its source files carry these copyright notices:
+
+  Adobe Systems Incorporated (2001, 2006, 2006-2007, 2009)
+    the XMPCore classes taken from the Adobe XMP Toolkit, i.e. all classes
+    except the veraPDF additions listed below
+
+  veraPDF Consortium (2015-2026)
+    the veraPDF additions impl.VeraPDFExtensionSchemaDefinition,
+    impl.VeraPDFExtensionSchemaProperty, impl.VeraPDFExtensionSchemasContainer,
+    impl.VeraPDFMeta, impl.VeraPDFXMPNode, containers.StaticXmpCoreContainers
+    and tools.SecureXML (the latter with portions derived from the Adobe
+    XMP Toolkit, copyright 2006 Adobe Systems Incorporated)
+
+Both are distributed under the BSD 3-Clause License reproduced below; the
+headers of the veraPDF additions refer to that same LICENSE.txt for the
+full terms and disclaimer.
+
+Project: https://github.com/veraPDF/veraPDF-library (module xmp-core)
+Source for the bundled version (direct download):
+  https://repo.maven.apache.org/maven2/org/verapdf/verapdf-xmp-core/${verapdf.version}/verapdf-xmp-core-${verapdf.version}-sources.jar
+
+
+--------------------------------------------------------------------------------
+Adobe XMP Toolkit (LICENSE.txt of the xmp-core module)
+--------------------------------------------------------------------------------
+
+Copyright (c) 2009, Adobe Systems Incorporated
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
+
+* Neither the name of Adobe Systems Incorporated, nor the names of its contributors
+  may be used to endorse or promote products derived from this software without
+  specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANT ABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+The individual source files further state:
+
+  Copyright 2001 Adobe Systems Incorporated
+  Copyright 2006 Adobe Systems Incorporated
+  Copyright 2006-2007 Adobe Systems Incorporated
+  Copyright (c) 2006, Adobe Systems Incorporated.
+  All Rights Reserved
+
+
+--------------------------------------------------------------------------------
+veraPDF additions
+--------------------------------------------------------------------------------
+
+Copyright (c) 2015-2026, veraPDF Consortium.
+All rights reserved.
+
+SPDX-License-Identifier: BSD-3-Clause
+
+Redistribution and use are permitted under the BSD 3-Clause License.
+See the LICENSE.txt file distributed with this module for the full
+license terms and disclaimer.
+
+(The header of the veraPDF additions, as found in their source files.
+The LICENSE.txt it refers to is the license reproduced in the section
+above, including its conditions and disclaimer.)

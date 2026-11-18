@@ -47,9 +47,12 @@ keeps the calculated totals, drops allowance reason codes outside UNTDID 5189 th
 reason text and percentages without base amount, keeps only the first of differing payment means
 blocks, turns ZUGFeRD 1.0 text-only lines into notes, and reports each deviation as a
 `ReadWarning`: `READ-LINE-NET-PRICE`, `READ-TAX-TOTAL`, `READ-PAYABLE-AMOUNT`, `READ-REASON-CODE`,
-`READ-PERCENTAGE`, `READ-PAYMENT-MEANS`, and `READ-TEXT-LINE`. A tax of another type than VAT
-(CII `TypeCode`, UBL `TaxScheme/ID`, e.g. `AAM`) is never read as VAT: strict reading rejects it,
-lenient reading reports it as `READ-OTHER-TAX` and leaves it out. In EXTENDED, an exemption
+`READ-PERCENTAGE`, `READ-PAYMENT-MEANS`, and `READ-TEXT-LINE`. The CII reader keeps insurance tax
+(`TypeCode=AAM`) separately from VAT in `ExtendedInformation.otherTaxes` and
+`LineExtension.otherTaxes`; document-level taxes count in the totals. The CII writer preserves
+them in Factur-X EXTENDED; UBL and other output profiles are rejected. Other unsupported tax types
+(CII `TypeCode`, UBL `TaxScheme/ID`) are never read as VAT: strict reading rejects them,
+lenient reading reports them as `READ-OTHER-TAX` and leaves them out. In EXTENDED, an exemption
 reason of a line, allowance, or charge that differs from its VAT breakdown, and a further breakdown
 of the same category and rate with another reason, are rejected by strict reading and reported as
 `READ-TAX-EXEMPTION` by lenient reading, which keeps the text of the first breakdown.
@@ -68,8 +71,9 @@ provide `read(Document, ReadMode)`; the other read methods delegate to it.
 `importXml(byte[], ReadMode)` returns an `ImportResult` with
 both the read result and the original XML. `ImportResult.export(ExportVariant.ORIGINAL, null)`
 returns those original bytes; `NORMALIZED` takes an `InvoiceXmlWriter` and writes the model again.
-It is refused after `READ-OTHER-TAX`, as it would drop that tax and change the amount due;
-`NORMALIZED_DROPPING_OTHER_TAXES` accepts the loss explicitly.
+It is refused after `READ-OTHER-TAX`, as it would drop that unsupported tax and change the amount
+due; `NORMALIZED_DROPPING_OTHER_TAXES` accepts the loss explicitly. It does not bypass the
+writer's restrictions on supported `AAM` taxes in other profiles or syntaxes.
 The facade exposes this through `importInvoice` and `export`; see
 [importing received invoices](../../README.md#importing-received-invoices-with-their-original-amounts).
 

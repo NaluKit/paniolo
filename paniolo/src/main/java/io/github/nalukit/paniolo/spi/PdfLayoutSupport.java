@@ -21,37 +21,40 @@ import io.github.nalukit.paniolo.config.PdfLayout;
 import io.github.nalukit.paniolo.model.Invoice;
 import io.github.nalukit.paniolo.model.despatch.DespatchAdvice;
 import io.github.nalukit.paniolo.model.order.Order;
+import io.github.nalukit.paniolo.model.quotation.Quotation;
 import io.github.nalukit.paniolo.validation.ValidationResult;
 
 import java.time.Instant;
 import java.util.Objects;
 
 /**
- * Service provider that renders the visual PDF/A document of an invoice, order, or despatch
- * advice, implemented by {@code paniolo-facturx} and found with
- * {@link java.util.ServiceLoader}. Implementations must be thread-safe.
+ * Service provider that renders the visual document of an invoice, order, quotation, or despatch
+ * advice, or a validation report. The output is PDF/A-3b (PDF 1.7) by default or follows the
+ * {@link PdfLayout#profile() profile} of the layout. Implemented by {@code paniolo-facturx} and
+ * found with {@link java.util.ServiceLoader}. Implementations must be thread-safe.
  */
 public interface PdfLayoutSupport {
 
   /**
-   * Renders an invoice as PDF/A-3b document without embedded XML.
+   * Renders an invoice as PDF document without embedded XML: PDF/A-3b (PDF 1.7) or the
+   * {@link PdfLayout#profile() profile} of the layout.
    *
    * @param invoice the invoice
    * @param layout  language, logo, fonts, and colors
-   * @return the PDF/A-3b document
-   * @throws IllegalArgumentException if the logo or a font cannot be read
+   * @return the PDF document
+   * @throws IllegalArgumentException if the logo or a font cannot be read or embedded
    */
   byte[] render(Invoice invoice,
                 PdfLayout layout);
 
   /**
-   * Renders an Order-X order, order change, or order response as PDF/A-3b document without
-   * embedded XML.
+   * Renders an Order-X order, order change, or order response without embedded XML, using the
+   * {@link PdfLayout#profile() profile} of the layout (PDF/A-3b by default).
    *
    * @param order  the order
    * @param layout language, logo, fonts, and colors
-   * @return the PDF/A-3b document
-   * @throws IllegalArgumentException if the logo or a font cannot be read
+   * @return the PDF document
+   * @throws IllegalArgumentException if the logo or a font cannot be read or embedded
    */
   default byte[] render(Order order,
                         PdfLayout layout) {
@@ -59,12 +62,27 @@ public interface PdfLayoutSupport {
   }
 
   /**
-   * Renders a despatch advice as delivery note, a PDF/A-3b document without embedded XML.
+   * Renders a quotation without embedded XML, using the {@link PdfLayout#profile() profile} of
+   * the layout (PDF/A-3b by default).
+   *
+   * @param quotation the quotation
+   * @param layout    language, logo, fonts, and colors
+   * @return the PDF document
+   * @throws IllegalArgumentException if the logo or a font cannot be read or embedded
+   */
+  default byte[] render(Quotation quotation,
+                        PdfLayout layout) {
+    throw new UnsupportedOperationException("This PDF layout implementation does not render quotations");
+  }
+
+  /**
+   * Renders a despatch advice as delivery note without embedded XML, using the
+   * {@link PdfLayout#profile() profile} of the layout (PDF/A-3b by default).
    *
    * @param advice the despatch advice
    * @param layout language, logo, fonts, and colors
-   * @return the PDF/A-3b document
-   * @throws IllegalArgumentException if the logo or a font cannot be read
+   * @return the PDF document
+   * @throws IllegalArgumentException if the logo or a font cannot be read or embedded
    */
   default byte[] render(DespatchAdvice advice,
                         PdfLayout layout) {
@@ -72,12 +90,12 @@ public interface PdfLayoutSupport {
   }
 
   /**
-   * Renders a validation report as PDF/A-3b document, e.g. for archiving or for departments without
-   * access to the machine-readable report.
+   * Renders a validation report using the {@link PdfLayout#profile() profile} of the layout
+   * (PDF/A-3b by default), e.g. for departments without access to the machine-readable report.
    *
    * @param report the validation result with the information about the validated document
    * @param layout language, fonts, colors, and footer; logo and sender address are not used
-   * @return the PDF/A-3b document
+   * @return the PDF document
    * @throws UnsupportedOperationException if the implementation does not render reports
    */
   default byte[] render(Report report,

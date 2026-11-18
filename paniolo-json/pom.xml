@@ -12,7 +12,7 @@
   <artifactId>paniolo-json</artifactId>
 
   <name>paniolo-json</name>
-  <description>Optional JSON storage of the Paniolo model (invoices, orders, despatch advices), based on Jackson</description>
+  <description>Optional JSON storage of the Paniolo model (invoices, orders, quotations, despatch advices), based on Jackson</description>
 
   <dependencies>
     <dependency>

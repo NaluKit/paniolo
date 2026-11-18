@@ -25,10 +25,12 @@ import java.util.List;
 
 /**
  * Rejects content the Factur-X / ZUGFeRD profile MINIMUM does not allow, instead of dropping it
- * silently. MINIMUM carries the document identification, seller and buyer with name, legal
- * registration identifier, country, and tax registrations, the buyer reference (BT-10), the
- * purchase order reference (BT-13), the currency, and the totals BT-109, BT-110, BT-112, and
- * BT-115, following the MINIMUM schema of Factur-X 1.09.
+ * silently. MINIMUM carries the document identification, the seller with name, legal registration
+ * identifier, country, and tax registrations, the buyer with name and legal registration
+ * identifier only, the buyer reference (BT-10), the purchase order reference (BT-13), the
+ * currency, and the totals BT-109, BT-110, BT-112, and BT-115, following the MINIMUM schema and
+ * schematron of Factur-X 1.09, which mark the postal address and the tax registration of the buyer
+ * as not used.
  */
 final class FacturXMinimumRestrictions {
   private FacturXMinimumRestrictions() {
@@ -139,9 +141,16 @@ final class FacturXMinimumRestrictions {
                             String role,
                             Party party) {
     boolean seller = "seller".equals(role);
-    if (party.address() != null &&
-        !party.address()
-              .isCountryOnly()) {
+    if (!seller) {
+      add(found,
+          party.address(),
+          "buyer postal address (BG-8)");
+      add(found,
+          party.vatId(),
+          "buyer VAT identifier (BT-48)");
+    } else if (party.address() != null &&
+               !party.address()
+                     .isCountryOnly()) {
       found.add(role +
                 " postal address other than the country (" +
                 (seller ?

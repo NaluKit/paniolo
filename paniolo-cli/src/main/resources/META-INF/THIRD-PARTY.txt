@@ -12,9 +12,8 @@ MPL-covered components
 Saxon-HE ${saxon.version}, copyright Saxonica and its contributors, is
 distributed under Mozilla Public License 2.0 (MPL-2.0).
 Project: https://github.com/Saxonica/Saxon-HE
-Source for the bundled version (download the matching source ZIP):
-  https://github.com/Saxonica/Saxon-HE/tree/main/12/source
-  Current file: saxon12-10source.zip (Saxon-HE 12.10)
+Source for the bundled version (direct download):
+  https://repo.maven.apache.org/maven2/net/sf/saxon/Saxon-HE/${saxon.version}/Saxon-HE-${saxon.version}-sources.jar
 
 veraPDF ${verapdf.version}, copyright the veraPDF Consortium and its
 contributors, offers GPLv3+ / MPLv2+ licensing. Paniolo uses the MPL-2.0
@@ -31,8 +30,8 @@ Source JARs for the bundled versions (direct downloads):
   https://repo.maven.apache.org/maven2/org/verapdf/core/${verapdf.version}/core-${verapdf.version}-sources.jar
   https://repo.maven.apache.org/maven2/org/verapdf/feature-reporting/${verapdf.version}/feature-reporting-${verapdf.version}-sources.jar
   https://repo.maven.apache.org/maven2/org/verapdf/metadata-fixer/${verapdf.version}/metadata-fixer-${verapdf.version}-sources.jar
-The separate verapdf-xmp-core component ${verapdf.version} is BSD-3-Clause,
-as declared by its upstream POM; it is not relicensed under MPL here.
+The separate verapdf-xmp-core component is not covered by MPL; see the
+BSD-covered components below.
 
 Rhino 1.7.15.1, copyright Mozilla and its contributors, is primarily
 distributed under MPL-2.0. Additional third-party portions retain the
@@ -58,12 +57,13 @@ Classpath Exception; Paniolo distributes them under the CDDL-1.1 option.
 
   javax.xml.bind:jaxb-api 2.4.0-b180830.0359
   javax.activation:javax.activation-api 1.2.0
-  com.sun.xml.bind:jaxb-core 2.3.0.1
-  org.glassfish.jaxb:jaxb-core 2.3.0.1
-  org.glassfish.jaxb:txw2 2.3.0.1
-  com.sun.istack:istack-commons-runtime 3.0.5
+  com.sun.xml.bind:jaxb-core 2.3.0.1, which itself contains the classes of
+    org.glassfish.jaxb:jaxb-core 2.3.0.1
+    org.glassfish.jaxb:txw2 2.3.0.1
+    com.sun.istack:istack-commons-runtime 3.0.5
 
-They are bundled without changes to their source code. Source for the
+The three nested components are not separate Maven dependencies; they are
+packaged inside the com.sun.xml.bind:jaxb-core JAR. They are bundled without changes to their source code. Source for the
 bundled versions (direct downloads):
   https://repo.maven.apache.org/maven2/javax/xml/bind/jaxb-api/2.4.0-b180830.0359/jaxb-api-2.4.0-b180830.0359-sources.jar
   https://repo.maven.apache.org/maven2/javax/activation/javax.activation-api/1.2.0/javax.activation-api-1.2.0-sources.jar
@@ -77,12 +77,36 @@ merged META-INF/LICENSE.txt of this JAR.
 EDL-covered components
 ----------------------
 
-com.sun.xml.bind:jaxb-impl 2.3.2 and org.glassfish.jaxb:jaxb-runtime 2.3.2,
-copyright Oracle and/or its affiliates, are distributed under the Eclipse
+com.sun.xml.bind:jaxb-impl 2.3.2 (which itself contains the classes of
+org.glassfish.jaxb:jaxb-runtime 2.3.2), copyright Oracle and/or its affiliates, are distributed under the Eclipse
 Distribution License 1.0 (EDL-1.0, BSD-3-Clause); the license text is
 retained in META-INF/LICENSE.md of this JAR.
 
+BSD-covered components
+----------------------
+
+StAX-Utils (net.java.dev.stax-utils:stax-utils 20070216), brought in by
+veraPDF core, is bundled without changes to its source code. Its classes
+carry BSD-3-Clause terms from three copyright holders: Christian Niles /
+Unit12 (2004), Sun Microsystems, Inc. (2004) and John Kristian (2006).
+The copyright notices, conditions and disclaimers are reproduced in full
+in META-INF/licenses/stax-utils-BSD-3-Clause.txt.
+Source for the bundled version (direct download):
+  https://repo.maven.apache.org/maven2/net/java/dev/stax-utils/stax-utils/20070216/stax-utils-20070216-sources.jar
+
+veraPDF XMP Library Core (org.verapdf:verapdf-xmp-core ${verapdf.version}),
+brought in by veraPDF, is bundled without changes to its source code. It
+is based on the Adobe XMP Toolkit for Java 5.1.3 and is distributed under
+the BSD 3-Clause License: copyright Adobe Systems Incorporated (XMPCore
+classes) and the veraPDF Consortium (veraPDF additions). The copyright
+notices, conditions and disclaimer are reproduced in full in
+META-INF/licenses/verapdf-xmp-core-BSD-3-Clause.txt.
+Source for the bundled version (direct download):
+  https://repo.maven.apache.org/maven2/org/verapdf/verapdf-xmp-core/${verapdf.version}/verapdf-xmp-core-${verapdf.version}-sources.jar
+
 Build maintenance: verify this list against the runtime dependency tree
 when changing dependencies. Saxon and veraPDF versions are filled in by
-Maven; the Saxon source filename, the transitive Rhino version and the
-JAXB / Activation versions must also be reviewed when upgrading.
+Maven, including the Saxon source link; the transitive Rhino, StAX-Utils,
+JAXB and Activation versions and the XMP copyright holders must be
+reviewed when upgrading. The
+LicenseNoticesIT test checks the packaged *-all.jar for these notices.

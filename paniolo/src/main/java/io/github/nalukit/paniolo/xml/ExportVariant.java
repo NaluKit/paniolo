@@ -27,15 +27,17 @@ public enum ExportVariant {
   ORIGINAL,
   /**
    * The invoice model written anew; amounts the model recalculated on reading replace the stated
-   * ones, see {@link ImportResult#deviations()}. Refused if the document states taxes of another
-   * type than VAT ({@link ReadWarning#OTHER_TAX}), as the export would drop them and lower the
-   * amount due; see {@link #NORMALIZED_DROPPING_OTHER_TAXES}.
+   * ones, see {@link ImportResult#deviations()}. Refused if reading left out unsupported tax types
+   * ({@link ReadWarning#OTHER_TAX}), as the export would drop them and lower the amount due; see
+   * {@link #NORMALIZED_DROPPING_OTHER_TAXES}. Supported insurance tax ({@code AAM}) is retained
+   * when writing CII in the Factur-X profile EXTENDED.
    */
   NORMALIZED,
   /**
-   * Like {@link #NORMALIZED}, but the caller explicitly accepts that taxes of another type than VAT
-   * ({@link ReadWarning#OTHER_TAX}, e.g. the insurance tax AAM) are not written: their amounts are
-   * missing from the total tax amount and the amount due of the export.
+   * Like {@link #NORMALIZED}, but the caller explicitly accepts that unsupported taxes left out
+   * when reading ({@link ReadWarning#OTHER_TAX}, a type other than VAT and insurance tax AAM) are
+   * not written: their amounts are missing from the total tax amount and the amount due of the
+   * export. This does not bypass the writer's profile or syntax restrictions on retained taxes.
    */
   NORMALIZED_DROPPING_OTHER_TAXES;
 

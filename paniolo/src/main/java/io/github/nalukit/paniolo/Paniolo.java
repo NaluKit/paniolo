@@ -22,6 +22,7 @@ import io.github.nalukit.paniolo.config.FacturXResult;
 import io.github.nalukit.paniolo.config.InvoiceSyntax;
 import io.github.nalukit.paniolo.config.PdfAttachment;
 import io.github.nalukit.paniolo.config.PdfLayout;
+import io.github.nalukit.paniolo.config.PdfProfile;
 import io.github.nalukit.paniolo.config.PdfaScriptCache;
 import io.github.nalukit.paniolo.config.PdfProducer;
 import io.github.nalukit.paniolo.config.UnknownDocumentHandling;
@@ -30,6 +31,7 @@ import io.github.nalukit.paniolo.model.base.PanioloBase;
 import io.github.nalukit.paniolo.model.common.ProcessControl;
 import io.github.nalukit.paniolo.model.despatch.DespatchAdvice;
 import io.github.nalukit.paniolo.model.order.Order;
+import io.github.nalukit.paniolo.model.quotation.Quotation;
 import io.github.nalukit.paniolo.model.order.OrderXProfile;
 import io.github.nalukit.paniolo.model.util.PanioloStopWatch;
 import io.github.nalukit.paniolo.rules.facturx.FacturXRules;
@@ -102,7 +104,8 @@ import java.util.function.Supplier;
 /**
  * Single entry point (facade) for writing, reading, converting and validating electronic business
  * documents: XRechnung / EN 16931 invoices in UBL and CII, Factur-X / ZUGFeRD hybrid PDFs, Order-X
- * orders and despatch advices (delivery notes) in UBL and CIDA.
+ * orders and despatch advices (delivery notes) in UBL and CIDA. Quotations are rendered as PDF;
+ * their model provides conversion to invoices and has no XML syntax.
  *
  * <h2>Getting started</h2>
  *
@@ -150,13 +153,14 @@ import java.util.function.Supplier;
  *           {@link #toFacturX(Invoice, FacturXProfile)},
  *           {@link #toFacturX(Invoice, FacturXProfile, PdfLayout, List)}, {@link #extractXml(byte[])},
  *           {@link #attachments(byte[])}, {@link #producer(byte[])}</td></tr>
- *   <tr><td>Visual PDF/A (rendered)</td>
+ *   <tr><td>Visual PDF (rendered, PDF/A-3b by default)</td>
  *       <td>{@link #toPdf(Invoice)}, {@link #toPdf(Invoice, PdfLayout)}, {@link #toPdf(Order)},
- *           {@link #toPdf(Order, PdfLayout)}, {@link #toPdf(DespatchAdvice)},
+ *           {@link #toPdf(Order, PdfLayout)}, {@link #toPdf(Quotation)},
+ *           {@link #toPdf(Quotation, PdfLayout)}, {@link #toPdf(DespatchAdvice)},
  *           {@link #toPdf(DespatchAdvice, PdfLayout)}, {@link #toOrderXPdf(Order)},
  *           {@link #toOrderXPdf(Order, PdfLayout, List)}, {@link #toDespatchAdvicePdf(DespatchAdvice)},
  *           {@link #toDespatchAdvicePdf(DespatchAdvice, PdfLayout, List)}</td></tr>
- *   <tr><td>Validation report as PDF/A</td>
+ *   <tr><td>Validation report as PDF</td>
  *       <td>{@link #toReportPdf(ValidationResult, String, byte[])},
  *           {@link #toReportPdf(ValidationResult, String, byte[], PdfLayout)}</td></tr>
  *   <tr><td>ZUGFeRD 1.0 migration</td>
@@ -1349,7 +1353,7 @@ public final class Paniolo
    *       must be the syntax of the received XML; the original is never converted.</li>
    *   <li>{@link ExportVariant#NORMALIZED} &ndash; the invoice model written in the given syntax. If
    *       {@link ImportResult#isNormalized()} is true, the amounts differ from the received ones. It
-   *       is refused if the document states taxes of another type than VAT, e.g. AAM
+   *       is refused if the document states taxes of a type the model does not keep (not VAT and not AAM)
    *       ({@link io.github.nalukit.paniolo.xml.ReadWarning#OTHER_TAX}).</li>
    *   <li>{@link ExportVariant#NORMALIZED_DROPPING_OTHER_TAXES} &ndash; like
    *       {@link ExportVariant#NORMALIZED}, but explicitly without those taxes; the amount due is
@@ -2140,8 +2144,8 @@ public final class Paniolo
   }
 
   /**
-   * Renders an invoice as visual PDF/A-3b document with the default layout (German labels).
-   * Requires {@code paniolo-facturx}.
+   * Renders an invoice as visual PDF/A-3b document (PDF 1.7) with the default layout (German
+   * labels). Requires {@code paniolo-facturx}.
    *
    * @param invoice the invoice; must not be {@code null}
    * @return the PDF/A-3b document, without embedded XML
@@ -2154,7 +2158,7 @@ public final class Paniolo
   }
 
   /**
-   * Renders a validation report as PDF/A-3b document in the default layout (German labels); see
+   * Renders a validation report as PDF/A-3b document (PDF 1.7) in the default layout (German labels); see
    * {@link #toReportPdf(ValidationResult, String, byte[], PdfLayout)}.
    *
    * @param result   the validation result; must not be {@code null}
@@ -2173,8 +2177,9 @@ public final class Paniolo
   }
 
   /**
-   * Renders a validation report as PDF/A-3b document, e.g. for archiving or for departments that
-   * work with documents rather than XML. Requires {@code paniolo-facturx}.
+   * Renders a validation report as PDF/A-3b by default or using the {@link PdfLayout#profile()
+   * profile} of the layout, e.g. for departments that work with documents rather than XML.
+   * Requires {@code paniolo-facturx}.
    *
    * <pre>{@code
    * byte[] received = Files.readAllBytes(path);
@@ -2196,8 +2201,8 @@ public final class Paniolo
    * @param fileName name of the validated file, or {@code null}
    * @param document the validated content, for its size and SHA-256, or {@code null}
    * @param layout   language, fonts, accent color and footer; logo and sender address are not used
-   * @return the PDF/A-3b report
-   * @throws IllegalArgumentException if a font of the layout cannot be read
+   * @return the PDF report in the profile of the layout
+   * @throws IllegalArgumentException if a font of the layout cannot be read or embedded
    * @throws IllegalStateException    if {@code paniolo-facturx} is missing
    */
   public byte[] toReportPdf(ValidationResult result,
@@ -2236,14 +2241,17 @@ public final class Paniolo
   }
 
   /**
-   * Rejects a layout with watermark for a hybrid document: its embedded XML would be valid while the
-   * visual part says it is not.
+   * Rejects a layout with watermark or the preview profile for a hybrid document: its embedded XML
+   * would be valid while the visual part says it is not, or is no PDF/A.
    */
-  private static void requireNoWatermark(PdfLayout layout) {
+  private static void requireHybridLayout(PdfLayout layout) {
     Objects.requireNonNull(layout,
                            "layout");
     if (layout.watermark() != null) {
       throw new IllegalArgumentException("A watermark is only allowed for PDFs without embedded XML; use toPdf for a preview");
+    }
+    if (layout.profile().isPreview()) {
+      throw new IllegalArgumentException("A preview profile is only allowed for PDFs without embedded XML; use toPdf");
     }
   }
 
@@ -2259,7 +2267,9 @@ public final class Paniolo
   }
 
   /**
-   * Renders an invoice as visual PDF/A-3b document: letterhead with seller and logo, recipient,
+   * Renders an invoice as visual document: PDF/A-3b (PDF 1.7) by default, or the PDF/A-1b,
+   * PDF 1.7, or PDF 2.0 preview that the {@link PdfLayout#withProfile(PdfProfile) profile} of the
+   * layout selects. The document has a letterhead with seller and logo, recipient,
    * document data, lines with sub-lines and line allowances and charges, document allowances and
    * charges, totals with the VAT breakdown, payment details, notes, and the seller's legal details
    * in the footer of every page. Requires {@code paniolo-facturx}.
@@ -2277,10 +2287,17 @@ public final class Paniolo
    * <p>The document carries no XML; use {@link #toFacturX(Invoice, FacturXProfile, PdfLayout, List)}
    * for a hybrid invoice.
    *
+   * <p>The profile of the layout selects the kind of PDF: {@link PdfProfile#PDF_A_3B} (the
+   * default, PDF 1.7), {@link PdfProfile#PDF_A_1B} (PDF 1.4, e.g. as the visual part for
+   * {@link #toFacturX(Invoice, byte[], FacturXProfile)}, which makes PDF/A-3 of it),
+   * {@link PdfProfile#PREVIEW} (plain PDF 1.7, e.g. with a watermark), or
+   * {@link PdfProfile#PREVIEW_2_0} (plain PDF 2.0). PDF/A-3 is based on PDF 1.7 and does not allow
+   * PDF 2.0.
+   *
    * @param invoice the invoice; must not be {@code null}
-   * @param layout  language, logo, fonts, and colors; must not be {@code null}
-   * @return the PDF/A-3b document
-   * @throws IllegalArgumentException if the logo or a font of the layout cannot be read
+   * @param layout  language, logo, fonts, colors, and PDF profile; must not be {@code null}
+   * @return the PDF document: PDF/A-3b by default, otherwise as the profile of the layout says
+   * @throws IllegalArgumentException if the logo or a font of the layout cannot be read or embedded
    * @throws IllegalStateException    if {@code paniolo-facturx} is missing
    */
   public byte[] toPdf(Invoice invoice,
@@ -2354,7 +2371,7 @@ public final class Paniolo
                            "layout");
     Objects.requireNonNull(attachments,
                            "attachments");
-    requireNoWatermark(layout);
+    requireHybridLayout(layout);
     // Check the profile before rendering, so a wrong invoice fails fast.
     checkFacturXProfile(invoice,
                         profile);
@@ -2625,8 +2642,8 @@ public final class Paniolo
   }
 
   /**
-   * Renders an order, order change, or order response as visual PDF/A-3b document with the
-   * default layout (German labels), without embedded XML. Requires {@code paniolo-facturx}.
+   * Renders an order, order change, or order response as visual PDF/A-3b document (PDF 1.7) with
+   * the default layout (German labels), without embedded XML. Requires {@code paniolo-facturx}.
    *
    * @param order the order; must not be {@code null}
    * @return the PDF/A-3b document
@@ -2639,15 +2656,17 @@ public final class Paniolo
   }
 
   /**
-   * Renders an order, order change, or order response as visual PDF/A-3b document: the buyer's
+   * Renders an order, order change, or order response as visual document, PDF/A-3b (PDF 1.7) by
+   * default or as the {@link PdfLayout#withProfile(PdfProfile) profile} of the layout says: the buyer's
    * letterhead for orders and changes, the seller's for responses; requested delivery, lines with
    * the ordered and, in a response, the confirmed quantity and the line status; totals; delivery
    * parties; delivery and payment terms. Requires {@code paniolo-facturx}.
    *
    * @param order  the order; must not be {@code null}
-   * @param layout language, logo, fonts, and colors; must not be {@code null}
-   * @return the PDF/A-3b document, without embedded XML
-   * @throws IllegalArgumentException if the logo or a font of the layout cannot be read
+   * @param layout language, logo, fonts, colors, and PDF profile; must not be {@code null}
+   * @return the PDF document without embedded XML: PDF/A-3b by default, otherwise as the profile of
+   *     the layout says
+   * @throws IllegalArgumentException if the logo or a font of the layout cannot be read or embedded
    * @throws IllegalStateException    if {@code paniolo-facturx} is missing
    */
   public byte[] toPdf(Order order,
@@ -2658,6 +2677,47 @@ public final class Paniolo
                            "layout");
     PanioloStopWatch watch = super.logStart("Paniolo.toPdf");
     byte[] result = pdfLayout().render(order,
+                                       layout);
+    super.logStop(watch);
+    return result;
+  }
+
+  /**
+   * Renders a quotation as visual PDF/A-3b document (PDF 1.7) with the default layout (German
+   * labels), without embedded XML. Requires {@code paniolo-facturx}.
+   *
+   * @param quotation the quotation; must not be {@code null}
+   * @return the PDF/A-3b document
+   * @throws IllegalStateException if {@code paniolo-facturx} is missing
+   * @see #toPdf(Quotation, PdfLayout)
+   */
+  public byte[] toPdf(Quotation quotation) {
+    return toPdf(quotation,
+                 PdfLayout.defaults());
+  }
+
+  /**
+   * Renders a quotation as visual document, PDF/A-3b (PDF 1.7) by default or as the
+   * {@link PdfLayout#withProfile(PdfProfile) profile} of the layout says: the letterhead of the
+   * seller, the validity, the lines of the standard offer with totals, the optional lines apart
+   * from the totals, and delivery and payment terms. It shows no payment instruction and no amount
+   * due. A quotation has no XML syntax, so the PDF carries no embedded XML. Requires
+   * {@code paniolo-facturx}.
+   *
+   * @param quotation the quotation; must not be {@code null}
+   * @param layout    language, logo, fonts, colors, and PDF profile; must not be {@code null}
+   * @return the PDF document: PDF/A-3b by default, otherwise as the profile of the layout says
+   * @throws IllegalArgumentException if the logo or a font of the layout cannot be read or embedded
+   * @throws IllegalStateException    if {@code paniolo-facturx} is missing
+   */
+  public byte[] toPdf(Quotation quotation,
+                      PdfLayout layout) {
+    Objects.requireNonNull(quotation,
+                           "quotation");
+    Objects.requireNonNull(layout,
+                           "layout");
+    PanioloStopWatch watch = super.logStart("Paniolo.toPdf");
+    byte[] result = pdfLayout().render(quotation,
                                        layout);
     super.logStop(watch);
     return result;
@@ -2700,7 +2760,7 @@ public final class Paniolo
                             List<PdfAttachment> attachments) {
     Objects.requireNonNull(attachments,
                            "attachments");
-    requireNoWatermark(layout);
+    requireHybridLayout(layout);
     return toOrderXPdf(order,
                        toPdf(order,
                              layout),
@@ -2993,7 +3053,7 @@ public final class Paniolo
 
   /**
    * Renders a despatch advice as delivery note with the default layout (German labels), a visual
-   * PDF/A-3b document without embedded XML. Requires {@code paniolo-facturx}.
+   * PDF/A-3b document (PDF 1.7) without embedded XML. Requires {@code paniolo-facturx}.
    *
    * @param advice the despatch advice; must not be {@code null}
    * @return the PDF/A-3b document
@@ -3006,16 +3066,18 @@ public final class Paniolo
   }
 
   /**
-   * Renders a despatch advice as delivery note, a visual PDF/A-3b document: the despatching
+   * Renders a despatch advice as delivery note, a visual document, PDF/A-3b (PDF 1.7) by default or
+   * as the {@link PdfLayout#withProfile(PdfProfile) profile} of the layout says: the despatching
    * party's letterhead, the delivery customer in the window, despatch and delivery dates, order
    * and shipment numbers, lines with delivered and outstanding quantities, batches and serial
    * numbers, shipment details, and a receipt confirmation to sign. Requires
    * {@code paniolo-facturx}.
    *
    * @param advice the despatch advice; must not be {@code null}
-   * @param layout language, logo, fonts, and colors; must not be {@code null}
-   * @return the PDF/A-3b document, without embedded XML
-   * @throws IllegalArgumentException if the logo or a font of the layout cannot be read
+   * @param layout language, logo, fonts, colors, and PDF profile; must not be {@code null}
+   * @return the PDF document without embedded XML: PDF/A-3b by default, otherwise as the profile of
+   *     the layout says
+   * @throws IllegalArgumentException if the logo or a font of the layout cannot be read or embedded
    * @throws IllegalStateException    if {@code paniolo-facturx} is missing
    */
   public byte[] toPdf(DespatchAdvice advice,
@@ -3065,7 +3127,7 @@ public final class Paniolo
                                     List<PdfAttachment> attachments) {
     Objects.requireNonNull(attachments,
                            "attachments");
-    requireNoWatermark(layout);
+    requireHybridLayout(layout);
     return toDespatchAdvicePdf(advice,
                                toPdf(advice,
                                      layout),

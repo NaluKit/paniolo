@@ -21,13 +21,15 @@ import io.github.nalukit.paniolo.config.PdfLayout;
 import io.github.nalukit.paniolo.model.Invoice;
 import io.github.nalukit.paniolo.model.despatch.DespatchAdvice;
 import io.github.nalukit.paniolo.model.order.Order;
+import io.github.nalukit.paniolo.model.quotation.Quotation;
 import io.github.nalukit.paniolo.spi.PdfLayoutSupport;
 
 import java.util.Objects;
 
 /**
- * Renders the visual PDF/A-3b document of an invoice, order, or despatch advice with Apache
- * PDFBox, registered for {@link java.util.ServiceLoader}. Use it through {@code Paniolo#toPdf},
+ * Renders the visual document of an invoice, order, quotation, or despatch advice, or a validation
+ * report with Apache PDFBox: PDF/A-3b by default or the {@link PdfLayout#profile() profile} of the
+ * layout. Registered for {@link java.util.ServiceLoader}. Use it through {@code Paniolo#toPdf},
  * {@code Paniolo#toFacturX(Invoice, FacturXProfile)}, {@code Paniolo#toOrderXPdf(Order)}, and
  * {@code Paniolo#toDespatchAdvicePdf(DespatchAdvice)}. Stateless and thread-safe.
  */
@@ -67,6 +69,17 @@ public final class PdfBoxLayoutSupport
                            "layout");
     return new OrderRenderer(order,
                              layout).render();
+  }
+
+  @Override
+  public byte[] render(Quotation quotation,
+                       PdfLayout layout) {
+    Objects.requireNonNull(quotation,
+                           "quotation");
+    Objects.requireNonNull(layout,
+                           "layout");
+    return new QuotationRenderer(quotation,
+                                 layout).render();
   }
 
   @Override

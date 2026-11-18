@@ -24,6 +24,7 @@ import io.github.nalukit.paniolo.model.common.InvoicePeriod;
 import io.github.nalukit.paniolo.model.common.TaxCategory;
 import io.github.nalukit.paniolo.model.common.value.InvoiceTypeCode;
 import io.github.nalukit.paniolo.xml.ReadMode;
+import io.github.nalukit.paniolo.xml.ReadWarning;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -107,6 +108,32 @@ class DateDiagnosticsTest {
     }
   }
 
+  /**
+   * An invalid date of an invoicing period: strict reading rejects it, lenient reading drops the
+   * period and names text and location in the warning {@link ReadWarning#PERIOD}.
+   */
+  private static void rejectedPeriod(String xml,
+                                     String... parts) {
+    var error = assertThrows(IllegalArgumentException.class,
+                             () -> PANIOLO.read(xml,
+                                                ReadMode.STRICT));
+    var warning = PANIOLO.read(xml,
+                               ReadMode.LENIENT)
+                         .warnings()
+                         .stream()
+                         .filter(found -> ReadWarning.PERIOD.equals(found.code()))
+                         .findFirst()
+                         .orElseThrow();
+    for (String part : parts) {
+      assertTrue(error.getMessage()
+                      .contains(part),
+                 error::getMessage);
+      assertTrue(warning.message()
+                        .contains(part),
+                 warning::message);
+    }
+  }
+
   @Test
   void readsLinePeriodsOfManyLines() {
     for (var syntax : InvoiceSyntax.values()) {
@@ -136,12 +163,12 @@ class DateDiagnosticsTest {
   void namesTextAndLocationOfAnInvalidIsoDate() {
     String ubl = PANIOLO.toXml(invoice(),
                                InvoiceSyntax.UBL);
-    rejected(replaced(ubl,
+    rejectedPeriod(replaced(ubl,
                       "<cbc:StartDate>2026-02-01</cbc:StartDate>",
                       "<cbc:StartDate>2026-02-31</cbc:StartDate>"),
              "Invalid date \"2026-02-31\"",
              "cac:InvoiceLine[3]/cac:InvoicePeriod/cbc:StartDate");
-    rejected(replaced(ubl,
+    rejectedPeriod(replaced(ubl,
                       "<cbc:EndDate>2026-03-31</cbc:EndDate>",
                       "<cbc:EndDate>31.03.2026</cbc:EndDate>"),
              "Invalid date \"31.03.2026\"",
@@ -153,12 +180,12 @@ class DateDiagnosticsTest {
     String cii = PANIOLO.toXml(invoice(),
                                InvoiceSyntax.CII);
     String start = "ram:IncludedSupplyChainTradeLineItem[3]/ram:SpecifiedLineTradeSettlement/ram:BillingSpecifiedPeriod/ram:StartDateTime/udt:DateTimeString";
-    rejected(replaced(cii,
+    rejectedPeriod(replaced(cii,
                       "<udt:DateTimeString format=\"102\">20260201</udt:DateTimeString>",
                       "<udt:DateTimeString format=\"102\">20260231</udt:DateTimeString>"),
              "Invalid date \"20260231\"",
              start);
-    rejected(replaced(cii,
+    rejectedPeriod(replaced(cii,
                       "<udt:DateTimeString format=\"102\">20260201</udt:DateTimeString>",
                       "<udt:DateTimeString format=\"610\">202602</udt:DateTimeString>"),
              "Unsupported date format 610",

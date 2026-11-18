@@ -1,7 +1,7 @@
 # Paniolo CLI
 
 `paniolo-cli` exposes the document operations of the [`Paniolo`](../paniolo/README.md) facade on the command
-line for validating, reading, writing, and converting invoices, orders, and despatch advices
+line for validating, reading, writing, and converting invoices, orders, quotations, and despatch advices
 in shell scripts, CI pipelines, or cron jobs without writing Java. It includes the optional PDF, JSON, and visualization modules
 ([`paniolo-facturx`](../paniolo-facturx/README.md), [`paniolo-pdfa`](../paniolo-pdfa/README.md),
 [`paniolo-json`](../paniolo-json/README.md),
@@ -28,16 +28,16 @@ For daily use, put a small wrapper on the `PATH`, e.g. `~/bin/paniolo`:
 
 ```sh
 #!/bin/sh
-exec java -jar /opt/paniolo/paniolo-cli-1.0.0-rc02-all.jar "$@"
+exec java -jar /opt/paniolo/paniolo-cli-1.0.0-all.jar "$@"
 ```
 
 The default source build uses `HEAD-SNAPSHOT`; replace the wrapper's file name with the version
 you built or downloaded. To build a different version, add `-Drevision=<version>` to Maven.
 The examples below describe the current source; the released API is documented in the
-[versioned reference](../docs/api/1.0.0-rc02.md).
+[versioned reference](../docs/api/1.0.0.md).
 
 The build attaches this jar with the classifier `all`; the plain artifact `paniolo-cli` contains
-only the CLI classes. The release `1.0.0-rc02` is available as a download from GitHub Packages (see
+only the CLI classes. The release `1.0.0` is available as a download from GitHub Packages (see
 below); see also the [installation status](../README.md#installation).
 
 Unlike the library modules, `paniolo-cli` is **not published to Maven Central**. The CI workflow
@@ -59,7 +59,7 @@ GitHub token with the `read:packages` scope in a `<server>` entry with the id of
 | `to-facturx FILE --pdf PDF --profile PROFILE [--attach FILE]...`                                                                                                | `toFacturX(invoice, pdfA, profile, attachments)`                                           |
 | `to-facturx FILE --profile PROFILE [layout options]`                                                                                                            | `toFacturX(invoice, profile, layout, attachments)`: renders the page                       |
 | `embed-xml XML --pdf PDF --profile PROFILE [--attach FILE]...`                                                                                                  | `embedXml(pdfA, xml, profile, attachments)`: XML byte for byte, findings on stderr, exit 1 if invalid |
-| `to-pdf FILE [--lang de\|en\|fr] [--logo FILE [--logo-position LEFT\|RIGHT]] [--no-sender-address] [--font FILE [--bold-font FILE]] [--accent RGB] [--footer TEXT] [--watermark TEXT]` | `toPdf(invoice, layout)` of [`paniolo-facturx`](../paniolo-facturx/docs/pdf-layout.md)        |
+| `to-pdf FILE [--lang de\|en\|fr] [--logo FILE [--logo-position LEFT\|RIGHT]] [--no-sender-address] [--font FILE [--bold-font FILE]] [--accent RGB] [--footer TEXT] [--watermark TEXT] [--pdf-profile PREVIEW\|PREVIEW_2_0\|PDF_A_1B\|PDF_A_3B]` | `toPdf(invoice, layout)` of [`paniolo-facturx`](../paniolo-facturx/docs/pdf-layout.md)        |
 | `extract-xml PDF`                                                                                                                                               | `extractXml(pdf)`                                                                          |
 | `attachments PDF [--extract DIR [--overwrite]]`                                                                                                                               | `attachments(pdf)`                                                                         |
 | `producer PDF`                                                                                                                                                  | `producer(pdf)`                                                                            |
@@ -70,13 +70,15 @@ GitHub token with the `read:packages` scope in a `<server>` entry with the id of
 | `order to-xml FILE`                                                                                                                                             | `toOrderXBytes(order)`                                                                     |
 | `order to-pdf FILE --pdf PDF [--attach FILE]...`                                                                                                                | `toOrderXPdf(order, pdfA, attachments)`                                                    |
 | `order to-pdf FILE [layout options] [--attach FILE]...`                                                                                                         | `toOrderXPdf(order, layout, attachments)`: renders the pages                               |
+| `quotation to-pdf FILE [layout options]`                                                                                                                        | `toPdf(quotation, layout)`: renders the quotation                                          |
+| `quotation to-invoice FILE --number NO [--date DATE] [--accept ID]...`                                                                                          | `quotation.toInvoice(number, date, accepted)`, written as JSON                             |
 | `despatch-advice read FILE [--ignore-unsupported]`                                                                                                              | `readDespatchAdvice(bytes, ignoreUnsupported)`, written as JSON                            |
 | `despatch-advice validate FILE\|DIR... [options of validate]`                                                                                                   | `validateDespatchAdvice(bytes)`                                                            |
 | `despatch-advice to-xml FILE [--syntax UBL\|CIDA]`                                                                                                              | `toDespatchAdviceBytes(advice)`, `toCiiDespatchAdviceBytes(advice)`                        |
 | `despatch-advice to-pdf FILE --pdf PDF [--attach FILE]...`                                                                                                      | `toDespatchAdvicePdf(advice, pdfA, attachments)`                                           |
 | `despatch-advice to-pdf FILE [layout options] [--attach FILE]...`                                                                                               | `toDespatchAdvicePdf(advice, layout, attachments)`: renders the delivery note              |
 
-`paniolo --help` lists the commands. `paniolo inventory --help`, `paniolo order --help`, and
+`paniolo --help` lists the commands. `paniolo inventory --help`, `paniolo order --help`, `paniolo quotation --help`, and
 `paniolo despatch-advice --help` show help for those command groups. Commands such as `validate`
 print their usage and options when invoked without required arguments (exit code `2`); they do
 not currently have a standalone `--help` option. Enum values such as profiles and syntaxes are
@@ -96,6 +98,10 @@ case-insensitive (`--profile en16931`).
   Peppol. See [validating XML](../README.md#validating-xml). `--syntax` explicitly selects
   EN 16931 and XRechnung with their unchanged severities; `--profile EN16931` selects the
   Factur-X EN 16931 rules for CII XML.
+- **Layout options**: `--lang`, `--logo`, `--logo-position`, `--no-sender-address`, `--font`,
+  `--bold-font`, `--accent`, `--footer`, `--watermark`, and `--pdf-profile` configure the rendered pages like
+  `PdfLayout` ([PDF layout](../paniolo-facturx/docs/pdf-layout.md)). Without `--font`, the pages
+  use IBM Plex Sans Regular and Bold; `--font` alone emboldens the given font for bold text.
 - **Rules**: `--rules`, `--facturx-rules`, `--extended-ctc-fr-rules`, `--order-x-rules`, and
   `--despatch-advice-rules` configure the facade like the methods of `Paniolo.builder()`.
 - **Calculation check**: `--calculation-check` adds the optional recalculation of the amounts
@@ -267,10 +273,13 @@ paniolo embed-xml received.xml --pdf layout.pdf --profile EN16931 -o factur-x.pd
 paniolo to-facturx invoice.json --profile XRECHNUNG --logo logo.png --footer "Amtsgericht Berlin HRB 12345 B" -o factur-x.pdf
 
 # Preview for checking before sending: only the page, no XML, with watermark
-paniolo to-pdf invoice.json --watermark PREVIEW -o preview.pdf
+paniolo to-pdf invoice.json --watermark PREVIEW --pdf-profile PREVIEW -o preview.pdf
 
 # Unpack a received Factur-X PDF
 paniolo extract-xml received.pdf -o received.xml
+
+# Read the PDF from standard input and write the embedded XML unchanged to standard output
+paniolo extract-xml - < received.pdf > received.xml
 paniolo attachments received.pdf --extract attachments/
 
 # Readable copy for the archive or an e-mail: one HTML file, opens offline, with the validation result

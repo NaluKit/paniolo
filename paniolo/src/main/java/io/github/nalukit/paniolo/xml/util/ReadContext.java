@@ -19,7 +19,13 @@ package io.github.nalukit.paniolo.xml.util;
 
 import io.github.nalukit.paniolo.model.Invoice;
 import io.github.nalukit.paniolo.model.common.CashDiscount;
+import io.github.nalukit.paniolo.model.common.AccountIdType;
+import io.github.nalukit.paniolo.model.common.CreditTransfer;
 import io.github.nalukit.paniolo.model.common.InvoiceLine;
+import io.github.nalukit.paniolo.model.common.InvoicePeriod;
+import io.github.nalukit.paniolo.model.common.TaxCategory;
+import io.github.nalukit.paniolo.model.common.value.DutyTaxFeeCategory;
+import io.github.nalukit.paniolo.model.common.value.PaymentMeansCode;
 import io.github.nalukit.paniolo.model.common.value.AllowanceChargeIdentification;
 import io.github.nalukit.paniolo.xml.AmountDeviation;
 import io.github.nalukit.paniolo.xml.ReadMode;
@@ -64,6 +70,63 @@ public final class ReadContext {
    */
   public void negativePrices(boolean allowed) {
     this.negativePrices = allowed;
+  }
+
+  /**
+   * Runs a read and reports a required value the document lacks as an
+   * {@link IllegalArgumentException} that names the value, instead of the
+   * {@link NullPointerException} with which the model rejects it, e.g. a VAT breakdown without
+   * category or an allowance without amount. Other exceptions pass unchanged.
+   *
+   * @param read the read
+   * @return the result of the read
+   * @throws IllegalArgumentException if the document lacks a value the model requires
+   */
+  public static ReadResult requiredValues(java.util.function.Supplier<ReadResult> read) {
+    try {
+      return read.get();
+    } catch (NullPointerException e) {
+      var origin = e.getStackTrace().length == 0 ?
+                   null :
+                   e.getStackTrace()[0].getClassName();
+      if (e.getMessage() == null || origin == null || !origin.equals(Objects.class.getName()) && !origin.startsWith("io.github.nalukit.paniolo.model.")) {
+        throw e;
+      }
+      throw new IllegalArgumentException("The document lacks a value the invoice model requires: " + e.getMessage(),
+                                         e);
+    }
+  }
+
+  /**
+   * Reads an invoicing period (BG-14, BG-26). A date that is no calendar date or an end date before
+   * the start date is rejected by strict reading; lenient reading drops the period and reports
+   * {@link ReadWarning#PERIOD}.
+   *
+   * @param period the period element; required
+   * @param iso    true for ISO dates of UBL ({@code cbc:StartDate}, {@code cbc:EndDate}), false for
+   *               the CII date time strings
+   * @param lineId the line of a line period, or null for the document level
+   * @return the period, or null if lenient reading dropped it
+   * @throws IllegalArgumentException in strict reading if the period is invalid
+   */
+  public InvoicePeriod period(XmlElement period,
+                              boolean iso,
+                              String lineId) {
+    try {
+      return iso ?
+             new InvoicePeriod(period.isoDate("cbc:StartDate"),
+                               period.isoDate("cbc:EndDate")) :
+             new InvoicePeriod(period.basicDate("ram:StartDateTime/udt:DateTimeString"),
+                               period.basicDate("ram:EndDateTime/udt:DateTimeString"));
+    } catch (IllegalArgumentException e) {
+      if (mode == ReadMode.STRICT) {
+        throw e;
+      }
+      warnings.add(new ReadWarning(ReadWarning.PERIOD,
+                                   lineId,
+                                   "Invoicing period at " + period.location() + " not read: " + e.getMessage()));
+      return null;
+    }
   }
 
   /**
@@ -165,6 +228,74 @@ public final class ReadContext {
   }
 
   /**
+   * Returns the payment means code (BT-81) of a payment means block. A block without code, which
+   * ZUGFeRD 1.0 allows, is read as {@code 1} (instrument not defined) and reported as
+   * {@link ReadWarning#PAYMENT_MEANS}; no other code is guessed from the accounts. Where the syntax
+   * requires the code, strict reading rejects the block instead.
+   *
+   * @param code     the stated code, or null
+   * @param optional true if the syntax of the document allows a block without code
+   * @param at       the payment means block, for the location in messages
+   * @return the payment means code
+   * @throws IllegalArgumentException if the code is unknown, or missing in strict reading where it
+   *                                  is required
+   */
+  public PaymentMeansCode paymentMeansCode(String code,
+                                           boolean optional,
+                                           XmlElement at) {
+    if (code != null && !code.isBlank()) {
+      return XmlElement.code(code,
+                             PaymentMeansCode::of,
+                             "payment means code");
+    }
+    String message = "Payment means at " + at.location() + " states no payment means code (BT-81)";
+    if (!optional && mode == ReadMode.STRICT) {
+      throw new IllegalArgumentException(message);
+    }
+    warnings.add(new ReadWarning(ReadWarning.PAYMENT_MEANS,
+                                 null,
+                                 message + "; read as 1 (instrument not defined)"));
+    return PaymentMeansCode.CODE_1;
+  }
+
+  /**
+   * Reads the payee account (BG-17) of a CII payment means block: {@code ram:IBANID} is an IBAN,
+   * {@code ram:ProprietaryID} another account number, and the model keeps the kind. The model has
+   * one identifier (BT-84) per account, so an account with both elements is reported: strict
+   * reading rejects it, lenient reading keeps the IBAN and reports the other identifier as
+   * {@link ReadWarning#IDENTIFIER}.
+   *
+   * @param account the {@code ram:PayeePartyCreditorFinancialAccount} element
+   * @param bic     the BIC (BT-86) of the block, or null
+   * @return the account
+   * @throws IllegalArgumentException in strict reading if both identifiers are stated, or if the
+   *                                  account states none
+   */
+  public CreditTransfer creditTransfer(XmlElement account,
+                                       String bic) {
+    String iban        = account.text("ram:IBANID");
+    String proprietary = account.text("ram:ProprietaryID");
+    if (iban != null && proprietary != null) {
+      String message = "Payment account states IBANID " + iban + " and ProprietaryID " + proprietary + "; the model keeps one payment account identifier (BT-84) per account, the IBAN is kept";
+      if (mode == ReadMode.STRICT) {
+        throw new IllegalArgumentException(message);
+      }
+      lost(ReadWarning.IDENTIFIER,
+           message);
+    }
+    String name = account.text("ram:AccountName");
+    return iban == null ?
+           new CreditTransfer(proprietary,
+                              name,
+                              bic,
+                              AccountIdType.PROPRIETARY) :
+           new CreditTransfer(iban,
+                              name,
+                              bic,
+                              AccountIdType.IBAN);
+  }
+
+  /**
    * Handles a line that carries a text only, without item and quantity, as ZUGFeRD 1.0 allows:
    * strict reading rejects the document, lenient reading reports that the text becomes an invoice
    * note. No item or quantity is invented.
@@ -185,8 +316,8 @@ public final class ReadContext {
   }
 
   /**
-   * Handles a tax of another type than VAT, e.g. the insurance tax {@code AAM} of Factur-X
-   * EXTENDED: strict reading rejects the document, lenient reading reports the tax without reading
+   * Handles a tax of a type the model does not keep, i.e. other than VAT and the insurance tax
+   * {@code AAM} of Factur-X EXTENDED: strict reading rejects the document, lenient reading reports the tax without reading
    * it. The tax is never read as VAT, and no total is adjusted for it.
    *
    * @param typeCode the stated tax type code, e.g. {@code AAM}
@@ -206,7 +337,7 @@ public final class ReadContext {
                        BigDecimal basis,
                        BigDecimal amount) {
     String message = "Tax type " + typeCode + " at " + location + " (category " + category + ", rate " + plain(rate) + ", basis " + plain(basis) + ", amount " + plain(amount) +
-                     ") is not supported; the model keeps VAT only";
+                     ") is not supported; the model keeps VAT and the insurance tax AAM only";
     if (mode == ReadMode.STRICT) {
       throw new IllegalArgumentException(message);
     }
@@ -234,6 +365,56 @@ public final class ReadContext {
     warnings.add(new ReadWarning(ReadWarning.TAX_EXEMPTION,
                                  lineId,
                                  conflict + "; " + handling));
+  }
+
+  /**
+   * Returns the VAT category of a VAT block. Outside-scope VAT (O) keeps no rate. The categories Z,
+   * E, AE, K, and G have no rate other than zero in the model: a stated other rate, which EN 16931
+   * forbids for lines, allowances, and charges (e.g. BR-E-5) but not for the VAT breakdown, or a
+   * missing rate is rejected by strict reading; lenient reading keeps rate zero and reports
+   * {@link ReadWarning#TAX_RATE}. A missing rate of the categories S, L, and M is always rejected,
+   * as no rate can be derived.
+   *
+   * @param code                the VAT category code; required
+   * @param rate                the stated rate, or null
+   * @param exemptionReason     the stated exemption reason, or null
+   * @param exemptionReasonCode the stated exemption reason code, or null
+   * @param lineId              the line the block belongs to, or null
+   * @param at                  the VAT block, for the location in messages
+   * @return the VAT category
+   * @throws IllegalArgumentException if the rate does not fit the category and cannot be kept
+   */
+  public TaxCategory taxCategory(DutyTaxFeeCategory code,
+                                 BigDecimal rate,
+                                 String exemptionReason,
+                                 String exemptionReasonCode,
+                                 String lineId,
+                                 XmlElement at) {
+    Objects.requireNonNull(code,
+                           "code");
+    if (code == DutyTaxFeeCategory.O) {
+      // Outside-scope breakdowns state a zero rate for XRechnung; the model keeps no rate.
+      rate = null;
+    } else if (rate == null && (code == DutyTaxFeeCategory.S || code == DutyTaxFeeCategory.L || code == DutyTaxFeeCategory.M)) {
+      throw new IllegalArgumentException("VAT category " + code.getCode() + " at " + at.location() + " states no VAT rate (BT-96, BT-102, BT-119, BT-152)");
+    } else if (code.isAllowanceRelated() && code != DutyTaxFeeCategory.S && code != DutyTaxFeeCategory.L && code != DutyTaxFeeCategory.M && (rate == null || rate.signum() != 0)) {
+      String message = "VAT category " + code.getCode() + " at " + at.location() + (rate == null ?
+                                                                                     " states no VAT rate" :
+                                                                                     " states the VAT rate " + rate.toPlainString()) + "; the category has no rate other than zero";
+      if (mode == ReadMode.STRICT) {
+        throw new IllegalArgumentException(message);
+      }
+      warnings.add(new ReadWarning(ReadWarning.TAX_RATE,
+                                   lineId,
+                                   message + ", rate 0 kept"));
+      rate = BigDecimal.ZERO;
+    } else if (code == DutyTaxFeeCategory.S && rate != null && rate.signum() == 0) {
+      throw new IllegalArgumentException("VAT category S at " + at.location() + " states the VAT rate 0; standard VAT requires a positive rate");
+    }
+    return new TaxCategory(code,
+                           rate,
+                           exemptionReason,
+                           exemptionReasonCode);
   }
 
   private static String plain(BigDecimal value) {

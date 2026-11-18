@@ -25,6 +25,7 @@ import com.fasterxml.jackson.annotation.PropertyAccessor;
 import io.github.nalukit.paniolo.model.Invoice;
 import io.github.nalukit.paniolo.model.despatch.DespatchAdvice;
 import io.github.nalukit.paniolo.model.order.Order;
+import io.github.nalukit.paniolo.model.quotation.Quotation;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.StreamReadFeature;
 import tools.jackson.core.StreamWriteFeature;
@@ -45,7 +46,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Stores invoices, orders, and despatch advices of the Paniolo model as JSON and loads them again,
+ * Stores invoices, orders, quotations, and despatch advices of the Paniolo model as JSON and loads them again,
  * e.g. for drafts, queues, or REST interfaces. The JSON mirrors the record components of the model;
  * loading runs the same structural checks as the builders and rejects values that violate them
  * with the message of the model. XML schema and business rule validation are separate operations.
@@ -168,7 +169,8 @@ public final class PanioloJson {
   }
 
   /**
-   * Writes a model object, e.g. an {@link Invoice}, {@link Order}, or {@link DespatchAdvice}, as
+   * Writes a model object, e.g. an {@link Invoice}, {@link Order}, {@link Quotation}, or
+   * {@link DespatchAdvice}, as
    * compact JSON.
    *
    * @param value the model object

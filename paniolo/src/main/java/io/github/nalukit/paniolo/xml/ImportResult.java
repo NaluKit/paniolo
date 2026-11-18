@@ -138,9 +138,10 @@ public final class ImportResult {
   }
 
   /**
-   * Returns the accepted deviations as messages.
+   * Returns accepted deviations, conversions, and values the model does not keep as messages.
    *
-   * @return the warnings; always empty in {@link ReadMode#STRICT}
+   * @return the warnings; amount deviations occur only in {@link ReadMode#LENIENT}, while
+   *         identifier and specification-version warnings can occur in either mode
    */
   public List<ReadWarning> warnings() {
     return read.warnings();
@@ -166,8 +167,8 @@ public final class ImportResult {
    * @throws NullPointerException     if variant is null, or writer is null for a normalized
    *                                  variant
    * @throws IllegalArgumentException if the writer cannot express the invoice, or
-   *                                  {@link ExportVariant#NORMALIZED} would drop taxes of another type
-   *                                  than VAT ({@link ReadWarning#OTHER_TAX})
+   *                                  {@link ExportVariant#NORMALIZED} would drop unsupported taxes
+   *                                  left out when reading ({@link ReadWarning#OTHER_TAX})
    */
   public byte[] export(ExportVariant variant,
                        InvoiceXmlWriter writer) {

@@ -15,6 +15,7 @@
 Paniolo is a Java 21 library for electronic invoices and related business documents in Germany
 and the EU. It **creates, reads, converts, and validates** XRechnung and EN 16931 invoices in UBL
 and CII, Factur-X / ZUGFeRD hybrid PDFs, Order-X orders, and despatch advices (delivery notes).
+Quotations can be rendered as PDF and turned into invoices.
 All of it goes through one immutable Java model and one thread-safe entry point, the `Paniolo`
 facade.
 
@@ -29,11 +30,12 @@ Invoice received = paniolo.read(Files.readAllBytes(path));    // UBL, CII, ZUGFe
 - [What Paniolo can do](#what-paniolo-can-do)
 - [Scope](#scope)
 - [Installation](#installation)
-- [Versioned API reference and reproducible quickstart](docs/api/1.0.0-rc02.md)
+- [Versioned API reference and reproducible quickstart](docs/api/1.0.0.md)
 - [Using Paniolo](#using-paniolo): [send an invoice](#send-an-xrechnung),
   [receive an invoice](#receive-and-process-an-invoice), [Factur-X](#create-a-factur-x--zugferd-pdf),
   [ZUGFeRD 1.0](#migrate-zugferd-10), [Order-X](#orders-order-x),
-  [delivery notes](#despatch-advices-delivery-notes), [JSON](#store-documents-as-json),
+  [delivery notes](#despatch-advices-delivery-notes), [quotations](#quotations),
+  [JSON](#store-documents-as-json),
   [command line](#command-line), [configuration](#configuration), [method reference](#method-reference)
 - Details: [generating](#generating-an-invoice), [reading](#reading-an-invoice),
   [validating](#validating-xml), [Factur-X / ZUGFeRD](#factur-x--zugferd),
@@ -61,6 +63,7 @@ a paniolo rounding up invoices.
 | ZUGFeRD 1.0 invoice                           | XML or PDF                                                                | migrate to ZUGFeRD 2 | yes  | ZUGFeRD 1.0 XSD and Schematron, outdated warning             |    migration     |
 | Order, order change, order response           | Order-X 1.0 (BASIC, COMFORT, EXTENDED)                                    |         yes          | yes  | Order-X rules (packaged)                                     |       yes        |
 | Despatch advice (delivery note)               | UBL 2.1 DespatchAdvice (Peppol BIS 3, 1Lieferschein), CIDA                |         yes          | yes  | UBL XSD, Peppol rules² (UBL)                                 |    yes (CIDA)    |
+| Quotation (Angebot)                           | no XML syntax; visual PDF/A-3b and `toInvoice()`                          |       PDF only       |  no  | model checks                                                 |        -         |
 | All of the above models                       | JSON (storage format)                                                     |         yes          | yes  | model checks                                                 |        -         |
 
 ¹ with the optional module `paniolo-pdfa` (veraPDF). ² The official Peppol Despatch Advice rules
@@ -87,7 +90,7 @@ Beyond the formats, Paniolo:
   Mustang invoice objects to the model and names every value it cannot carry over, and the
   [migration guide](docs/migration-mustang.md) describes the explicit mapping;
 - **handles PDF attachments** (time sheets, delivery notes) and tells which software produced a PDF;
-- **renders** the visual PDF/A-3b pages of invoices, orders, and delivery notes with
+- **renders** the visual pages of invoices, orders, quotations, and delivery notes as PDF/A-3b by default with
   [`paniolo-facturx`](paniolo-facturx/docs/pdf-layout.md), so `toFacturX(invoice, profile)`,
   `toOrderXPdf(order)`, and `toDespatchAdvicePdf(advice)` create complete hybrid PDFs without a
   PDF of your own;
@@ -111,7 +114,8 @@ Supported:
   advance payments, financial adjustments, document and party details, sequence numbers and base
   quantities of document allowances and charges, the split of the VAT taxable amounts, sub-lines,
   line VAT and gross amounts, several allowances and charges on the gross price, product details,
-  and line references.
+  line references, and insurance tax (`AAM`) next to VAT; see
+  [insurance tax](paniolo-facturx/README.md#insurance-tax-aam).
 - French profile EXTENDED-CTC-FR of the e-invoicing reform (XP Z12-012): writing with the EXTENDED
   model, rejecting the EXTENDED content the profile does not allow, reading, and validating against
   the EXTENDED schema, the EXTENDED-CTC-FR Schematron, and, between French parties, the French
@@ -133,9 +137,13 @@ Supported:
 - XRechnung extension in UBL Invoice: nested sub invoice lines, third party payments, and XML
   attachments, validated with the KoSIT extension scenario.
 - Producing software of received PDFs, recognized from the signatures the Mustang project uses.
-- Rendering of the visual PDF/A-3b document of invoices, orders, and delivery notes (DIN 5008,
-  German, English, and French, logo, own fonts) with `paniolo-facturx`.
-- JSON storage of invoices, orders, and despatch advices with the checks of the model (`paniolo-json`).
+- Rendering of the visual document of invoices, orders, quotations, and delivery notes (DIN 5008 with fold
+  marks, German, English, and French, logo, IBM Plex Sans or own fonts) with `paniolo-facturx`: PDF/A-3b
+  (PDF 1.7) by default, PDF/A-1b (PDF 1.4) as input for `toFacturX`, or a plain PDF 1.7 or 2.0
+  preview with watermark; see [PDF profiles](#pdf-profiles-of-topdf).
+- Quotations (German "Angebot") with standard and optional lines, rendered as PDF, with the invoice
+  created from them; see [Quotations](#quotations).
+- JSON storage of invoices, orders, quotations, and despatch advices with the checks of the model (`paniolo-json`).
 - Migration of Mustang integrations: `paniolo-mustang` maps `org.mustangproject.Invoice` (any
   `IExportableTransaction`) to the model; built for Mustang 2.26.0, newer Mustang versions are
   checked at runtime and in a test matrix.
@@ -196,11 +204,11 @@ Technical references: [XRechnung](https://xeinkauf.de/xrechnung/),
 ## Installation
 
 For a complete, runnable example with a pinned source commit, exact Maven coordinates, and the
-expected output, see the [versioned API reference and reproducible quickstart](docs/api/1.0.0-rc02.md)
-(release `1.0.0-rc02` at `837f270749bd`). It also documents the facade, model, optional
+expected output, see the [versioned API reference and reproducible quickstart](docs/api/1.0.0.md)
+(release `1.0.0` at `3a23b2b8f91d`). It also documents the facade, model, optional
 modules, validation results, and how to generate the full JavaDoc for that baseline.
 
-The reference above describes release `1.0.0-rc02` and uses its Maven Central artifacts. Each release
+The reference above describes release `1.0.0` and uses its Maven Central artifacts. Each release
 gets its own reference `docs/api/<version>.md` whose quickstart
 uses the published Maven Central artifacts of exactly that version (see
 [releases and security](#releases-and-security)).
@@ -211,12 +219,12 @@ Paniolo needs **Java 21** or newer, at build and at run time; there is no build 
 versions. If an application cannot leave Java 11 or 17, run Paniolo in its own Java 21 process (the
 [CLI](#command-line) or a small service around the facade) and exchange XML, PDF, or JSON with it.
 
-The Maven group ID is `io.github.nalukit`. The current release is `1.0.0-rc02` on Maven Central. The
+The Maven group ID is `io.github.nalukit`. The current release is `1.0.0` on Maven Central. The
 development version `HEAD-SNAPSHOT` is built with `mvn install` from the repository root (see
 [building](#building-and-testing)).
 This README and the module READMEs describe the current source tree, including unreleased
-features. Dependency snippets use the published release `1.0.0-rc02`; its exact API is documented
-in the [versioned reference](docs/api/1.0.0-rc02.md). To use the current source after `mvn install`,
+features. Dependency snippets use the published release `1.0.0`; its exact API is documented
+in the [versioned reference](docs/api/1.0.0.md). To use the current source after `mvn install`,
 use `HEAD-SNAPSHOT` consistently for all Paniolo dependencies, or set `-Drevision=<version>` when
 building and use that version throughout the application.
 
@@ -226,7 +234,7 @@ Most applications need only `paniolo`:
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo</artifactId>
-  <version>1.0.0-rc02</version>
+  <version>1.0.0</version>
 </dependency>
 ```
 
@@ -251,11 +259,11 @@ names the missing dependency.
 | Maven artifact                                                 | Purpose                                                                                                                                                                                                                                                     |
 |----------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [`paniolo`](paniolo/README.md)                                 | **Entry point for applications**: `Paniolo` facade; UBL and CII writers and readers ([XML](paniolo/docs/xml.md), [UBL](paniolo/docs/ubl.md), [CII](paniolo/docs/cii.md)), [validation](paniolo/docs/validation.md) with Saxon-HE, structured validation results and XML report; includes the model and the rules |
-| [`paniolo-shared-model`](paniolo-shared-model/README.md)       | Immutable model of invoices, orders, and despatch advices, builders, code lists, and total calculations; no runtime dependencies                                                                                                                            |
+| [`paniolo-shared-model`](paniolo-shared-model/README.md)       | Immutable model of invoices, orders, quotations, and despatch advices, builders, code lists, and total calculations; no runtime dependencies |
 | [`paniolo-rules`](paniolo-rules/README.md)                     | Official rules, pinned and checksum-verified: KoSIT XRechnung (current and older versions), Factur-X / ZUGFeRD of FeRD for all five profiles, ZUGFeRD 1.0, the French EXTENDED-CTC-FR and BR-FR rules, and the Order-X rules (XSD, Schematron XSLT) |
-| [`paniolo-facturx`](paniolo-facturx/README.md)                 | Optional PDF support: embeds and extracts invoices, orders, delivery notes, and attachments in PDF/A-3, container checks, producer detection, ZUGFeRD 1.0 migration (Apache PDFBox); renders the visual PDF/A-3b pages of invoices, orders, and delivery notes ([layout](paniolo-facturx/docs/pdf-layout.md): DIN 5008, German, English, and French, logo, own fonts) |
+| [`paniolo-facturx`](paniolo-facturx/README.md)                 | Optional PDF support: embeds and extracts invoices, orders, delivery notes, and attachments in PDF/A-3, container checks, producer detection, ZUGFeRD 1.0 migration (Apache PDFBox); renders the visual PDF/A-3b pages of invoices, orders, and delivery notes ([layout](paniolo-facturx/docs/pdf-layout.md): DIN 5008, German, English, and French, logo, IBM Plex Sans or own fonts) |
 | [`paniolo-pdfa`](paniolo-pdfa/README.md)                       | Optional PDF/A conformance checks for all PDFs validated by the facade (veraPDF)                                                                                                                                                                            |
-| [`paniolo-json`](paniolo-json/README.md)                       | Optional JSON storage of invoices, orders, and despatch advices (Jackson)                                                                                                                                                                                   |
+| [`paniolo-json`](paniolo-json/README.md)                       | Optional JSON storage of invoices, orders, quotations, and despatch advices (Jackson 3) |
 | [`paniolo-visualizer`](paniolo-visualizer/README.md)           | Optional browser visualizer: web component `<paniolo-viewer>` that renders UBL, CII, Factur-X / ZUGFeRD PDFs, ZUGFeRD 1.0, Order-X, despatch advices, and validation reports from bytes; standalone HTML from Java                                          |
 | [`paniolo-cli`](paniolo-cli/README.md)                         | Command line interface for scripts: validation, reading, conversion, inventory, and visualization; executable jar with PDF, JSON, and visualization support (picocli)                                                                                                                                               |
 | [`paniolo-mustang`](paniolo-mustang/README.md)                 | Optional migration adapter: maps a Mustang invoice (`IExportableTransaction`) to the Paniolo model and reports every value it cannot carry over; built for Mustang 2.26.0, newer versions checked at runtime and in a test matrix                          |
@@ -382,6 +390,27 @@ Choose the profile your recipient expects and the matching `ProcessControl` fact
 `xrechnung()`. MINIMUM and BASIC WL have no lines and are only booking aids in Germany. See
 [Factur-X / ZUGFeRD](#factur-x--zugferd) and the [module README](paniolo-facturx/README.md).
 
+### PDF profiles of `toPdf`
+
+`toPdf` renders PDF/A-3b (PDF 1.7) by default. `PdfLayout.withProfile` selects another kind:
+
+| Profile              | PDF | Use                                                                                  |
+|----------------------|-----|--------------------------------------------------------------------------------------|
+| `PDF_A_3B` (default) | 1.7 | The visual PDF/A-3b document. PDF/A-3 is based on PDF 1.7 and does not allow PDF 2.0 |
+| `PDF_A_1B`           | 1.4 | PDF/A-1b as the visual part for `toFacturX(invoice, pdfA, profile)`                  |
+| `PREVIEW`            | 1.7 | Plain PDF, no PDF/A, e.g. with watermark, for checking before sending                |
+| `PREVIEW_2_0`        | 2.0 | The same as PDF 2.0                                                                  |
+
+```java
+byte[] preview = PANIOLO.toPdf(invoice, PdfLayout.defaults().withWatermark("PREVIEW").withProfile(PdfProfile.PREVIEW));
+byte[] pdfA1   = PANIOLO.toPdf(invoice, PdfLayout.defaults().withProfile(PdfProfile.PDF_A_1B));
+byte[] facturX = PANIOLO.toFacturX(invoice, pdfA1, FacturXProfile.EN16931);
+```
+
+PDF/A-1 has no transparency: the watermark becomes opaque light text below the content, and PNG
+logos with transparency are placed on white. The methods that embed XML reject the preview
+profiles. The command line selects the profile with `--pdf-profile`.
+
 ### Migrate ZUGFeRD 1.0
 
 ZUGFeRD 1.0 does not meet EN 16931 and is no longer accepted as an electronic invoice. Paniolo
@@ -453,9 +482,50 @@ ValidationResult result = PANIOLO.validateDespatchAdvice(received);
 See [despatch advice](paniolo/docs/ubl.md#despatch-advice) and
 [delivery note (CIDA)](paniolo-facturx/README.md#delivery-note-cida).
 
+### Quotations
+
+A quotation (German "Angebot") is the precursor of the invoice. No standard defines an XML syntax
+for it, so Paniolo does not write, read, or validate one: a `Quotation` is rendered as PDF, stored
+as JSON, and converted to an `Invoice`, which then goes the usual way (XRechnung, Factur-X).
+It shares parties, lines, allowances and charges, and the total calculation with the invoice, so
+everything it states converts without loss. Lines are standard or optional; an optional line is
+offered next to the standard offer and does not count in the totals until it is accepted.
+
+```java
+Quotation quotation = Quotation.create()
+                               .number("ANG-2026-7")
+                               .issueDate(LocalDate.now())
+                               .validUntil(LocalDate.now().plusDays(30))
+                               .seller(seller)
+                               .buyer(buyer)
+                               .subject("Consulting release 5")
+                               .paymentTerms("14 days net")
+                               .addLine(consulting)                 // standard offer
+                               .addOptionalLine(training)           // only if accepted
+                               .build();
+
+InvoiceTotals offer = quotation.totals();                           // standard lines only
+byte[] pdf = PANIOLO.toPdf(quotation);                              // needs paniolo-facturx
+
+Invoice invoice = quotation.toInvoice("R-2026-31", LocalDate.now());                // standard lines
+Invoice withTraining = quotation.toInvoice("R-2026-31", LocalDate.now(), Set.of("2")); // plus accepted line
+```
+
+The PDF shows the heading "Angebot" (German, English, and French), quotation number and date,
+validity, the lines of the standard offer with totals that end with the total amount with VAT, the
+optional lines apart from them, and delivery and payment terms. It has no payment instruction and
+no amount due; see [PDF layout](paniolo-facturx/docs/pdf-layout.md).
+
+`toInvoice` takes over parties, buyer reference, delivery, notes, payment terms text, allowances
+and charges, and the lines with their identifiers. The invoice has the type 380 and the defaults of
+the invoice builder. Payment instruction and due date are not part of a quotation: complete them
+with `toInvoiceBuilder(number, date, acceptedIds)` before building. The Factur-X profile EXTENDED
+can state the quotation with `quotation.reference()` as `quotationReference`; the other profiles
+have no field for it.
+
 ### Store documents as JSON
 
-`paniolo-json` stores invoices, orders, and despatch advices, e.g. as drafts or in message queues;
+`paniolo-json` stores invoices, orders, quotations, and despatch advices, e.g. as drafts or in message queues;
 loading runs the same checks as the builders:
 
 ```java
@@ -475,6 +545,8 @@ the documents are valid:
 java -jar paniolo-cli/target/paniolo-cli-HEAD-SNAPSHOT-all.jar validate invoice.xml
 paniolo to-xml invoice.json --syntax CII -o invoice.xml
 paniolo to-facturx invoice.json --pdf layout.pdf --profile EN16931 -o factur-x.pdf
+paniolo quotation to-pdf quotation.json -o quotation.pdf
+paniolo quotation to-invoice quotation.json --number R-2026-31 --accept 2 -o invoice.json
 paniolo validate -f json inbox/*.pdf | jq -r 'select(.valid | not) | .file'
 paniolo validate inbox -r --exclude 'archive/**' --summary          # directories, one result per file
 paniolo validate corpus/negative -r --expect invalid --summary      # regression test of a corpus
@@ -538,7 +610,7 @@ Paniolo never downloads rules at runtime.
 | `toFacturX(invoice, pdfA, profile[, attachments])`                                                                    | Create a Factur-X / ZUGFeRD PDF/A-3 from your own PDF/A (`paniolo-facturx`)                               |
 | `toFacturX(invoice, profile[, layout, attachments])`                                                                  | Create a Factur-X / ZUGFeRD PDF/A-3 with a rendered page (`paniolo-facturx`)                           |
 | `embedXml(pdfA, xml, profile[, attachments])`                                                                         | Embed existing CII XML byte for byte into your PDF/A; returns the PDF and its validation                  |
-| `toPdf(invoice / order / advice[, layout])`                                                                           | Render the visual PDF/A-3b document only, without XML (`paniolo-facturx`)                              |
+| `toPdf(invoice / order / quotation / advice[, layout])`                                                               | Render the visual document only, without XML: PDF/A-3b (PDF 1.7) by default, PDF/A-1b, or a PDF 1.7 / 2.0 preview with `PdfLayout.withProfile` (`paniolo-facturx`) |
 | `toReportPdf(result, fileName, document[, layout])`                                                                   | Render a validation report as PDF/A-3b for archives and departments (`paniolo-facturx`)                |
 | `extractXml(pdf)`, `attachments(pdf)`                                                                                 | Embedded invoice XML and further embedded files of a PDF                                                  |
 | `producer(pdf)`                                                                                                       | Producing software of a PDF (`PdfProducer`), also reported as `FX-PRODUCER` by `validate(pdf)`            |
@@ -744,6 +816,14 @@ All details in the example are fictitious.
   The code is kept as stated, not changed to `58`. Other codes, such as `49` or `ZZZ`, may also
   carry accounts, card, and mandate data; profile-specific restrictions are checked by validation.
   Credit transfers `30`/`58` can retain direct debit information in the model as well.
+- Account numbers that are no IBAN: `CreditTransfer.proprietary("EXAMPLE-ACCOUNT", "Muster GmbH", null)` or
+  `CreditTransfer.create().proprietaryId("EXAMPLE-ACCOUNT").build()` state a proprietary account number (BT-84).
+  CII writes it as `ram:ProprietaryID` and an IBAN as `ram:IBANID`; the reader keeps the kind
+  (`CreditTransfer.idType()`, `AccountIdType.IBAN` or `PROPRIETARY`). UBL has `cbc:ID` for both and carries no
+  kind, so a document read from UBL has `IBAN` accounts. `new CreditTransfer(iban, name, bic)` and `.iban(...)`
+  keep creating IBAN accounts; JSON stores the kind only for a proprietary account, and JSON without it is read as
+  IBAN. SEPA credit transfer `58` needs an IBAN: the official rules warn about anything else (BR-DE-19). The PDF
+  layout labels a proprietary account "Account no." instead of "IBAN".
 - Supporting documents (BG-24): `.addSupportingDocument(AdditionalSupportingDocument.create().reference("Timesheet")
   .attachment(Attachment.create().content(bytes).mimeCode("application/pdf").filename("timesheet.pdf").build()).build())`.
 - Allowances and charges also take a base amount, percentage, and reason code (BT-92 to BT-105).
@@ -813,12 +893,14 @@ result.warnings().forEach(w -> log(w.code(), w.lineId(), w.message()));
 | `READ-PAYABLE-AMOUNT` | Stated amount due (BT-115) differs from the calculated                             | The calculated amount is kept                                                                                                                                            |
 | `READ-REASON-CODE`    | Allowance reason code outside UNTDID 5189, e.g. the charge code `ABK`              | The code is dropped and the reason text kept; without a reason text the allowance is still rejected                                                                      |
 | `READ-PERCENTAGE`     | Allowance or charge percentage without its base amount                             | The percentage is dropped and the stated amount kept; no base amount is derived                                                                                          |
-| `READ-PAYMENT-MEANS`  | A further payment means block with other means, text, card, or mandate             | The block is not merged; the model keeps the first payment instruction (BG-16)                                                                                           |
+| `READ-PAYMENT-MEANS`  | A further payment means block with other means, text, card, or mandate, or a block without payment means code (BT-81) | The block is not merged; the model keeps the first payment instruction (BG-16). A block without code is read as `1` (instrument not defined); ZUGFeRD 1.0 allows it, so this applies in strict reading too |
 | `READ-TEXT-LINE`      | A ZUGFeRD 1.0 line with text only, without item and quantity                       | The text becomes an invoice note (BG-1)                                                                                                                                  |
-| `READ-OTHER-TAX`      | A tax of another type than VAT, e.g. the insurance tax `AAM` of Factur-X EXTENDED   | The tax is not read and never taken for VAT; the calculated totals lack it, and `NORMALIZED` export is refused (see below)                                                |
+| `READ-OTHER-TAX`      | A tax type the model does not keep, other than VAT and the supported insurance tax `AAM` | The tax is not read and never taken for VAT; the calculated totals lack it, and `NORMALIZED` export is refused (see below) |
 | `READ-TAX-EXEMPTION`  | EXTENDED: a line, allowance, or charge states another VAT exemption reason or code than its VAT breakdown, or a further breakdown repeats category and rate with another reason | The model keeps one breakdown per category and rate (per sub-invoice for French multi-vendor invoices); the text of the first breakdown is kept and the amounts are merged |
 | `READ-GROSS-PRICE`    | UBL: a price discount (BT-147) without gross price (BT-148)                                                                                                                     | The gross price is derived as net price plus discount; the original document keeps its form, a normalized export states the derived gross price                            |
 | `READ-LINE-QUANTITY`  | The stated line net amount has the opposite sign of quantity x net price outside the profiles that allow a negative net price                                                   | The quantity (BT-129) takes the sign of the amount, the price stays; `result.deviations()` lists BT-129 and BT-131                                                         |
+| `READ-TAX-RATE`       | A VAT category without a rate other than zero (Z, E, AE, K, G) states another rate or none, e.g. an exempt VAT breakdown with 19 % and VAT amount zero                         | Rate zero is kept; strict reading rejects the document with the location                                                                                                  |
+| `READ-PERIOD`         | An invoicing period (BG-14, BG-26) with a date that is no calendar date, e.g. `20139102`, or an end before its start                                                           | The period is dropped; strict reading rejects the document with the location                                                                                             |
 
 Four warnings report values the model does not keep or interpret, or takes from somewhere else,
 without changing an amount.
@@ -841,6 +923,24 @@ reading. `result.stated()` keeps the original amounts and `result.deviations()` 
 differences, including totals that strict reading does not compare. Lines with quantity zero,
 a negative recalculated price outside EXTENDED (BR-27) that a negated quantity does not explain, and structural errors, are still rejected. `ReadMode.STRICT` is
 the default of all methods without a mode.
+
+### Writing a read invoice in another syntax
+
+Writing keeps the specification identifier (BT-24) of the invoice. An invoice read from a UBL
+document and written with `toXml(invoice, InvoiceSyntax.CII)` therefore states the identifier of
+the received document, e.g. the Peppol BIS Billing 3.0 identifier
+`urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0`. Paniolo never
+replaces it, as that would claim a profile the document was not checked against.
+
+Not every identifier fits every syntax. Peppol BIS Billing 3.0 defines a UBL binding only, and
+Factur-X / ZUGFeRD accept in CII only their own identifiers (FX-SCH-A-000556 for EN 16931 allows
+`urn:cen.eu:en16931:2017`). Paniolo validates such a CII document with the EN 16931 and
+XRechnung rules of the KoSIT configuration, which contain the Peppol rules for CII as well, so it
+passes there; validators that check every CII document as Factur-X, e.g. Mustang, reject it. For a
+Factur-X / ZUGFeRD document, build the invoice with the identifier of the target profile, e.g.
+`ProcessControl.en16931()` or `ProcessControl.facturXExtended()`, and choose a profile whose rules
+the content meets. Writing a profile rejects content that the profile cannot carry before any
+output is written (e.g. "Factur-X profile MINIMUM does not allow: …").
 
 ### Importing received invoices with their original amounts
 
@@ -867,14 +967,19 @@ byte[] ubl     = paniolo.export(received, ExportVariant.NORMALIZED, InvoiceSynta
 
 The export variant is always an explicit choice: `ORIGINAL` returns the received XML (for a PDF
 the embedded invoice XML) and is never converted into another syntax; `NORMALIZED` writes the
-model with its recalculated amounts. The model keeps VAT only: if the document states another tax
-type such as the insurance tax `AAM` (`READ-OTHER-TAX`), `NORMALIZED` is refused, because the
-export would drop that tax and lower the amount due. `NORMALIZED_DROPPING_OTHER_TAXES` writes the
-model anyway and documents that the loss is accepted. The calculation check
+model with its recalculated amounts. The model keeps VAT and the insurance tax `AAM` separately;
+CII export preserves `AAM` in Factur-X EXTENDED and includes it in the total tax amount and amount
+due. Writing it as UBL or in another profile is rejected. If an unsupported tax type was left out
+with `READ-OTHER-TAX`, `NORMALIZED` is refused, because the export would drop that tax and lower
+the amount due. `NORMALIZED_DROPPING_OTHER_TAXES` writes the model anyway and documents that the
+loss of that unsupported tax is accepted. It does not bypass the writer's profile restrictions.
+The calculation check
 (`calculationCheck(true)`) then reports BT-110, BT-112 and BT-115 as `PANIOLO-CALC-NOT-CHECKED`
 instead of as differences.
 
-XML written by Paniolo reads back into an equal `Invoice`. Values without an EN 16931
+XML written by Paniolo reads back into an equal `Invoice` within the syntax's supported field
+mapping. UBL does not carry the payment account kind: a proprietary account read from UBL has
+`AccountIdType.IBAN`, while its account number is retained. Values without an EN 16931
 counterpart that the writers add (UBL card `NetworkID`, CII project name, the `NA` order
 placeholder) are dropped again, and the credit note due date in UBL payment terms is
 restored as a date.
@@ -1134,7 +1239,7 @@ Hybrid invoices (a PDF/A-3 document with embedded CII XML) need the optional mod
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo-facturx</artifactId>
-  <version>1.0.0-rc02</version>
+  <version>1.0.0</version>
 </dependency>
 ```
 
@@ -1443,7 +1548,9 @@ accordingly), and the ZUGFeRD 1.0 schemas and Schematron taken unmodified from t
 (Apache 2.0, with the original FeRD terms of use of ZUGFeRD 1.0). The Order-X SVRL stylesheets
 compiled by Paniolo contain templates of the ISO Schematron skeleton (MIT License,
 `META-INF/licenses/MIT-ISO-Schematron.txt`). `META-INF/NOTICE` of `paniolo-rules` lists every
-packaged work with its terms.
+packaged work with its terms. `paniolo-facturx` packages the font IBM Plex Sans unmodified under
+the SIL Open Font License 1.1 (Copyright © 2017 IBM Corp., Reserved Font Name "Plex"), with its
+license; see `META-INF/NOTICE` in its JAR.
 
 Paniolo itself is Apache 2.0, but some dependencies are under the Mozilla Public License 2.0:
 Saxon-HE, a required dependency of `paniolo`, and veraPDF (dual licensed GPLv3+ /

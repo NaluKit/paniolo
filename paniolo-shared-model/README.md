@@ -1,7 +1,7 @@
 # Paniolo Shared Model
 
 `paniolo-shared-model` provides the immutable model shared by all Paniolo modules: invoices and
-credit notes (EN 16931, XRechnung, Factur-X EXTENDED), orders (Order-X), and despatch advices, with
+credit notes (EN 16931, XRechnung, Factur-X EXTENDED), orders (Order-X), quotations, and despatch advices, with
 builders, code lists, and the calculation of all amounts. It requires Java 21 and has no runtime
 dependencies.
 
@@ -15,11 +15,11 @@ the repository root with `mvn install`, use `HEAD-SNAPSHOT` instead; see
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo-shared-model</artifactId>
-  <version>1.0.0-rc02</version>
+  <version>1.0.0</version>
 </dependency>
 ```
 
-The XML writer modules already include this dependency transitively.
+The `paniolo` module includes this dependency transitively.
 
 ## Invoice model
 
@@ -35,20 +35,22 @@ The main types are:
 | `InvoicePeriod`, `DeliveryInformation`                                          | Invoicing period, delivery date, place, and address                                                                                                                                               |
 | `TaxCategory`                                                                   | VAT category, rate, and optional exemption information                                                                                                                                            |
 | `DocumentAdjustment`                                                            | Document allowance or charge with optional base amount, percentage, and reason code                                                                                                               |
-| `PaymentInstruction`, `CreditTransfer`, `PaymentCardInformation`, `DirectDebit` | Payment means                                                                                                                                                                                     |
+| `PaymentInstruction`, `CreditTransfer`, `AccountIdType`, `PaymentCardInformation`, `DirectDebit` | Payment means; credit transfer accounts distinguish IBAN and proprietary account numbers |
 | `CashDiscount`                                                                  | Cash discount (Skonto) in the XRechnung payment terms format (BT-20)                                                                                                                              |
 | `ThirdPartyPayment`                                                             | Third party payment of the XRechnung extension (BG-DEX-09)                                                                                                                                        |
 | `AdditionalSupportingDocument`, `Attachment`                                    | Referenced or embedded supporting documents                                                                                                                                                       |
 | `ProcessControl`                                                                | Business process and specification identifiers                                                                                                                                                    |
-| `InvoiceTotals`, `VatBreakdown`                                                 | Calculated monetary totals and VAT breakdowns                                                                                                                                                     |
+| `InvoiceTotals`, `VatBreakdown`                                                 | Calculated monetary totals and VAT breakdowns; document-level `OtherTax` amounts count in total tax and amount due |
+| `OtherTax` in `model.extended` | Insurance tax (`AAM`) apart from VAT; document-level taxes count in totals, line-level taxes describe the line only |
 | `DocumentTotals` | Stated totals and VAT breakdown of an invoice without lines (Factur-X MINIMUM and BASIC WL) |
 | `VatAmount` | Stated VAT category tax amount (BT-117) retained within the model's rounding tolerance |
 | `Order`, `OrderLine`, `OrderTotals` in `model.order`                            | Order-X orders, order changes, and order responses                                                                                                                                                |
+| `Quotation`, `QuotationLine` in `model.quotation`                               | Quotations with standard and optional lines; `toInvoice(...)` creates the invoice, no XML syntax                                                                                                  |
 | `DespatchAdvice`, `DespatchLine`, `DespatchItemInstance` in `model.despatch`    | Despatch advices (delivery notes) after Peppol BIS Despatch Advice 3, written as UBL or CIDA                                                                                                      |
 | `ExtendedInformation`, `LineExtension`, `PartyExtension`, and `model.extended`  | Header and line information of the Factur-X profile EXTENDED: further parties, delivery terms, references, payment terms, logistics service charges, advance payments, sub-lines, product details, several allowances and charges on the gross price (`GrossPriceAdjustment`) |
 
 Model types are in `io.github.nalukit.paniolo.model` and its packages `common`, `extended`
-(Factur-X EXTENDED), `order` (Order-X), and `despatch` (despatch advices).
+(Factur-X EXTENDED), `order` (Order-X), `quotation` (quotations), and `despatch` (despatch advices).
 See the [project README](../README.md#generating-an-invoice) for a complete construction example.
 
 ```java

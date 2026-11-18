@@ -311,7 +311,8 @@ class ExtendedTest {
                                                                                      10,
                                                                                      27)),
                                                     extended.financialAdjustments(),
-                                                    extended.additionalAccountingAccounts()));
+                                                    extended.additionalAccountingAccounts(),
+                                                    extended.otherTaxes()));
   }
 
   /**
@@ -476,10 +477,13 @@ class ExtendedTest {
                                                                                                     .build())
                                                                              .build())
                                                         .build());
-    assertThrows(IllegalArgumentException.class,
-                 () -> LineExtension.create()
-                                    .parentLineId("G1")
-                                    .build());
+    // The subtype of a sub-line is a rule of Factur-X EXTENDED (BR-FXEXT-06) that validation
+    // checks; the sub-invoice lines of the XRechnung extension in CII state none.
+    assertEquals("G1",
+                 LineExtension.create()
+                              .parentLineId("G1")
+                              .build()
+                              .parentLineId());
     // Line information also requires the profile EXTENDED.
     var en16931 = withSubLines(FacturXInvoices.invoice(FacturXProfile.EN16931,
                                                        InvoiceTypeCode.CODE_380)).build();

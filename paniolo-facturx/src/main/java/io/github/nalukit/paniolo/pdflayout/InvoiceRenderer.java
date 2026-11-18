@@ -41,6 +41,7 @@ import io.github.nalukit.paniolo.model.extended.GrossPriceAdjustment;
 import io.github.nalukit.paniolo.model.extended.IncludedProduct;
 import io.github.nalukit.paniolo.model.extended.LogisticsServiceCharge;
 import io.github.nalukit.paniolo.model.extended.ObjectIdentifier;
+import io.github.nalukit.paniolo.model.extended.OtherTax;
 import io.github.nalukit.paniolo.model.extended.PaymentTerm;
 import io.github.nalukit.paniolo.model.extended.PaymentTermsAdjustment;
 import io.github.nalukit.paniolo.model.extended.ProductCharacteristic;
@@ -65,9 +66,9 @@ import java.util.Set;
  * further references, delivery terms and parties, line details, logistics service charges, and
  * financial adjustments; third party payments of the XRechnung extension appear in the totals.
  */
-final class InvoiceRenderer
+class InvoiceRenderer
     extends DocumentRenderer {
-  private final Invoice invoice;
+  final Invoice invoice;
 
   InvoiceRenderer(Invoice invoice,
                   PdfLayout layout) {
@@ -104,11 +105,17 @@ final class InvoiceRenderer
   }
 
   @Override
+  String headingTitle() {
+    return t.title(invoice.typeCode());
+  }
+
+  @Override
   List<String[]> facts() {
     var rows     = new ArrayList<String[]>();
     var extended = invoice.extended();
     fact(rows,
-         "number",
+         t.typedKey("number",
+                    invoice.typeCode()),
          invoice.number());
     if (extended != null) {
       // EXTENDED: a test or copy must not be mistaken for the original invoice.
@@ -126,7 +133,8 @@ final class InvoiceRenderer
            extended.documentName());
     }
     fact(rows,
-         "issueDate",
+         t.typedKey("issueDate",
+                    invoice.typeCode()),
          t.date(invoice.issueDate()));
     fact(rows,
          "dueDate",
@@ -205,6 +213,13 @@ final class InvoiceRenderer
   }
 
   private void lines() {
+    lineTable(invoice.lines());
+  }
+
+  /**
+   * The table of the given lines with their sub-lines.
+   */
+  void lineTable(List<InvoiceLine> tableLines) {
     float fixed = 26 + 42 + 50 + 62 + 32 + 66;
     var columns = List.of(new Column(26,
                                      Align.LEFT),
@@ -224,7 +239,7 @@ final class InvoiceRenderer
     // EXTENDED states sub-lines flat with the identifier of their parent; indent them like nested
     // sub-lines of the XRechnung extension.
     var parents = new HashMap<String, String>();
-    for (InvoiceLine line : invoice.lines()) {
+    for (InvoiceLine line : tableLines) {
       if (line.extended() != null && line.extended()
                                          .parentLineId() != null) {
         parents.put(line.id(),
@@ -232,7 +247,7 @@ final class InvoiceRenderer
                         .parentLineId());
       }
     }
-    for (InvoiceLine line : invoice.lines()) {
+    for (InvoiceLine line : tableLines) {
       int    depth  = 0;
       String parent = parents.get(line.id());
       while (parent != null && depth < 10) {
@@ -373,7 +388,14 @@ final class InvoiceRenderer
 
   // -- totals -------------------------------------------------------------------------------------
 
-  private void totals() {
+  /**
+   * Whether the totals end with the amount due. A quotation ends with the total amount with VAT.
+   */
+  boolean showsAmountDue() {
+    return true;
+  }
+
+  void totals() {
     InvoiceTotals totals = invoice.totals();
     var           rows   = new ArrayList<TotalRow>();
     if (!invoice.lines()
@@ -424,8 +446,19 @@ final class InvoiceRenderer
       rows.add(plain(text,
                      money(vat.taxAmount())));
     }
-    rows.add(strong(t.label("totals.gross"),
-                    money(totals.taxInclusiveAmount())));
+    // EXTENDED taxes of another type (e.g. AAM) on the document level count in the total with
+    // taxes, so each gets a row; the ones on the lines only describe the line.
+    if (extended != null) {
+      for (OtherTax other : extended.otherTaxes()) {
+        rows.add(plain(otherTaxText(other),
+                       money(other.amount())));
+      }
+    }
+    rows.add(showsAmountDue() ?
+             strong(t.label("totals.gross"),
+                    money(totals.taxInclusiveAmount())) :
+             grand(t.label("totals.gross"),
+                   money(totals.taxInclusiveAmount())));
     if (nonZero(totals.paidAmount())) {
       rows.add(plain(t.label("totals.paid"),
                      money(totals.paidAmount()
@@ -453,8 +486,10 @@ final class InvoiceRenderer
                                payment.description())),
                      money(payment.amount())));
     }
-    rows.add(grand(t.label("totals.payable"),
-                   money(totals.payableAmount())));
+    if (showsAmountDue()) {
+      rows.add(grand(t.label("totals.payable"),
+                     money(totals.payableAmount())));
+    }
     if (invoice.taxCurrencyCode() != null && invoice.taxAmountInTaxCurrency() != null) {
       rows.add(new TotalRow(t.label("totals.vatInTaxCurrency",
                                     invoice.taxCurrencyCode()
@@ -482,6 +517,26 @@ final class InvoiceRenderer
   }
 
   /**
+   * The label of a tax of another type than VAT, with its rate and the amount it is calculated on
+   * if the invoice states them.
+   */
+  private String otherTaxText(OtherTax other) {
+    String name = t.label("totals.otherTax." + other.typeCode());
+    if (other.rate() != null && other.basisAmount() != null) {
+      return t.label("totals.otherTaxRateBasis",
+                     name,
+                     t.percent(other.rate()),
+                     money(other.basisAmount()));
+    }
+    if (other.rate() != null) {
+      return t.label("totals.otherTaxRate",
+                     name,
+                     t.percent(other.rate()));
+    }
+    return name;
+  }
+
+  /**
    * The VAT rate of an allowance, charge, or logistics service charge in brackets, or nothing.
    */
   private String vatOf(TaxCategory tax) {
@@ -492,7 +547,7 @@ final class InvoiceRenderer
 
   // -- VAT notes, payment, references -------------------------------------------------------------
 
-  private void vatNotes() {
+  void vatNotes() {
     Set<String> notes = new LinkedHashSet<>();
     for (VatBreakdown vat : invoice.totals()
                                    .vatBreakdowns()) {
@@ -544,7 +599,11 @@ final class InvoiceRenderer
       }
       for (CreditTransfer transfer : instruction.creditTransfers()) {
         row(rows,
+            transfer.isProprietary() ?
+            "payment.account" :
             "payment.iban",
+            transfer.isProprietary() ?
+            transfer.iban() :
             Texts.iban(transfer.iban()));
         row(rows,
             "payment.bic",

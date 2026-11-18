@@ -34,6 +34,7 @@ import io.github.nalukit.paniolo.model.common.value.DateTimeQualifier;
 import io.github.nalukit.paniolo.model.extended.AccountingAccount;
 import io.github.nalukit.paniolo.model.extended.DocumentReference;
 import io.github.nalukit.paniolo.model.extended.ExtendedInformation;
+import io.github.nalukit.paniolo.model.extended.OtherTax;
 import io.github.nalukit.paniolo.model.extended.PaymentTermsAdjustment;
 import io.github.nalukit.paniolo.xml.InvoiceXmlWriter;
 import io.github.nalukit.paniolo.xml.util.SpecificationGenerations;
@@ -368,6 +369,15 @@ public final class CiiInvoiceWriter
           firstBreakdown);
       firstBreakdown = false;
       xml.end();
+    }
+    // Taxes of another type (e.g. AAM) stay apart from the VAT breakdowns.
+    if (extended != null) {
+      for (var other : extended.otherTaxes()) {
+        xml.start("ram:ApplicableTradeTax");
+        otherTax(xml,
+                 other);
+        xml.end();
+      }
     }
     var period = invoice.invoicePeriod();
     if (period != null) {
@@ -811,11 +821,19 @@ public final class CiiInvoiceWriter
            .end();
       }
       if (account != null) {
+        // BT-84: an IBAN is IBANID, another account number ProprietaryID, never both. The schema
+        // sequence is IBANID, AccountName, ProprietaryID.
         xml.start("ram:PayeePartyCreditorFinancialAccount")
            .element("ram:IBANID",
+                    account.isProprietary() ?
+                    null :
                     account.iban())
            .element("ram:AccountName",
                     account.accountName())
+           .element("ram:ProprietaryID",
+                    account.isProprietary() ?
+                    account.iban() :
+                    null)
            .end();
       }
       if (firstBlock && extended != null && extended.payerBic() != null && payment.directDebit() != null) {
@@ -1133,7 +1151,17 @@ public final class CiiInvoiceWriter
           dueDateTypeCode,
           false);
       xml.end();
-    } else if (dueDateTypeCode != null) {
+    }
+    if (extended != null) {
+      // Taxes of another type the line states; they describe the line and are not VAT.
+      for (var other : extended.otherTaxes()) {
+        xml.start("ram:ApplicableTradeTax");
+        otherTax(xml,
+                 other);
+        xml.end();
+      }
+    }
+    if (line.tax() == null && dueDateTypeCode != null) {
       // A subtotal or information line may state when its VAT becomes due without a VAT category.
       xml.start("ram:ApplicableTradeTax")
          .element("ram:DueDateTypeCode",
@@ -1285,6 +1313,23 @@ public final class CiiInvoiceWriter
         extendedBreakdown,
         null,
         invoice != null);
+  }
+
+  /**
+   * Writes a tax of another type than VAT, e.g. the insurance tax AAM.
+   */
+  private static void otherTax(XmlBuilder xml,
+                               OtherTax tax) {
+    xml.element("ram:CalculatedAmount",
+                tax.amount())
+       .element("ram:TypeCode",
+                tax.typeCode())
+       .element("ram:BasisAmount",
+                tax.basisAmount())
+       .element("ram:CategoryCode",
+                tax.categoryCode())
+       .element("ram:RateApplicablePercent",
+                tax.rate());
   }
 
   /**
@@ -1685,6 +1730,61 @@ public final class CiiInvoiceWriter
     xml.end();
   }
 
+  /**
+   * Names the EXTENDED information of an invoice for the message that rejects it outside EXTENDED,
+   * e.g. {@code seller contact with name and department, line 2}.
+   */
+  private static String extendedContent(Invoice invoice) {
+    var found = new ArrayList<String>();
+    if (invoice.extended() != null) {
+      found.add("document information");
+    }
+    for (var side : new Object[][] { { "seller", invoice.seller() },
+                                     { "buyer", invoice.buyer() } }) {
+      var party = (io.github.nalukit.paniolo.model.common.Party) side[1];
+      var extended = party.extended();
+      if (extended != null && !extended.isDepartmentContactOnly()) {
+        found.add(side[0] + (extended.contact() != null && extended.roleCode() == null && extended.legalAddress() == null && extended.globalId() == null ?
+                             " contact (" + (extended.contact()
+                                                     .department() != null && extended.contact()
+                                                                                      .name() != null ?
+                                             "name and department" :
+                                             "type or fax") + ")" :
+                             " party information"));
+      }
+    }
+    for (int index = 0; index < invoice.adjustments()
+                                       .size(); index++) {
+      if (invoice.adjustments()
+                 .get(index)
+                 .extended() != null) {
+        found.add("document allowance or charge " + (index + 1));
+      }
+    }
+    if (invoice.notes()
+               .stream()
+               .anyMatch(note -> note.contentCode() != null)) {
+      found.add("note content code");
+    }
+    for (var line : invoice.lines()) {
+      if (line.extended() != null || line.classifications()
+                                         .stream()
+                                         .anyMatch(classification -> classification.className() != null)) {
+        found.add("line " + line.id() + (line.extended() != null && !line.extended()
+                                                                         .priceAdjustments()
+                                                                         .isEmpty() ?
+                                         " (gross price allowance or charge details)" :
+                                         ""));
+      }
+    }
+    return found.size() > 6 ?
+           String.join(", ",
+                       found.subList(0,
+                                     6)) + " and " + (found.size() - 6) + " more" :
+           String.join(", ",
+                       found);
+  }
+
   @Override
   public String toXml(Invoice invoice) {
     Objects.requireNonNull(invoice,
@@ -1700,8 +1800,12 @@ public final class CiiInvoiceWriter
                .size() > 1 && !extendedProfile) {
       throw new IllegalArgumentException("CII D16B supports only one preceding invoice reference outside the Factur-X profiles EXTENDED and EXTENDED-CTC-FR");
     }
+    if (invoice.hasOtherTaxes() && !extendedProfile) {
+      throw new IllegalArgumentException("Taxes of another type than VAT, e.g. the insurance tax AAM, can only be written in the Factur-X profile EXTENDED (ProcessControl.facturXExtended()); the profile of this invoice has no place for them, and writing it without them would change the amounts");
+    }
     if (invoice.hasExtendedInformation() && !extendedProfile) {
-      throw new IllegalArgumentException("EXTENDED information requires the specification identifier of the Factur-X profile EXTENDED (ProcessControl.facturXExtended()) or EXTENDED-CTC-FR (ProcessControl.facturXExtendedCtcFr(...))");
+      throw new IllegalArgumentException("EXTENDED information (" + extendedContent(invoice) + ") requires the specification identifier of the Factur-X profile EXTENDED (ProcessControl.facturXExtended()) or EXTENDED-CTC-FR (ProcessControl.facturXExtendedCtcFr(...)); the profile " + invoice.processControl()
+                                                                                                                                                                                                                                                                                                                 .specificationId() + " has no place for it, and it is not dropped silently");
     }
     // KoSIT validates sub invoice lines, third party payments, and their MIME codes for UBL only (BR-DEX-15).
     if (invoice.hasXrechnungExtensionInformation()) {

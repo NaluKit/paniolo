@@ -30,6 +30,9 @@ import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImage;
 import org.apache.pdfbox.text.PDFTextStripper;
+import io.github.nalukit.paniolo.model.common.CreditTransfer;
+import io.github.nalukit.paniolo.model.common.PaymentInstruction;
+import io.github.nalukit.paniolo.model.common.value.PaymentMeansCode;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -55,6 +58,7 @@ import java.util.List;
 import java.util.Locale;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -346,8 +350,10 @@ class PdfLayoutTest {
       assertEquals(List.of(),
                    pdfaFailures(pdf));
       String text = text(pdf);
-      assertTrue(text.contains("Rechnung R-2026-001"),
+      assertTrue(text.contains("Rechnungsnummer R-2026-001"),
                  text);
+      assertFalse(text.contains("Rechnung R-2026-001"),
+                  "the number must not repeat in the heading: " + text);
       assertTrue(text.contains("Muster GmbH"),
                  text);
       assertTrue(text.contains("Kunde GmbH"),
@@ -365,6 +371,69 @@ class PdfLayoutTest {
                  text);
       assertTrue(text.contains("Seite 1 von 1"),
                  text);
+    }
+
+    @Test
+    @DisplayName("shows a proprietary account number as account number, not as IBAN")
+    void showsProprietaryAccount()
+        throws IOException {
+      var invoice = TestInvoices.simple("R-2026-006")
+                                .paymentInstruction(PaymentInstruction.create()
+                                                                      .meansCode(PaymentMeansCode.CODE_30)
+                                                                      .addCreditTransfer(CreditTransfer.proprietary("AB12345678",
+                                                                                                                    "Muster GmbH",
+                                                                                                                    null))
+                                                                      .remittanceInformation("R-2026-006")
+                                                                      .build())
+                                .build();
+      String german  = text(render("proprietary",
+                                   invoice,
+                                   PdfLayout.defaults()));
+      String english = text(render("proprietary-en",
+                                   invoice,
+                                   PdfLayout.of(Locale.ENGLISH)));
+      // Not grouped in blocks of four like an IBAN, and not labeled IBAN.
+      assertTrue(german.contains("Kontonummer AB12345678"),
+                 german);
+      assertFalse(german.contains("IBAN"),
+                  german);
+      assertTrue(english.contains("Account no. AB12345678"),
+                 english);
+    }
+
+    @Test
+    @DisplayName("draws three fold and hole marks at the left edge of page 1 unless hidden")
+    void drawsFoldMarks()
+        throws IOException {
+      var invoice = TestInvoices.simple("R-2026-005")
+                                .build();
+      byte[] with    = render("fold-marks",
+                              invoice,
+                              PdfLayout.defaults());
+      byte[] without = render("no-fold-marks",
+                              invoice,
+                              PdfLayout.defaults()
+                                       .withFoldMarks(false));
+      assertEquals(List.of(),
+                   pdfaFailures(with));
+      // Each mark is one stroked horizontal line starting at x = 0.
+      int marks = strokedLinesAtLeftEdge(with);
+      assertEquals(3,
+                   marks - strokedLinesAtLeftEdge(without));
+    }
+
+    private static int strokedLinesAtLeftEdge(byte[] pdf)
+        throws IOException {
+      try (var document = org.apache.pdfbox.Loader.loadPDF(pdf)) {
+        String content = new String(document.getPage(0)
+                                            .getContents()
+                                            .readAllBytes(),
+                                    java.nio.charset.StandardCharsets.ISO_8859_1);
+        return (int) java.util.regex.Pattern.compile("(?m)^0 [0-9.]+ m\\s*$")
+                                            .matcher(content)
+                                            .results()
+                                            .count();
+      }
     }
 
     @Test
@@ -409,7 +478,7 @@ class PdfLayoutTest {
                  text);
       assertTrue(text.contains("abzüglich Mengenrabatt"),
                  text);
-      // characters without glyph in Liberation Sans are replaced
+      // characters without glyph in the font are replaced
       assertTrue(text.contains("äöüß"),
                  text);
     }
@@ -472,7 +541,7 @@ class PdfLayoutTest {
                                 TestInvoices.simple("R-2026-002")
                                             .build(),
                                 PdfLayout.of(Locale.ENGLISH)));
-      assertTrue(text.contains("Invoice R-2026-002"),
+      assertTrue(text.contains("Invoice no. R-2026-002"),
                  text);
       assertTrue(text.contains("Amount due"),
                  text);
@@ -677,6 +746,80 @@ class PdfLayoutTest {
                                                 .withFonts("no font".getBytes(StandardCharsets.UTF_8),
                                                            null)));
     }
+
+    @Test
+    @DisplayName("rejects fonts whose embedding permissions forbid embedding")
+    void rejectsRestrictedFonts()
+        throws IOException {
+      var invoice = TestInvoices.simple("R-1")
+                                .build();
+      for (int fsType : new int[] { 0x0002, 0x0200, 0x0100 }) {
+        var layout = PdfLayout.defaults()
+                              .withFonts(fontWithFsType(fsType),
+                                         null);
+        var e = assertThrows(IllegalArgumentException.class,
+                             () -> PANIOLO.toPdf(invoice,
+                                                 layout));
+        assertTrue(e.getMessage()
+                    .contains("does not permit embedding"),
+                   e.getMessage());
+      }
+      // editable embedding is allowed
+      assertTrue(PANIOLO.toPdf(invoice,
+                               PdfLayout.defaults()
+                                        .withFonts(fontWithFsType(0x0008),
+                                                   null)).length > 0);
+    }
+
+    @Test
+    @DisplayName("embeds IBM Plex Sans Regular and Bold by default")
+    void embedsDefaultFonts()
+        throws IOException {
+      byte[] pdf = PANIOLO.toPdf(TestInvoices.simple("R-1")
+                                             .build(),
+                                 PdfLayout.defaults());
+      var fonts = new java.util.TreeSet<String>();
+      try (var document = Loader.loadPDF(pdf)) {
+        for (PDPage page : document.getPages()) {
+          for (COSName name : page.getResources()
+                                  .getFontNames()) {
+            String font = page.getResources()
+                              .getFont(name)
+                              .getName();
+            // subset prefix "ABCDEF+"
+            fonts.add(font.substring(font.indexOf('+') + 1));
+          }
+        }
+      }
+      // PostScript names of the regular and the bold face
+      assertEquals(java.util.Set.of("IBMPlexSans",
+                                    "IBMPlexSans-Bold"),
+                   fonts);
+      assertEquals(List.of(),
+                   pdfaFailures(pdf));
+    }
+
+    /**
+     * The default font with the given fsType in its OS/2 table.
+     */
+    private static byte[] fontWithFsType(int fsType)
+        throws IOException {
+      byte[] font;
+      try (InputStream input = DocumentRenderer.class.getResourceAsStream(DocumentRenderer.DEFAULT_FONT)) {
+        font = input.readAllBytes();
+      }
+      var buffer = java.nio.ByteBuffer.wrap(font);
+      int tables = buffer.getShort(4) & 0xFFFF;
+      for (int i = 0; i < tables; i++) {
+        int entry = 12 + 16 * i;
+        if (buffer.getInt(entry) == 0x4F532F32) { // "OS/2"
+          buffer.putShort(buffer.getInt(entry + 8) + 8,
+                          (short) fsType);
+          return font;
+        }
+      }
+      throw new IllegalStateException("No OS/2 table");
+    }
   }
 
 
@@ -710,7 +853,47 @@ class PdfLayoutTest {
       assertEquals(1,
                    PANIOLO.attachments(pdf)
                           .size());
-      assertTrue(text(pdf).contains("Rechnung R-2026-004"));
+      assertTrue(text(pdf).contains("Rechnungsnummer R-2026-004"));
+    }
+
+    @Test
+    @DisplayName("labels number and date of a credit note as credit note number and date")
+    void labelsCreditNoteNumberAndDate()
+        throws IOException {
+      byte[] pdf = render("credit-note",
+                          TestInvoices.simple("G-2026-001")
+                                      .typeCode(io.github.nalukit.paniolo.model.common.value.InvoiceTypeCode.CODE_381)
+                                      .build(),
+                          PdfLayout.defaults());
+      String text = text(pdf);
+      assertTrue(text.contains("Gutschriftsnummer G-2026-001"),
+                 text);
+      assertTrue(text.contains("Gutschriftsdatum"),
+                 text);
+      assertFalse(text.contains("Rechnungsnummer"),
+                  text);
+      assertFalse(text.contains("Rechnungsdatum"),
+                  text);
+    }
+
+    @Test
+    @DisplayName("labels number and date of a debit note as debit note number and date")
+    void labelsDebitNoteNumberAndDate()
+        throws IOException {
+      byte[] pdf = render("debit-note",
+                          TestInvoices.simple("B-2026-001")
+                                      .typeCode(io.github.nalukit.paniolo.model.common.value.InvoiceTypeCode.CODE_383)
+                                      .build(),
+                          PdfLayout.defaults());
+      String text = text(pdf);
+      assertTrue(text.contains("Belastungsnummer B-2026-001"),
+                 text);
+      assertTrue(text.contains("Belastungsdatum"),
+                 text);
+      assertFalse(text.contains("Rechnungsnummer"),
+                  text);
+      assertFalse(text.contains("Rechnungsdatum"),
+                  text);
     }
 
     @Test
@@ -779,7 +962,35 @@ class PdfLayoutTest {
                                        new byte[] { 1 },
                                        0,
                                        null,
-                                       null));
+                                       null,
+                                       io.github.nalukit.paniolo.config.PdfProfile.PDF_A_3B,
+                                       true));
+    }
+
+    @Test
+    @DisplayName("takes the accent color as a web color")
+    void acceptsWebColor() {
+      var expected = PdfLayout.defaults()
+                              .withAccentColor(0x01244F);
+      assertEquals(expected,
+                   PdfLayout.defaults()
+                            .withAccentColor("#01244F"));
+      assertEquals(expected,
+                   PdfLayout.defaults()
+                            .withAccentColor(" 01244f "));
+      assertEquals(0xC0392B,
+                   PdfLayout.defaults()
+                            .withAccentColor("#c0392B")
+                            .accentColor());
+      for (String invalid : new String[] { "", "#", "#014", "#01244", "#01244FF", "0x01244F", "red", "#GG244F" }) {
+        assertThrows(IllegalArgumentException.class,
+                     () -> PdfLayout.defaults()
+                                    .withAccentColor(invalid),
+                     invalid);
+      }
+      assertThrows(NullPointerException.class,
+                   () -> PdfLayout.defaults()
+                                  .withAccentColor((String) null));
     }
 
     @Test

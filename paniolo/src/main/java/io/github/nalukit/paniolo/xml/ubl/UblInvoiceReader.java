@@ -180,11 +180,11 @@ public final class UblInvoiceReader
     var first = means.get(0);
     var code  = first.find("cbc:PaymentMeansCode");
     var builder = PaymentInstruction.create()
-                                    .meansCode(XmlElement.code(code == null ?
-                                                               null :
-                                                               code.text(),
-                                                               PaymentMeansCode::of,
-                                                               "payment means code"))
+                                    .meansCode(context.paymentMeansCode(code == null ?
+                                                                        null :
+                                                                        code.text(),
+                                                                        false,
+                                                                        first))
                                     .meansText(code == null ?
                                                null :
                                                code.attribute("name"))
@@ -272,19 +272,24 @@ public final class UblInvoiceReader
                 .toList();
   }
 
-  private static Party party(XmlElement party) {
+  private static Party party(XmlElement party,
+                             boolean seller) {
     if (party == null) {
       return null;
     }
     var    endpoint = party.findWithText("cbc:EndpointID");
     String vatId    = null;
     String taxId    = null;
+    // EN 16931 binds the seller tax registration identifier (BT-32) to a PartyTaxScheme of any scheme
+    // other than VAT, e.g. FC, or TAX in PEPPOL BIS ("Godkänd för F-skatt"). The buyer has no such
+    // business term; only the scheme FC is read for it, as before.
     for (var scheme : party.children("cac:PartyTaxScheme")) {
       String type = scheme.text("cac:TaxScheme/cbc:ID");
-      if ("VAT".equals(type)) {
-        vatId = scheme.text("cbc:CompanyID");
-      } else if ("FC".equals(type)) {
-        taxId = scheme.text("cbc:CompanyID");
+      String id   = scheme.text("cbc:CompanyID");
+      if (type != null && "VAT".equals(type.strip())) {
+        vatId = id;
+      } else if (taxId == null && id != null && !id.isBlank() && (seller || type != null && "FC".equals(type.strip()))) {
+        taxId = id;
       }
     }
     var contact = party.find("cac:Contact");
@@ -442,21 +447,21 @@ public final class UblInvoiceReader
     return vat;
   }
 
-  private static TaxCategory tax(XmlElement category) {
+  private static TaxCategory tax(XmlElement category,
+                                 ReadContext context,
+                                 String lineId) {
     if (category == null) {
       return null;
     }
     var code = XmlElement.code(category.text("cbc:ID"),
                                DutyTaxFeeCategory::of,
                                "VAT category");
-    // Outside-scope breakdowns state a zero rate for XRechnung; the model keeps no rate.
-    BigDecimal rate = code == DutyTaxFeeCategory.O ?
-                      null :
-                      category.decimal("cbc:Percent");
-    return new TaxCategory(code,
-                           rate,
-                           category.text("cbc:TaxExemptionReason"),
-                           category.text("cbc:TaxExemptionReasonCode"));
+    return context.taxCategory(code,
+                               category.decimal("cbc:Percent"),
+                               category.text("cbc:TaxExemptionReason"),
+                               category.text("cbc:TaxExemptionReasonCode"),
+                               lineId,
+                               category);
   }
 
   /**
@@ -486,7 +491,9 @@ public final class UblInvoiceReader
                                                 BigDecimal.ONE :
                                                 baseQuantity)
                              .tax(InvoiceConsistency.complete(tax(lineTax(line,
-                                                                          context)),
+                                                                          context),
+                                                                  context,
+                                                                  line.text("cbc:ID")),
                                                               categories))
                              .note(line.text("cbc:Note"))
                              .buyerAccountingReference(line.text("cbc:AccountingCost"))
@@ -499,8 +506,9 @@ public final class UblInvoiceReader
                                                             "country"));
     var period = line.find("cac:InvoicePeriod");
     if (period != null) {
-      builder.period(new InvoicePeriod(period.isoDate("cbc:StartDate"),
-                                       period.isoDate("cbc:EndDate")));
+      builder.period(context.period(period,
+                                    true,
+                                    line.text("cbc:ID")));
     }
     var object = line.findWithText("cac:DocumentReference/cbc:ID");
     if (object != null) {
@@ -562,6 +570,12 @@ public final class UblInvoiceReader
                          ReadMode mode) {
     Objects.requireNonNull(document,
                            "document");
+    return ReadContext.requiredValues(() -> readDocument(document,
+                                                         mode));
+  }
+
+  private ReadResult readDocument(Document document,
+                                  ReadMode mode) {
     var readContext = new ReadContext(mode);
     var root = XmlElement.of(document.getDocumentElement(),
                              NAMESPACES);
@@ -604,8 +618,9 @@ public final class UblInvoiceReader
     var period = root.find("cac:InvoicePeriod");
     if (period != null) {
       if (period.text("cbc:StartDate") != null || period.text("cbc:EndDate") != null) {
-        builder.invoicePeriod(new InvoicePeriod(period.isoDate("cbc:StartDate"),
-                                                period.isoDate("cbc:EndDate")));
+        builder.invoicePeriod(readContext.period(period,
+                                                 true,
+                                                 null));
       }
       builder.taxPointDateCode(XmlElement.code(period.text("cbc:DescriptionCode"),
                                                DateTimeQualifier::of,
@@ -622,8 +637,10 @@ public final class UblInvoiceReader
     var    payment          = root.children("cac:PaymentMeans");
     String sellerCreditorId = creditorId(root.find("cac:AccountingSupplierParty/cac:Party"));
     String payeeCreditorId  = creditorId(root.find("cac:PayeeParty"));
-    builder.seller(party(root.find("cac:AccountingSupplierParty/cac:Party")))
-           .buyer(party(root.find("cac:AccountingCustomerParty/cac:Party")))
+    builder.seller(party(root.find("cac:AccountingSupplierParty/cac:Party"),
+                             true))
+           .buyer(party(root.find("cac:AccountingCustomerParty/cac:Party"),
+                            false))
            .payee(payee(root.find("cac:PayeeParty")))
            .taxRepresentative(taxRepresentative(root.find("cac:TaxRepresentativeParty")))
            .delivery(delivery(root.find("cac:Delivery")))
@@ -657,8 +674,11 @@ public final class UblInvoiceReader
           continue;
         }
         if (isVat(category)) {
-          breakdowns.add(tax(category));
-          statedVat.add(tax(category),
+          var breakdown = tax(category,
+                              readContext,
+                              null);
+          breakdowns.add(breakdown);
+          statedVat.add(breakdown,
                         subtotal.decimal("cbc:TaxAmount"));
         } else {
           readContext.otherTax(category.text("cac:TaxScheme/cbc:ID"),
@@ -686,7 +706,9 @@ public final class UblInvoiceReader
                                                                           adjustment.text("cbc:AllowanceChargeReasonCode"),
                                                                           adjustment.text("cbc:AllowanceChargeReason"),
                                                                           null),
-                                                   InvoiceConsistency.complete(tax(adjustment.find("cac:TaxCategory")),
+                                                   InvoiceConsistency.complete(tax(adjustment.find("cac:TaxCategory"),
+                                                                                   readContext,
+                                                                                   null),
                                                                                categories)));
     }
     // XRechnung extension: third party payments (BG-DEX-09).

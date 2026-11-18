@@ -23,7 +23,8 @@ import java.util.Arrays;
 import java.util.Locale;
 
 /**
- * Country codes with localized display texts supplied by LocalizationFactory.
+ * Country codes of ISO 3166-1 alpha-2 and the code XI of the EN 16931 code list, with localized
+ * display texts supplied by LocalizationFactory.
  */
 public enum Country {
 
@@ -806,7 +807,227 @@ public enum Country {
   /**
    * Cyprus
    */
-  CY;
+  CY,
+  /**
+   * Anguilla
+   */
+  AI,
+  /**
+   * Antarctica
+   */
+  AQ,
+  /**
+   * American Samoa
+   */
+  AS,
+  /**
+   * Aruba
+   */
+  AW,
+  /**
+   * Åland Islands
+   */
+  AX,
+  /**
+   * St. Barthélemy
+   */
+  BL,
+  /**
+   * Bermuda
+   */
+  BM,
+  /**
+   * Caribbean Netherlands
+   */
+  BQ,
+  /**
+   * Bouvet Island
+   */
+  BV,
+  /**
+   * Cocos (Keeling) Islands
+   */
+  CC,
+  /**
+   * Curaçao
+   */
+  CW,
+  /**
+   * Christmas Island
+   */
+  CX,
+  /**
+   * Western Sahara
+   */
+  EH,
+  /**
+   * Falkland Islands
+   */
+  FK,
+  /**
+   * Faroe Islands
+   */
+  FO,
+  /**
+   * French Guiana
+   */
+  GF,
+  /**
+   * Guernsey
+   */
+  GG,
+  /**
+   * Gibraltar
+   */
+  GI,
+  /**
+   * Greenland
+   */
+  GL,
+  /**
+   * Guadeloupe
+   */
+  GP,
+  /**
+   * South Georgia and South Sandwich Islands
+   */
+  GS,
+  /**
+   * Guam
+   */
+  GU,
+  /**
+   * Hong Kong SAR China
+   */
+  HK,
+  /**
+   * Heard and McDonald Islands
+   */
+  HM,
+  /**
+   * Isle of Man
+   */
+  IM,
+  /**
+   * British Indian Ocean Territory
+   */
+  IO,
+  /**
+   * Jersey
+   */
+  JE,
+  /**
+   * Cayman Islands
+   */
+  KY,
+  /**
+   * St. Martin
+   */
+  MF,
+  /**
+   * Macao SAR China
+   */
+  MO,
+  /**
+   * Northern Mariana Islands
+   */
+  MP,
+  /**
+   * Martinique
+   */
+  MQ,
+  /**
+   * Montserrat
+   */
+  MS,
+  /**
+   * New Caledonia
+   */
+  NC,
+  /**
+   * Norfolk Island
+   */
+  NF,
+  /**
+   * French Polynesia
+   */
+  PF,
+  /**
+   * St. Pierre and Miquelon
+   */
+  PM,
+  /**
+   * Pitcairn Islands
+   */
+  PN,
+  /**
+   * Puerto Rico
+   */
+  PR,
+  /**
+   * Palestinian Territories
+   */
+  PS,
+  /**
+   * Réunion
+   */
+  RE,
+  /**
+   * St. Helena
+   */
+  SH,
+  /**
+   * Svalbard and Jan Mayen
+   */
+  SJ,
+  /**
+   * South Sudan
+   */
+  SS,
+  /**
+   * Sint Maarten
+   */
+  SX,
+  /**
+   * Turks and Caicos Islands
+   */
+  TC,
+  /**
+   * French Southern Territories
+   */
+  TF,
+  /**
+   * Tokelau
+   */
+  TK,
+  /**
+   * Taiwan
+   */
+  TW,
+  /**
+   * U.S. Outlying Islands
+   */
+  UM,
+  /**
+   * British Virgin Islands
+   */
+  VG,
+  /**
+   * U.S. Virgin Islands
+   */
+  VI,
+  /**
+   * Wallis and Futuna
+   */
+  WF,
+  /**
+   * Mayotte
+   */
+  YT,
+  /**
+   * Northern Ireland (EN 16931 code list, VAT purposes)
+   */
+  XI;
 
   /**
    * Returns the country of an ISO 3166-1 alpha-2 code.

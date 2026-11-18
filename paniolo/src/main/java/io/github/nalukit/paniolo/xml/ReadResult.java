@@ -64,7 +64,8 @@ public record ReadResult(Invoice invoice, List<ReadWarning> warnings, StatedAmou
   }
 
   /**
-   * Whether the invoice reproduces the document without deviations or values not kept.
+   * Whether reading produced no warnings. This does not compare every field or the XML bytes;
+   * stated amount differences can still be listed in {@link #deviations()}.
    *
    * @return true if there are no warnings
    */

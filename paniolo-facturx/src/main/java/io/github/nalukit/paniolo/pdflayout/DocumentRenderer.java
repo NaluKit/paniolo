@@ -18,6 +18,7 @@
 package io.github.nalukit.paniolo.pdflayout;
 
 import io.github.nalukit.paniolo.config.PdfLayout;
+import io.github.nalukit.paniolo.config.PdfProfile;
 import io.github.nalukit.paniolo.model.common.AdditionalSupportingDocument;
 import io.github.nalukit.paniolo.model.common.Address;
 import io.github.nalukit.paniolo.model.common.ItemAttribute;
@@ -27,6 +28,16 @@ import io.github.nalukit.paniolo.pdflayout.Canvas.Cell;
 import io.github.nalukit.paniolo.pdflayout.Canvas.Font;
 import io.github.nalukit.paniolo.pdflayout.Canvas.Row;
 import io.github.nalukit.paniolo.pdflayout.Canvas.Style;
+import org.apache.fontbox.ttf.OS2WindowsMetricsTable;
+import org.apache.fontbox.ttf.TTFParser;
+import org.apache.fontbox.ttf.TrueTypeFont;
+import org.apache.pdfbox.io.RandomAccessReadBuffer;
+import org.apache.pdfbox.pdfwriter.compress.CompressParameters;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import javax.imageio.ImageIO;
+import org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -56,14 +67,28 @@ import static io.github.nalukit.paniolo.pdflayout.Canvas.PAGE;
  */
 abstract class DocumentRenderer {
   /**
-   * Liberation Sans (SIL Open Font License), packaged with PDFBox.
+   * IBM Plex Sans Regular (SIL Open Font License 1.1), packaged with this module.
    */
-  static final String DEFAULT_FONT = "/org/apache/pdfbox/resources/ttf/LiberationSans-Regular.ttf";
+  static final String DEFAULT_FONT      = "fonts/IBMPlexSans-Regular.ttf";
+  /**
+   * IBM Plex Sans Bold (SIL Open Font License 1.1), packaged with this module.
+   */
+  static final String DEFAULT_BOLD_FONT = "fonts/IBMPlexSans-Bold.ttf";
 
   static final int TEXT      = 0x1B1F24;
   static final int MUTED     = 0x5B6573;
   static final int LIGHT     = 0xD5DAE1;
   static final int WATERMARK = 0x8A94A3;
+  /**
+   * {@link #WATERMARK} at 35 % opacity on white: PDF/A-1 forbids transparency, so the watermark is
+   * drawn in this color below the content instead.
+   */
+  static final int WATERMARK_OPAQUE = 0xD6DADF;
+
+  /**
+   * Color of the fold and hole marks: a medium gray, visible but quiet.
+   */
+  static final int FOLD_MARK = 0x8A8F96;
 
   final PdfLayout layout;
   final Texts     t;
@@ -87,9 +112,41 @@ abstract class DocumentRenderer {
     this.accent = layout.accentColor();
   }
 
+  /**
+   * The default fonts, read once on first use.
+   */
+  private static final class DefaultFonts {
+    static final byte[] REGULAR = read(DEFAULT_FONT);
+    static final byte[] BOLD    = read(DEFAULT_BOLD_FONT);
+
+    private static byte[] read(String name) {
+      try (InputStream input = DocumentRenderer.class.getResourceAsStream(name)) {
+        if (input == null) {
+          throw new IllegalStateException("Font not found: " + name);
+        }
+        return input.readAllBytes();
+      } catch (IOException e) {
+        throw new UncheckedIOException("Cannot read the font " + name,
+                                       e);
+      }
+    }
+  }
+
   private static PDType0Font font(PDDocument document,
                                   byte[] data,
                                   String name) {
+    String restriction;
+    try (TrueTypeFont ttf = new TTFParser().parse(new RandomAccessReadBuffer(data))) {
+      restriction = embeddingRestriction(ttf.getOS2Windows());
+    } catch (IOException | RuntimeException e) {
+      throw new IllegalArgumentException("The " + name + " font of the layout is no readable TrueType font",
+                                         e);
+    }
+    if (restriction != null) {
+      throw new IllegalArgumentException("The " + name + " font of the layout " + restriction +
+                                         " (fsType of the OS/2 table); embedding it needs a font that " +
+                                         "allows this, check its license");
+    }
     try {
       return PDType0Font.load(document,
                               new ByteArrayInputStream(data));
@@ -97,6 +154,29 @@ abstract class DocumentRenderer {
       throw new IllegalArgumentException("The " + name + " font of the layout is no readable TrueType font",
                                          e);
     }
+  }
+
+  /**
+   * The embedding permissions of a font as PDFBox checks them: restricted license embedding and
+   * bitmap embedding only forbid embedding, no subsetting forbids the subsets the layout embeds.
+   *
+   * @return why the font cannot be embedded, or {@code null} if it can
+   */
+  static String embeddingRestriction(OS2WindowsMetricsTable os2) {
+    if (os2 == null) {
+      return null;
+    }
+    int fsType = os2.getFsType();
+    if ((fsType & 0x000F) == OS2WindowsMetricsTable.FSTYPE_RESTRICTED) {
+      return "does not permit embedding (restricted license embedding)";
+    }
+    if ((fsType & OS2WindowsMetricsTable.FSTYPE_BITMAP_ONLY) != 0) {
+      return "does not permit embedding (bitmap embedding only)";
+    }
+    if ((fsType & OS2WindowsMetricsTable.FSTYPE_NO_SUBSETTING) != 0) {
+      return "does not permit embedding as subset";
+    }
+    return null;
   }
 
   static boolean sameCountry(Address a,
@@ -147,6 +227,14 @@ abstract class DocumentRenderer {
   abstract String documentTitle();
 
   /**
+   * Heading on the first page. By default the document title; documents whose number appears in
+   * the fact block override it with the bare document type.
+   */
+  String headingTitle() {
+    return documentTitle();
+  }
+
+  /**
    * Label and value rows next to the window.
    */
   abstract List<String[]> facts();
@@ -186,8 +274,10 @@ abstract class DocumentRenderer {
       canvas.close();
       footers(document);
       watermarks(document);
+      foldMarks(document);
       Party recipient = recipient();
       PdfA.finish(document,
+                  layout.profile(),
                   documentTitle(),
                   sender() == null ?
                   null :
@@ -198,7 +288,13 @@ abstract class DocumentRenderer {
                    " – " + recipient.name()),
                   layout.locale());
       var out = new ByteArrayOutputStream(64 * 1024);
-      document.save(out);
+      if (layout.profile() == PdfProfile.PDF_A_1B) {
+        // PDF/A-1 knows neither object streams nor cross-reference streams.
+        document.save(out,
+                      CompressParameters.NO_COMPRESSION);
+      } else {
+        document.save(out);
+      }
       return out.toByteArray();
     } catch (IOException e) {
       throw new UncheckedIOException("Cannot render the document as PDF",
@@ -211,13 +307,10 @@ abstract class DocumentRenderer {
     PDType0Font regular;
     PDType0Font bold = null;
     if (layout.regularFont() == null) {
-      try (InputStream input = PDDocument.class.getResourceAsStream(DEFAULT_FONT)) {
-        if (input == null) {
-          throw new IllegalStateException("Font not found: " + DEFAULT_FONT);
-        }
-        regular = PDType0Font.load(document,
-                                   input);
-      }
+      regular = PDType0Font.load(document,
+                                 new ByteArrayInputStream(DefaultFonts.REGULAR));
+      bold    = PDType0Font.load(document,
+                                 new ByteArrayInputStream(DefaultFonts.BOLD));
     } else {
       regular = font(document,
                      layout.regularFont(),
@@ -284,6 +377,10 @@ abstract class DocumentRenderer {
         image = PDImageXObject.createFromByteArray(document,
                                                    layout.logo(),
                                                    "logo");
+        if (layout.profile() == PdfProfile.PDF_A_1B && image.getSoftMask() != null) {
+          image = opaque(document,
+                         layout.logo());
+        }
       } catch (IOException | RuntimeException e) {
         throw new IllegalArgumentException("The logo of the layout is no readable PNG or JPEG image",
                                            e);
@@ -454,7 +551,7 @@ abstract class DocumentRenderer {
   private void heading() {
     canvas.ensure(title.leading() + 8);
     canvas.space(title.leading());
-    canvas.text(documentTitle(),
+    canvas.text(headingTitle(),
                 title,
                 canvas.left,
                 canvas.y + title.descent());
@@ -975,6 +1072,72 @@ abstract class DocumentRenderer {
   }
 
   /**
+   * The logo on a white background: PDF/A-1 forbids the soft mask that carries PNG transparency.
+   */
+  private static PDImageXObject opaque(PDDocument document,
+                                       byte[] logo)
+      throws IOException {
+    BufferedImage source = ImageIO.read(new ByteArrayInputStream(logo));
+    if (source == null) {
+      throw new IOException("Unknown image format");
+    }
+    var flat = new BufferedImage(source.getWidth(),
+                                 source.getHeight(),
+                                 BufferedImage.TYPE_INT_RGB);
+    Graphics2D g = flat.createGraphics();
+    try {
+      g.setColor(Color.WHITE);
+      g.fillRect(0,
+                 0,
+                 flat.getWidth(),
+                 flat.getHeight());
+      g.drawImage(source,
+                  0,
+                  0,
+                  null);
+    } finally {
+      g.dispose();
+    }
+    return LosslessFactory.createFromImage(document,
+                                           flat);
+  }
+
+  /**
+   * Fold and hole marks of DIN 5008 form B at the left edge of page 1: folds 105 mm and 210 mm from
+   * the top, hole mark in the middle at 148.5 mm. Folded at the marks, the address lies in the
+   * window of a DL envelope. Only for documents with an address window.
+   */
+  private void foldMarks(PDDocument document)
+      throws IOException {
+    if (!layout.foldMarks() || !addressWindow()) {
+      return;
+    }
+    try (var stream = new PDPageContentStream(document,
+                                              canvas.pages()
+                                                    .get(0),
+                                              PDPageContentStream.AppendMode.APPEND,
+                                              true,
+                                              true)) {
+      stream.saveGraphicsState();
+      for (float fromTop : new float[] { 105 * MM, 210 * MM }) {
+        Canvas.rule(stream,
+                    0,
+                    5 * MM,
+                    PAGE.getHeight() - fromTop,
+                    0.5f,
+                    FOLD_MARK);
+      }
+      Canvas.rule(stream,
+                  0,
+                  8 * MM,
+                  PAGE.getHeight() - 148.5f * MM,
+                  0.5f,
+                  FOLD_MARK);
+      stream.restoreGraphicsState();
+    }
+  }
+
+  /**
    * The watermark of the layout across every page, along the diagonal from bottom left to top right,
    * as large as fits about two thirds of the diagonal, at most 110 pt; semi-transparent, so the
    * content below stays readable.
@@ -985,6 +1148,8 @@ abstract class DocumentRenderer {
     if (text == null) {
       return;
     }
+    // PDF/A-1 forbids transparency: opaque light text below the content instead.
+    boolean pdfA1 = layout.profile() == PdfProfile.PDF_A_1B;
     float diagonal = (float) Math.hypot(PAGE.getWidth(),
                                         PAGE.getHeight());
     // Filled only: a simulated bold outline would overlap the fill and darken the edges.
@@ -996,6 +1161,8 @@ abstract class DocumentRenderer {
                           Math.min(110f,
                                    diagonal * 0.65f / Math.max(width,
                                                                0.01f)),
+                          pdfA1 ?
+                          WATERMARK_OPAQUE :
                           WATERMARK);
     var transparent = new PDExtendedGraphicsState();
     transparent.setNonStrokingAlphaConstant(0.35f);
@@ -1003,11 +1170,15 @@ abstract class DocumentRenderer {
     for (PDPage page : canvas.pages()) {
       try (var stream = new PDPageContentStream(document,
                                                 page,
+                                                pdfA1 ?
+                                                PDPageContentStream.AppendMode.PREPEND :
                                                 PDPageContentStream.AppendMode.APPEND,
                                                 true,
                                                 true)) {
         stream.saveGraphicsState();
-        stream.setGraphicsStateParameters(transparent);
+        if (!pdfA1) {
+          stream.setGraphicsStateParameters(transparent);
+        }
         stream.transform(Matrix.getRotateInstance(Math.atan2(PAGE.getHeight(),
                                                              PAGE.getWidth()),
                                                   PAGE.getWidth() / 2,

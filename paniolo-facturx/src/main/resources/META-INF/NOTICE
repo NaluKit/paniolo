@@ -1,0 +1,23 @@
+Paniolo Factur-X
+Copyright 2026 Frank Hossfeld
+
+The Paniolo code in this artifact is licensed under the Apache License,
+Version 2.0.
+
+IBM Plex Sans
+=============
+
+The artifact redistributes, unmodified, the Regular and Bold faces of the
+font IBM Plex Sans, used as the default font of the rendered PDF documents:
+
+  IBM Plex
+  https://github.com/IBM/plex
+  Version 3.006, packages/plex-sans/fonts/complete/ttf
+  Files: io/github/nalukit/paniolo/pdflayout/fonts/IBMPlexSans-Regular.ttf
+           SHA-256 b47ebd72b5ce53b60f909033ff84d6fc12358cc147e2981f8c321ad3f36246b6
+         io/github/nalukit/paniolo/pdflayout/fonts/IBMPlexSans-Bold.ttf
+           SHA-256 22f59d358e8b9b9fb38ac6ee26a7ea7263ffa1c89a9056c101acff5add91f5d6
+
+  Copyright (c) 2017 IBM Corp. with Reserved Font Name "Plex"
+  Licensed under the SIL Open Font License, Version 1.1:
+  io/github/nalukit/paniolo/pdflayout/fonts/IBMPlexSans-LICENSE.txt
