@@ -2429,7 +2429,10 @@ public final class Paniolo
    * <p>The files are read into memory and counted by the bytes actually read, not by the sizes the
    * PDF declares. A PDF is rejected if it has more than 1,000 attachments, if one file exceeds
    * 100 MiB, or if the contents together exceed 256 MiB; the limits are inclusive. Every returned
-   * file counts, also if several attachments share one embedded stream.
+   * file counts, also if several attachments share one embedded stream. The limits apply while the
+   * content is decoded, filter stage by filter stage, so a small PDF cannot expand into memory first.
+   * Only the filters Flate, LZW, ASCII85, ASCIIHex, and RunLength are decoded; a file with another
+   * filter is refused.
    *
    * @param pdf the PDF document; must not be {@code null}
    * @return the attachments in document order; empty if there are none

@@ -15,6 +15,11 @@ reference in `docs/api/<version>.md`.
 
 ### Added
 
+- Document regressions for the line amount at the half cent (quantity 1, net price 1, price base
+  quantity 200.0000001, amount 0.00): `LineRoundingDocumentTest` (invoice in UBL and CII),
+  `OrderLineRoundingTest` (Order-X), and a test in `QuotationJsonTest` (quotation, its invoice, and
+  the JSON round trip) check the line amount and the document totals in the model, in the written
+  XML, and after reading back, against fixed values.
 - `CliProcessIT` starts the packaged `paniolo-cli-*-all.jar` with `java -jar` as a real process
   after `package`: version, exit codes 0, 1, 2, and 3, byte-exact `extract-xml` output with
   separate standard error, PDF/A conformance through the merged ServiceLoader entries, the limit
@@ -38,9 +43,16 @@ reference in `docs/api/<version>.md`.
 - `Paniolo.attachments(byte[])` and the CLI command `attachments` now limit the attachments of one
   PDF in total: at most 1,000 files and 256 MiB of content together, counted by the bytes actually
   read, in addition to the existing limit of 100 MiB per file. A PDF over a limit is rejected with
-  an `IllegalArgumentException` (exit code 3 in the CLI) before all contents are read into memory;
-  several file specifications that share one embedded stream each count in full. PDFs with more or
-  larger attachments, which were read before, are now rejected.
+  an `IllegalArgumentException` (exit code 3 in the CLI); several file specifications that share one
+  embedded stream each count in full. PDFs with more or larger attachments, which were read before,
+  are now rejected.
+- Embedded files and the XMP metadata of a PDF are decoded with the limit applied while decoding,
+  filter stage by filter stage, so a small PDF with a highly compressed stream can no longer expand
+  into the heap before the limit is checked (the decoding of PDFBox expanded the whole stream first;
+  a PDF of 1 MiB with 1 GiB of content ended in an `OutOfMemoryError`). Only the filters Flate, LZW,
+  ASCII85, ASCIIHex, and RunLength are decoded; a file with another filter is refused. A filter that
+  is listed twice is applied once, as PDFBox does. XMP metadata over 20 MiB counts as missing.
+  PDFBox itself still expands object streams while a PDF is loaded; that is not limited here.
 
 ## [1.0.0] - 2026-11-18
 

@@ -20,6 +20,12 @@ package io.github.nalukit.paniolo.cli;
 import io.github.nalukit.paniolo.Paniolo;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.cos.COSName;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDDocumentNameDictionary;
+import org.apache.pdfbox.pdmodel.PDEmbeddedFilesNameTreeNode;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.common.filespecification.PDComplexFileSpecification;
+import org.apache.pdfbox.pdmodel.common.filespecification.PDEmbeddedFile;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -127,6 +133,16 @@ class CliProcessIT {
   private static Run runWith(byte[] stdin,
                          ProcessBuilder.Redirect stdout,
                          String... args) throws IOException {
+    return runWith(List.of(),
+                   stdin,
+                   stdout,
+                   args);
+  }
+
+  private static Run runWith(List<String> jvmOptions,
+                         byte[] stdin,
+                         ProcessBuilder.Redirect stdout,
+                         String... args) throws IOException {
     Path in  = Files.createTempFile(temp,
                                     "stdin",
                                     ".bin");
@@ -145,6 +161,7 @@ class CliProcessIT {
                         "bin",
                         "java")
                     .toString());
+    command.addAll(jvmOptions);
     command.add("-jar");
     command.add(jar.toString());
     command.addAll(List.of(args));
@@ -419,6 +436,99 @@ class CliProcessIT {
     assertTrue(run.err()
                   .contains("more than 1000 attachments"),
                run.err());
+  }
+
+  /**
+   * A small PDF (about 1 MiB) with one embedded file that inflates to 1 GiB of zeros.
+   */
+  private static Path highlyCompressed(String name) throws IOException {
+    Path target = file("compressed-" + name + ".pdf");
+    try (var document = new PDDocument()) {
+      document.addPage(new PDPage());
+      InputStream zeros = new InputStream() {
+        private long left = 1L << 30;
+
+        @Override
+        public int read() {
+          return left-- > 0 ?
+                 0 :
+                 -1;
+        }
+
+        @Override
+        public int read(byte[] b,
+                        int off,
+                        int len) {
+          if (left <= 0) {
+            return -1;
+          }
+          int n = (int) Math.min(len,
+                                 left);
+          java.util.Arrays.fill(b,
+                                off,
+                                off + n,
+                                (byte) 0);
+          left -= n;
+          return n;
+        }
+      };
+      var embedded = new PDEmbeddedFile(document,
+                                        zeros,
+                                        COSName.FLATE_DECODE);
+      embedded.setSubtype("application/octet-stream");
+      var spec = new PDComplexFileSpecification();
+      spec.setFile(name);
+      spec.setFileUnicode(name);
+      spec.setEmbeddedFile(embedded);
+      var tree = new PDEmbeddedFilesNameTreeNode();
+      tree.setNames(java.util.Map.of(name,
+                                     spec));
+      var names = new PDDocumentNameDictionary(document.getDocumentCatalog());
+      names.setEmbeddedFiles(tree);
+      document.getDocumentCatalog()
+              .setNames(names);
+      document.save(target.toFile());
+    }
+    assertTrue(Files.size(target) < 4 << 20);
+    return target;
+  }
+
+  @Test
+  void aHighlyCompressedFileIsRefusedWithinAHeapThatCannotHoldItsContent() throws IOException {
+    // The expanded content (1 GiB) is far above the heap of the process; the limit stops the decoder
+    // before that, so the process ends regularly with exit code 3 and no OutOfMemoryError.
+    var heap = List.of("-Xmx300m");
+
+    var attachment = runWith(heap,
+                             null,
+                             null,
+                             "attachments",
+                             highlyCompressed("big.bin").toString());
+    assertEquals(3,
+                 attachment.exitCode(),
+                 attachment.err());
+    assertEquals(0,
+                 attachment.out().length);
+    assertTrue(attachment.err()
+                         .contains("exceeds"),
+               attachment.err());
+    assertFalse(attachment.err()
+                          .contains("OutOfMemory"),
+                attachment.err());
+
+    var xml = runWith(heap,
+                      null,
+                      null,
+                      "extract-xml",
+                      highlyCompressed("factur-x.xml").toString());
+    assertEquals(3,
+                 xml.exitCode(),
+                 xml.err());
+    assertEquals(0,
+                 xml.out().length);
+    assertFalse(xml.err()
+                   .contains("OutOfMemory"),
+                xml.err());
   }
 
   @Test

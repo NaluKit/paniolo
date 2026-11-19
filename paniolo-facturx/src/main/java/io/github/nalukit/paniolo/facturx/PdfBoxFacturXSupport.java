@@ -30,6 +30,8 @@ import org.apache.pdfbox.cos.COSArray;
 import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSName;
+import org.apache.pdfbox.cos.COSStream;
+import org.apache.pdfbox.filter.FilterFactory;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDDocumentCatalog;
 import org.apache.pdfbox.pdmodel.PDDocumentNameDictionary;
@@ -49,6 +51,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -448,13 +451,151 @@ public final class PdfBoxFacturXSupport
     if (embedded == null) {
       throw new IllegalArgumentException("Embedded file " + fileName(file) + " has no content");
     }
-    try (InputStream input = embedded.createInputStream()) {
-      byte[] content = input.readNBytes(limit + 1);
-      if (content.length > limit) {
-        throw new IllegalArgumentException(tooLarge);
-      }
-      return content;
+    return decode(embedded.getCOSObject(),
+                  limit,
+                  tooLarge);
+  }
+
+  /**
+   * Filters that are decoded with a limit: they write to an output stream that this class bounds.
+   * Images and similar filters (DCT, JPX, CCITT, JBIG2) and the Crypt filter do not occur in embedded
+   * files and are refused.
+   */
+  private static final java.util.Set<String> DECODABLE_FILTERS = java.util.Set.of("FlateDecode",
+                                                                                  "Fl",
+                                                                                  "LZWDecode",
+                                                                                  "LZW",
+                                                                                  "ASCII85Decode",
+                                                                                  "A85",
+                                                                                  "ASCIIHexDecode",
+                                                                                  "AHx",
+                                                                                  "RunLengthDecode",
+                                                                                  "RL");
+
+  /**
+   * Thrown by {@link BoundedOutput} when a decoder produces more than the limit; unchecked, so that no
+   * decoder can hold it back like an I/O error.
+   */
+  private static final class LimitExceeded extends RuntimeException {
+    LimitExceeded() {
+      super(null,
+            null,
+            false,
+            false);
     }
+  }
+
+  /**
+   * Output of a decoder that holds at most {@code limit} bytes. The decoder stops with
+   * {@link LimitExceeded} at the first byte beyond the limit, so no more than the limit is ever
+   * allocated; the buffer grows by doubling up to the limit.
+   */
+  private static final class BoundedOutput extends OutputStream {
+    private final int limit;
+    private byte[]    buffer = new byte[0];
+    private int       count;
+
+    BoundedOutput(int limit) {
+      this.limit = limit;
+    }
+
+    @Override
+    public void write(int b) {
+      ensure(1);
+      buffer[count++] = (byte) b;
+    }
+
+    @Override
+    public void write(byte[] b,
+                      int off,
+                      int len) {
+      ensure(len);
+      System.arraycopy(b,
+                       off,
+                       buffer,
+                       count,
+                       len);
+      count += len;
+    }
+
+    private void ensure(int more) {
+      if (more > limit - count) {
+        throw new LimitExceeded();
+      }
+      int needed = count + more;
+      if (needed > buffer.length) {
+        buffer = java.util.Arrays.copyOf(buffer,
+                                         (int) Math.min(limit,
+                                                        Math.max(needed,
+                                                                 Math.max(8192,
+                                                                          2L * buffer.length))));
+      }
+    }
+
+    byte[] toByteArray() {
+      return java.util.Arrays.copyOf(buffer,
+                                     count);
+    }
+  }
+
+  /**
+   * The content of a stream with its filters decoded, at most {@code limit} bytes. Every filter stage
+   * is decoded into a bounded buffer and stops at the first byte beyond the limit, so an intermediate
+   * result is limited like the final one. The decoding of PDFBox itself
+   * ({@code COSStream.createInputStream()}) is not used: it expands the whole stream into the heap
+   * before the caller can count. The raw stream is as large as the PDF.
+   *
+   * @throws IllegalArgumentException with {@code tooLarge} if a stage produces more than the limit, or
+   *                                  if the stream uses a filter that is not decoded
+   */
+  private static byte[] decode(COSStream stream,
+                               int limit,
+                               String tooLarge)
+      throws IOException {
+    List<COSName> names = new java.util.ArrayList<>();
+    COSBase declared = stream.getFilters();
+    if (declared instanceof COSName name) {
+      names.add(name);
+    } else if (declared instanceof COSArray array) {
+      for (int i = 0; i < array.size(); i++) {
+        if (array.getObject(i) instanceof COSName name) {
+          names.add(name);
+        } else {
+          throw new IllegalArgumentException("A stream has an invalid filter entry");
+        }
+      }
+    }
+    // Like PDFBox, a filter that is listed more than once is applied once (some producers write
+    // /Filter [/FlateDecode /FlateDecode] for data that is encoded once); an abbreviation counts as
+    // the same filter.
+    var filters = new java.util.LinkedHashSet<org.apache.pdfbox.filter.Filter>();
+    for (COSName name : names) {
+      if (!DECODABLE_FILTERS.contains(name.getName())) {
+        throw new IllegalArgumentException("The stream filter " + name.getName() + " is not supported for embedded files");
+      }
+      filters.add(FilterFactory.INSTANCE.getFilter(name));
+    }
+    byte[] data;
+    try (InputStream raw = stream.createRawInputStream()) {
+      data = raw.readAllBytes();
+    }
+    if (filters.isEmpty() && data.length > limit) {
+      throw new IllegalArgumentException(tooLarge);
+    }
+    try {
+      int index = 0;
+      for (var filter : filters) {
+        var out = new BoundedOutput(limit);
+        filter.decode(new ByteArrayInputStream(data),
+                      out,
+                      stream,
+                      index++);
+        data = out.toByteArray();
+      }
+    } catch (LimitExceeded e) {
+      throw new IllegalArgumentException(tooLarge);
+    }
+    return data;
   }
 
   private static PDEmbeddedFile embeddedFile(PDComplexFileSpecification file) {
@@ -467,9 +608,12 @@ public final class PdfBoxFacturXSupport
     if (metadata == null) {
       return null;
     }
-    try (InputStream input = metadata.createInputStream()) {
-      return XmlDocuments.parse(input);
-    } catch (IOException | SAXException e) {
+    try {
+      // Metadata of more than an invoice XML is no XMP; it counts as missing.
+      return XmlDocuments.parse(new ByteArrayInputStream(decode(metadata.getCOSObject(),
+                                                                MAX_XML,
+                                                                "XMP metadata exceeds " + MAX_XML + " bytes")));
+    } catch (IOException | SAXException | IllegalArgumentException e) {
       LOGGER.log(System.Logger.Level.DEBUG,
                  "Cannot parse XMP metadata",
                  e);
@@ -1311,9 +1455,10 @@ public final class PdfBoxFacturXSupport
   }
 
   /**
-   * Reads the attachments within a budget. Every attachment is read with the remaining budget as its
-   * limit, so reading stops as soon as the sum would be exceeded and no content beyond the budget is
-   * materialized.
+   * Reads the attachments within a budget. Every attachment is decoded with the remaining budget as
+   * its limit, filter stage by filter stage, and decoding stops at the first byte beyond it. No
+   * decoder produces more than the budget, so a small PDF cannot expand into the heap before the
+   * check; at most the budget plus the buffer of one stage is held for the attachment.
    *
    * @throws IllegalArgumentException if there are more than {@code maxCount} attachments, an
    *                                  attachment exceeds {@link #MAX_FILE}, or the contents together
@@ -1396,7 +1541,9 @@ public final class PdfBoxFacturXSupport
         if (embedded == null) {
           continue;
         }
-        try (InputStream input = embedded.createInputStream()) {
+        try (InputStream input = new ByteArrayInputStream(decode(embedded.getCOSObject(),
+                                                                 MAX_XML,
+                                                                 "Embedded invoice exceeds " + MAX_XML + " bytes"))) {
           T answer = probe.apply(input);
           if (answer != null) {
             return answer;
