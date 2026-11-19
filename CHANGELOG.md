@@ -6,6 +6,42 @@ reference in `docs/api/<version>.md`.
 
 ## [Unreleased]
 
+### Fixed
+
+- The CLI reported success when standard output could not be written, for example after a closed
+  pipe, because a print stream keeps a failed write instead of throwing it. A failed write or flush
+  of standard output now ends with exit code 3 and a message on standard error, also where the
+  command would have returned 0 or 1.
+
+### Added
+
+- `CliProcessIT` starts the packaged `paniolo-cli-*-all.jar` with `java -jar` as a real process
+  after `package`: version, exit codes 0, 1, 2, and 3, byte-exact `extract-xml` output with
+  separate standard error, PDF/A conformance through the merged ServiceLoader entries, the limit
+  of attachments, and a failed write to standard output. The child process has only the JAR on its
+  class path and a time budget of 60 seconds.
+
+### Changed
+
+- The net amount of an invoice, order, or quotation line is rounded to cents once. It was divided
+  to ten decimals first and rounded again, which could move an amount by one cent near a half cent,
+  for example quantity 1, net price 1, and price base quantity 200.0000001 (now 0.00, was 0.01).
+  Amounts and totals of such edge cases can change by one cent. The check of a stated line amount
+  against quantity x price is unchanged. New: `ModelChecks.lineNetAmount` and
+  `LineAdjustment.netEffect`.
+- The PDF reader of the visualizer limits the bytes that Flate streams inflate to: 64 MiB per
+  stream and 256 MiB per document, counted over all streams and all stages of a filter chain and
+  checked while inflating. A PDF over a limit ends with the new error code `pdfTooLarge` (message in
+  German, English and French); it is no longer read in part, and a skipped object stream or embedded
+  file no longer hides it. The limits are the exported object `pdfLimits` of the module and can be
+  changed before a document is loaded.
+- `Paniolo.attachments(byte[])` and the CLI command `attachments` now limit the attachments of one
+  PDF in total: at most 1,000 files and 256 MiB of content together, counted by the bytes actually
+  read, in addition to the existing limit of 100 MiB per file. A PDF over a limit is rejected with
+  an `IllegalArgumentException` (exit code 3 in the CLI) before all contents are read into memory;
+  several file specifications that share one embedded stream each count in full. PDFs with more or
+  larger attachments, which were read before, are now rejected.
+
 ## [1.0.0] - 2026-11-18
 
 First stable release. See the [API reference for 1.0.0](docs/api/1.0.0.md).

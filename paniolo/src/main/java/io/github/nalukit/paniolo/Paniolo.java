@@ -2426,9 +2426,15 @@ public final class Paniolo
    * {@link io.github.nalukit.paniolo.config.AfRelationship relationship} and description as stated in
    * the PDF.
    *
+   * <p>The files are read into memory and counted by the bytes actually read, not by the sizes the
+   * PDF declares. A PDF is rejected if it has more than 1,000 attachments, if one file exceeds
+   * 100 MiB, or if the contents together exceed 256 MiB; the limits are inclusive. Every returned
+   * file counts, also if several attachments share one embedded stream.
+   *
    * @param pdf the PDF document; must not be {@code null}
    * @return the attachments in document order; empty if there are none
-   * @throws IllegalArgumentException if the content is not a readable PDF
+   * @throws IllegalArgumentException if the content is not a readable PDF, or if the PDF exceeds
+   *                                  the limits above
    * @throws IllegalStateException    if {@code paniolo-facturx} is missing
    */
   public List<PdfAttachment> attachments(byte[] pdf) {

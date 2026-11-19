@@ -29,7 +29,6 @@ import io.github.nalukit.paniolo.model.extended.ProductCharacteristic;
 import io.github.nalukit.paniolo.model.extended.ProductInstance;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -187,18 +186,12 @@ public record OrderLine(String id, String name, BigDecimal quantity, BigDecimal 
    */
   public BigDecimal netAmount() {
     // A response states the amount of the agreed quantity.
-    BigDecimal amount = (agreedQuantity == null ?
-                         quantity :
-                         agreedQuantity).multiply(netUnitPrice)
-                                        .divide(priceBaseQuantity,
-                                                10,
-                                                RoundingMode.HALF_UP);
-    for (LineAdjustment adjustment : adjustments) {
-      amount = adjustment.charge() ?
-               amount.add(adjustment.amount()) :
-               amount.subtract(adjustment.amount());
-    }
-    return ModelChecks.money(amount);
+    return ModelChecks.lineNetAmount(agreedQuantity == null ?
+                                     quantity :
+                                     agreedQuantity,
+                                     netUnitPrice,
+                                     priceBaseQuantity,
+                                     LineAdjustment.netEffect(adjustments));
   }
 
   /**

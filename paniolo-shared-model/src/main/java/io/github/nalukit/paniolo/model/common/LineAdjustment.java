@@ -62,6 +62,22 @@ public record LineAdjustment(boolean charge, BigDecimal amount, BigDecimal baseA
   }
 
   /**
+   * The effect of line adjustments on the line net amount: the charges minus the allowances.
+   *
+   * @param adjustments the adjustments of a line; must not be null
+   * @return charges minus allowances; zero for an empty list
+   */
+  public static BigDecimal netEffect(java.util.List<LineAdjustment> adjustments) {
+    BigDecimal total = BigDecimal.ZERO;
+    for (LineAdjustment adjustment : adjustments) {
+      total = adjustment.charge() ?
+              total.add(adjustment.amount()) :
+              total.subtract(adjustment.amount());
+    }
+    return total;
+  }
+
+  /**
    * Starts an invoice line allowance (BG-27).
    *
    * @return a new builder for an allowance

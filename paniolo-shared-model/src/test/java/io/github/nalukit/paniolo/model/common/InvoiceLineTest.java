@@ -41,6 +41,76 @@ class InvoiceLineTest {
                       .tax(VAT);
   }
 
+  private static InvoiceLine priced(String quantity,
+                                    String baseQuantity) {
+    return line().quantity(new BigDecimal(quantity))
+                 .netUnitPrice(BigDecimal.ONE)
+                 .priceBaseQuantity(new BigDecimal(baseQuantity))
+                 .build();
+  }
+
+  @Test
+  void theNetAmountIsRoundedOnceAtTheHalfCent() {
+    // exactly 0.004999999997500000001249..: below the half cent, although a first rounding to ten
+    // decimals would give 0.0050000000
+    assertEquals(new BigDecimal("0.00"),
+                 priced("1",
+                        "200.0000001").netAmount());
+    assertEquals(new BigDecimal("0.01"),
+                 priced("1",
+                        "200").netAmount());
+    assertEquals(new BigDecimal("0.01"),
+                 priced("1",
+                        "199.9999999").netAmount());
+    assertEquals(new BigDecimal("0.00"),
+                 priced("-1",
+                        "200.0000001").netAmount());
+    assertEquals(new BigDecimal("-0.01"),
+                 priced("-1",
+                        "200").netAmount());
+    assertEquals(new BigDecimal("-0.01"),
+                 priced("-1",
+                        "199.9999999").netAmount());
+  }
+
+  @Test
+  void adjustmentsAreAddedBeforeTheOnlyRounding() {
+    var charge = LineAdjustment.createCharge()
+                               .amount(new BigDecimal("0.01"))
+                               .reason("Verpackung")
+                               .build();
+    var allowance = LineAdjustment.createAllowance()
+                                  .amount(new BigDecimal("0.01"))
+                                  .reason("Rabatt")
+                                  .build();
+    var base = priced("1",
+                      "200.0000001");
+    assertEquals(new BigDecimal("0.01"),
+                 base.toBuilder()
+                     .addAdjustment(charge)
+                     .build()
+                     .netAmount());
+    assertEquals(new BigDecimal("-0.01"),
+                 base.toBuilder()
+                     .addAdjustment(allowance)
+                     .build()
+                     .netAmount());
+  }
+
+  @Test
+  void aStatedAmountKeepsItsToleranceCheck() {
+    var base = priced("3",
+                      "1");
+    assertEquals(new BigDecimal("3.00"),
+                 base.withNetAmount(new BigDecimal("3.00"))
+                     .netAmount());
+    assertEquals(new BigDecimal("3.01"),
+                 base.withNetAmount(new BigDecimal("3.01"))
+                     .netAmount());
+    assertThrows(IllegalArgumentException.class,
+                 () -> base.withNetAmount(new BigDecimal("4")));
+  }
+
   @Test
   void netAmountIncludesLineAllowancesAndCharges() {
     var built = line().addAdjustment(LineAdjustment.createAllowance()

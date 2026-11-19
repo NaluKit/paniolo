@@ -211,10 +211,10 @@ public record InvoiceLine(String id, String name, BigDecimal quantity, UnitCode 
                        statedNetAmount :
                        netUnitPrice == null || quantity == null ?
                        sum :
-                       ModelChecks.money(exactNetAmount(quantity,
-                                                        netUnitPrice,
-                                                        priceBaseQuantity,
-                                                        adjustments));
+                       ModelChecks.lineNetAmount(quantity,
+                                                 netUnitPrice,
+                                                 priceBaseQuantity,
+                                                 LineAdjustment.netEffect(adjustments));
       if (net.compareTo(sum) != 0) {
         throw new IllegalArgumentException("Line " + id + ": net amount " + net.toPlainString() + " differs from the sum of its sub-lines " + sum.toPlainString() + " (BR-DEX-02)");
       }
@@ -316,6 +316,10 @@ public record InvoiceLine(String id, String name, BigDecimal quantity, UnitCode 
                            BigDecimal::add);
   }
 
+  /**
+   * The net amount before any rounding to cents, to compare a stated amount with. The amount of the
+   * line itself is {@link ModelChecks#lineNetAmount}, which rounds once.
+   */
   private static BigDecimal exactNetAmount(BigDecimal quantity,
                                            BigDecimal netUnitPrice,
                                            BigDecimal priceBaseQuantity,
@@ -347,10 +351,10 @@ public record InvoiceLine(String id, String name, BigDecimal quantity, UnitCode 
       // without quantity takes the amount of its sub-lines.
       return subLineTotal(subLines);
     }
-    return ModelChecks.money(exactNetAmount(quantity,
-                                            netUnitPrice,
-                                            priceBaseQuantity,
-                                            adjustments));
+    return ModelChecks.lineNetAmount(quantity,
+                                     netUnitPrice,
+                                     priceBaseQuantity,
+                                     LineAdjustment.netEffect(adjustments));
   }
 
   /**

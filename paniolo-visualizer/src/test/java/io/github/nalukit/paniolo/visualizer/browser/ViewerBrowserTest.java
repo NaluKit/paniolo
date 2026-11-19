@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
                          import java.nio.file.Files;
 import java.util.regex.Matcher;
+import java.util.zip.Deflater;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -140,6 +141,9 @@ class ViewerBrowserTest {
                              type = "application/xml";
                            } else if (path.startsWith("/pdf/")) {
                              body = pdfVariant(path.substring(5));
+                             type = "application/pdf";
+                           } else if (path.startsWith("/budget/")) {
+                             body = budgetPdf(path.substring(8));
                              type = "application/pdf";
                            } else if (path.startsWith("/enc/")) {
                              body = encoded(path.substring(5));
@@ -541,6 +545,73 @@ class ViewerBrowserTest {
                                                       "<udt:Indicator>" + value + "</udt:Indicator>");
   }
 
+  private static byte[] zlib(byte[] input) {
+    var deflater = new Deflater(Deflater.BEST_COMPRESSION);
+    deflater.setInput(input);
+    deflater.finish();
+    var out    = new java.io.ByteArrayOutputStream();
+    var buffer = new byte[8192];
+    while (!deflater.finished()) {
+      out.write(buffer,
+                0,
+                deflater.deflate(buffer));
+    }
+    deflater.end();
+    return out.toByteArray();
+  }
+
+  /**
+   * A small PDF whose Flate streams inflate to a given size. Kinds: {@code single/N} one embedded file of
+   * N bytes; {@code multi/N/K} K embedded files of N bytes each; {@code objstm/N} an object stream of N
+   * bytes; {@code chain/N} an embedded file with two Flate filters whose first stage inflates to N bytes
+   * (trailing bytes after the inner zlib stream) and whose final result is tiny.
+   */
+  private static byte[] budgetPdf(String kind) {
+    String[] part = kind.split("/");
+    int      size = Integer.parseInt(part[1]);
+    var      out  = new java.io.ByteArrayOutputStream();
+    var      text = (java.util.function.Consumer<String>) value -> out.writeBytes(value.getBytes(StandardCharsets.ISO_8859_1));
+    text.accept("%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\n");
+    int count = switch (part[0]) {
+      case "multi" -> Integer.parseInt(part[2]);
+      case "single", "objstm", "chain" -> 1;
+      default -> -1;
+    };
+    if (count < 0) {
+      return null;
+    }
+    for (int i = 0; i < count; i++) {
+      byte[] data;
+      String dictionary;
+      switch (part[0]) {
+        case "objstm" -> {
+          data       = zlib(new byte[size]);
+          dictionary = "/Type /ObjStm /N 1 /First 4 /Filter /FlateDecode";
+        }
+        case "chain" -> {
+          byte[] inner = zlib("tiny".getBytes(StandardCharsets.ISO_8859_1));
+          byte[] wide  = new byte[size];
+          System.arraycopy(inner,
+                           0,
+                           wide,
+                           0,
+                           inner.length);
+          data       = zlib(wide);
+          dictionary = "/Type /EmbeddedFile /Filter [/FlateDecode /FlateDecode]";
+        }
+        default -> {
+          data       = zlib(new byte[size]);
+          dictionary = "/Type /EmbeddedFile /Filter /FlateDecode";
+        }
+      }
+      text.accept((i + 2) + " 0 obj\n<< " + dictionary + " /Length " + data.length + " >>\nstream\n");
+      out.writeBytes(data);
+      text.accept("\nendstream\nendobj\n");
+    }
+    text.accept("trailer\n<< /Root 1 0 R >>\n%%EOF\n");
+    return out.toByteArray();
+  }
+
   private static byte[] bad(String kind) {
     return switch (kind) {
       case "empty" -> new byte[0];
@@ -908,6 +979,108 @@ class ViewerBrowserTest {
     assertEquals("error:pdf",
                  page.evaluate("url => window.loadUrl(url)",
                                base + "/enc/pdf-no-end"));
+  }
+
+  private void limits(long stream,
+                      long document) {
+    page.evaluate("""
+                  async ([stream, document]) => {
+                    const m = await import('/paniolo-visualizer.js');
+                    m.pdfLimits.streamBytes = stream;
+                    m.pdfLimits.documentBytes = document;
+                  }
+                  """,
+                  List.of((double) stream,
+                          (double) document));
+  }
+
+  private Object loadBudget(String kind) {
+    return page.evaluate("url => window.loadUrl(url)",
+                         base + "/budget/" + kind);
+  }
+
+  @Test
+  void aStreamIsInflatedUpToTheStreamLimitAndNoFurther() {
+    limits(1000,
+           1_000_000);
+    // inflated without error; the PDF has no invoice, so it ends in pdfNoXml
+    assertEquals("error:pdfNoXml",
+                 loadBudget("single/999"));
+    assertEquals("error:pdfNoXml",
+                 loadBudget("single/1000"));
+    assertEquals("error:pdfTooLarge",
+                 loadBudget("single/1001"));
+    assertEquals("error:pdfTooLarge",
+                 loadBudget("single/5000000"));
+    assertNoProblems();
+  }
+
+  @Test
+  void severalStreamsShareTheDocumentLimit() {
+    limits(1000,
+           2500);
+    assertEquals("error:pdfNoXml",
+                 loadBudget("multi/500/5"));
+    assertEquals("error:pdfTooLarge",
+                 loadBudget("multi/501/5"));
+    assertEquals("error:pdfTooLarge",
+                 loadBudget("multi/1000/3"));
+    assertNoProblems();
+  }
+
+  @Test
+  void anOversizedIntermediateStageOfAFilterChainIsStopped() {
+    limits(1000,
+           1_000_000);
+    // the final result is tiny, but the first stage inflates to more than the limit
+    assertEquals("error:pdfNoXml",
+                 loadBudget("chain/900"));
+    assertEquals("error:pdfTooLarge",
+                 loadBudget("chain/1001"));
+    // the stages together count against the document limit
+    limits(1_000_000,
+           1500);
+    assertEquals("error:pdfTooLarge",
+                 loadBudget("chain/1499"));
+    assertNoProblems();
+  }
+
+  @Test
+  void objectStreamsRespectTheLimitsAndAreNotSkippedSilently() {
+    limits(1000,
+           1_000_000);
+    assertEquals("error:pdfNoXml",
+                 loadBudget("objstm/1000"));
+    assertEquals("error:pdfTooLarge",
+                 loadBudget("objstm/1001"));
+    assertNoProblems();
+  }
+
+  @Test
+  void theDefaultLimitsStopAStreamThatInflatesFarBeyondThem() {
+    // 80 MiB of zeros are a stream of about 80 KiB, above the default of 64 MiB for one stream
+    assertEquals("error:pdfTooLarge",
+                 loadBudget("single/" + 80 * 1024 * 1024));
+    assertNoProblems();
+  }
+
+  @Test
+  void aRejectedPdfShowsTheErrorAndTheViewerLoadsTheNextDocument() {
+    limits(1000,
+           1_000_000);
+    assertEquals("error:pdfTooLarge",
+                 loadBudget("single/5000"));
+    assertTrue(viewerText().contains("zu große komprimierte Daten"),
+               viewerText());
+    assertEquals(Boolean.TRUE,
+                 page.evaluate("() => window.events.includes('error:pdfTooLarge')"));
+    limits(64L * 1024 * 1024,
+           256L * 1024 * 1024);
+    assertEquals("ok",
+                 page.evaluate("url => window.loadUrl(url)",
+                               base + "/samples/invoice-facturx.pdf"));
+    assertFalse(viewerText().contains("zu große komprimierte Daten"));
+    assertNoProblems();
   }
 
   @Test

@@ -96,6 +96,16 @@ public final class PdfBoxFacturXSupport
    */
   private static final int           MAX_FILE      = 100 * 1024 * 1024;
   /**
+   * Most attachments {@link #attachments(byte[])} returns for one PDF; more are rejected.
+   */
+  static final int                   MAX_ATTACHMENTS      = 1_000;
+  /**
+   * Most content bytes {@link #attachments(byte[])} returns for one PDF, summed over all
+   * attachments; the limit is inclusive and counts every returned copy, also of attachments that
+   * share one embedded stream.
+   */
+  static final long                  MAX_ATTACHMENT_BYTES = 256L * 1024 * 1024;
+  /**
    * File names of embedded invoices, including ZUGFeRD 1.0.
    */
   private static final List<String>  INVOICE_NAMES = List.of("factur-x.xml",
@@ -425,6 +435,15 @@ public final class PdfBoxFacturXSupport
   private static byte[] read(PDComplexFileSpecification file,
                              int limit)
       throws IOException {
+    return read(file,
+                limit,
+                "Embedded file " + fileName(file) + " exceeds " + limit + " bytes");
+  }
+
+  private static byte[] read(PDComplexFileSpecification file,
+                             int limit,
+                             String tooLarge)
+      throws IOException {
     PDEmbeddedFile embedded = embeddedFile(file);
     if (embedded == null) {
       throw new IllegalArgumentException("Embedded file " + fileName(file) + " has no content");
@@ -432,7 +451,7 @@ public final class PdfBoxFacturXSupport
     try (InputStream input = embedded.createInputStream()) {
       byte[] content = input.readNBytes(limit + 1);
       if (content.length > limit) {
-        throw new IllegalArgumentException("Embedded file " + fileName(file) + " exceeds " + limit + " bytes");
+        throw new IllegalArgumentException(tooLarge);
       }
       return content;
     }
@@ -1286,10 +1305,28 @@ public final class PdfBoxFacturXSupport
 
   @Override
   public List<PdfAttachment> attachments(byte[] pdf) {
+    return attachments(pdf,
+                       MAX_ATTACHMENTS,
+                       MAX_ATTACHMENT_BYTES);
+  }
+
+  /**
+   * Reads the attachments within a budget. Every attachment is read with the remaining budget as its
+   * limit, so reading stops as soon as the sum would be exceeded and no content beyond the budget is
+   * materialized.
+   *
+   * @throws IllegalArgumentException if there are more than {@code maxCount} attachments, an
+   *                                  attachment exceeds {@link #MAX_FILE}, or the contents together
+   *                                  exceed {@code maxBytes}
+   */
+  List<PdfAttachment> attachments(byte[] pdf,
+                                  int maxCount,
+                                  long maxBytes) {
     Objects.requireNonNull(pdf,
                            "pdf");
     try (PDDocument document = load(pdf)) {
-      var result = new java.util.ArrayList<PdfAttachment>();
+      var  result    = new java.util.ArrayList<PdfAttachment>();
+      long remaining = maxBytes;
       for (var entry : allFiles(document.getDocumentCatalog()).entrySet()) {
         // Files of other producers may use paths, other cases, or no valid MIME type.
         String name = entry.getKey()
@@ -1298,14 +1335,24 @@ public final class PdfBoxFacturXSupport
         if (name.isBlank() || PdfAttachment.INVOICE_FILE_NAMES.contains(name.toLowerCase(java.util.Locale.ROOT))) {
           continue;
         }
+        if (result.size() >= maxCount) {
+          throw new IllegalArgumentException("The PDF has more than " + maxCount + " attachments");
+        }
         var file     = entry.getValue();
         var embedded = embeddedFile(file);
         String mimeType = PdfAttachment.normalizeMimeType(embedded == null ?
                                                           null :
                                                           embedded.getSubtype());
+        int    limit   = (int) Math.min(MAX_FILE,
+                                        remaining);
+        byte[] content = read(file,
+                              limit,
+                              limit < MAX_FILE ?
+                              "The attachments of the PDF exceed " + maxBytes + " bytes together" :
+                              "Embedded file " + fileName(file) + " exceeds " + MAX_FILE + " bytes");
+        remaining -= content.length;
         result.add(new PdfAttachment(name,
-                                     read(file,
-                                          MAX_FILE),
+                                     content,
                                      mimeType,
                                      AfRelationship.ofPdfName(file.getCOSObject()
                                                                   .getNameAsString(RELATIONSHIP)),

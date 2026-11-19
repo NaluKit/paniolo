@@ -147,6 +147,11 @@ public final class PanioloCli {
 
   /**
    * Runs one command and returns its exit code; the streams are not closed.
+   *
+   * <p>A {@link PrintStream} keeps a failed write instead of throwing it. If standard output could not
+   * be written or flushed, for example after a closed pipe, the result is exit code 3 whatever the
+   * command returned, and the error is reported on standard error. A stream that is already in the
+   * error state when it is passed counts as failed.
    */
   static int execute(InputStream in,
                      PrintStream out,
@@ -156,11 +161,13 @@ public final class PanioloCli {
                              out,
                              err);
     var commandLine = new CommandLine(cli);
+    var outWriter   = new PrintWriter(out,
+                                      true);
+    var errWriter = new PrintWriter(err,
+                                    true);
     commandLine.setCaseInsensitiveEnumValuesAllowed(true)
-               .setOut(new PrintWriter(out,
-                                       true))
-               .setErr(new PrintWriter(err,
-                                       true))
+               .setOut(outWriter)
+               .setErr(errWriter)
                .setExecutionStrategy(parseResult -> {
                  cli.configureLogging();
                  return new CommandLine.RunLast().execute(parseResult);
@@ -174,7 +181,14 @@ public final class PanioloCli {
                  return EXIT_ERROR;
                });
     int exitCode = commandLine.execute(args);
+    outWriter.flush();
     out.flush();
+    if (out.checkError()) {
+      // The result did not reach the caller, so a success or a finding must not be reported.
+      err.println("paniolo: cannot write to standard output");
+      err.flush();
+      return EXIT_ERROR;
+    }
     return exitCode;
   }
 
@@ -359,7 +373,8 @@ public final class PanioloCli {
            description = { "Lists the files embedded in a PDF apart from the invoice XML: name, MIME type, relationship, size.",
                            "With --extract, the files are written to a directory; a fifth column then names the file written.",
                            "Attachments with the same file name get a numeric suffix. Existing files and symbolic links are never touched; " +
-                           "the command fails before writing anything unless --overwrite replaces existing regular files." })
+                           "the command fails before writing anything unless --overwrite replaces existing regular files.",
+                           "A PDF with more than 1000 attachments, a file over 100 MiB, or more than 256 MiB of content in total is rejected (exit code 3)." })
   int attachments(
       @Option(names = { "-x",
                         "--extract" }, paramLabel = "DIR", description = "Directory to write the attachments to.") Path directory,
