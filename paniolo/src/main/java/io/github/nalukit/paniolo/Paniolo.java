@@ -2432,7 +2432,8 @@ public final class Paniolo
    * file counts, also if several attachments share one embedded stream. The limits apply while the
    * content is decoded, filter stage by filter stage, so a small PDF cannot expand into memory first.
    * Only the filters Flate, LZW, ASCII85, ASCIIHex, and RunLength are decoded; a file with another
-   * filter is refused.
+   * filter is refused. A predictor (TIFF 2, PNG 10 to 15) is accepted with rows of up to 8 MiB that
+   * also fit in the limit; invalid or larger predictor parameters are refused.
    *
    * @param pdf the PDF document; must not be {@code null}
    * @return the attachments in document order; empty if there are none

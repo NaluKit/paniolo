@@ -53,6 +53,14 @@ reference in `docs/api/<version>.md`.
   ASCII85, ASCIIHex, and RunLength are decoded; a file with another filter is refused. A filter that
   is listed twice is applied once, as PDFBox does. XMP metadata over 20 MiB counts as missing.
   PDFBox itself still expands object streams while a PDF is loaded; that is not limited here.
+- The predictor of an embedded file (`/DecodeParms` with `Predictor`) is checked before decoding:
+  PDFBox allocates two buffers of one row (`Columns` x `Colors` x `BitsPerComponent`) before it
+  writes a byte, so a small PDF with `Columns` 2000000000 ended in an `OutOfMemoryError` although
+  the output was limited. Accepted are the predictors 2 and 10 to 15, `Columns` of 1 or more,
+  `Colors` of 1 to 32, `BitsPerComponent` of 1, 2, 4, 8, or 16, and a row of up to 8 MiB that also
+  fits in the limit of the stage; the row length is calculated without integer overflow. Other
+  values are refused; a predictor of 1 or less is ignored as in PDFBox. The parameters are taken
+  per stage like PDFBox does (including a filter listed twice) and passed to the decoder as checked.
 
 ## [1.0.0] - 2026-11-18
 

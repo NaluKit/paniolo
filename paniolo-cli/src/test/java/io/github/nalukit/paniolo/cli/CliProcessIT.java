@@ -531,6 +531,89 @@ class CliProcessIT {
                 xml.err());
   }
 
+  /**
+   * A tiny PDF whose embedded file declares a predictor with rows of 250 MB: PDFBox would allocate two
+   * buffers of that size before it writes a byte.
+   */
+  private static Path predictorRows(String name) throws IOException {
+    Path target = file("predictor-" + name + ".pdf");
+    try (var document = new PDDocument()) {
+      document.addPage(new PDPage());
+      var embedded = new PDEmbeddedFile(document,
+                                        new java.io.ByteArrayInputStream(new byte[10]),
+                                        COSName.FLATE_DECODE);
+      var parameters = new org.apache.pdfbox.cos.COSDictionary();
+      parameters.setInt(COSName.PREDICTOR,
+                        12);
+      parameters.setInt(COSName.COLUMNS,
+                        2_000_000_000);
+      parameters.setInt(COSName.COLORS,
+                        1);
+      parameters.setInt(COSName.BITS_PER_COMPONENT,
+                        1);
+      embedded.getCOSObject()
+              .setItem(COSName.DECODE_PARMS,
+                       parameters);
+      embedded.setSubtype("application/octet-stream");
+      var spec = new PDComplexFileSpecification();
+      spec.setFile(name);
+      spec.setFileUnicode(name);
+      spec.setEmbeddedFile(embedded);
+      var tree = new PDEmbeddedFilesNameTreeNode();
+      tree.setNames(java.util.Map.of(name,
+                                     spec));
+      var names = new PDDocumentNameDictionary(document.getDocumentCatalog());
+      names.setEmbeddedFiles(tree);
+      document.getDocumentCatalog()
+              .setNames(names);
+      document.save(target.toFile());
+    }
+    return target;
+  }
+
+  @Test
+  void aHugePredictorRowIsRefusedWithinAHeapThatCannotHoldIt() throws IOException {
+    // Two rows of 250 MB are far above the heap of the process; the parameters are checked before
+    // PDFBox allocates them, so the process ends regularly with exit code 3 and no OutOfMemoryError.
+    var heap = List.of("-Xmx300m");
+
+    for (var command : List.of(List.of("attachments",
+                                       predictorRows("big.bin").toString()),
+                               List.of("extract-xml",
+                                       predictorRows("factur-x.xml").toString()))) {
+      var run = runWith(heap,
+                        null,
+                        null,
+                        command.toArray(String[]::new));
+      assertEquals(3,
+                   run.exitCode(),
+                   command + ": " + run.err());
+      assertEquals(0,
+                   run.out().length);
+      assertTrue(run.err()
+                    .startsWith("paniolo: "),
+                 run.err());
+      assertFalse(run.err()
+                     .contains("OutOfMemory"),
+                  run.err());
+    }
+
+    // a normal job right after, in the same kind of process
+    Files.write(file("hybrid.pdf"),
+                hybrid);
+    var next = runWith(heap,
+                       null,
+                       null,
+                       "extract-xml",
+                       file("hybrid.pdf").toString());
+    assertEquals(0,
+                 next.exitCode(),
+                 next.err());
+    assertArrayEquals(Paniolo.create()
+                             .extractXml(hybrid),
+                      next.out());
+  }
+
   @Test
   void aFailedWriteToStandardOutputHasExitCodeThree() throws IOException {
     // /dev/full accepts the open and fails every write (Linux)

@@ -539,14 +539,88 @@ public final class PdfBoxFacturXSupport
   }
 
   /**
+   * Largest row of a predictor that is accepted: PDFBox allocates two buffers of one row each when
+   * the predictor starts, before it writes a byte to the bounded output, so the row has to be
+   * limited beforehand. Rows of embedded files are small; 8 MiB is far above any usual one. The
+   * buffers of a stage together are at most twice this size.
+   */
+  static final int MAX_PREDICTOR_ROW = 8 * 1024 * 1024;
+
+  /**
+   * The decode parameters of the filter at {@code index}, chosen like PDFBox does
+   * ({@code Filter.getDecodeParams}), as they are used by the decoder of that stage.
+   */
+  private static COSDictionary parametersOf(COSStream stream,
+                                            int index) {
+    COSBase filter     = stream.getDictionaryObject(COSName.F,
+                                                    COSName.FILTER);
+    COSBase parameters = stream.getDictionaryObject(COSName.DP,
+                                                    COSName.DECODE_PARMS);
+    if (filter instanceof COSName && parameters instanceof COSDictionary dictionary) {
+      return dictionary;
+    }
+    if (filter instanceof COSArray && parameters instanceof COSArray array && index < array.size() && array.getObject(index) instanceof COSDictionary dictionary) {
+      return dictionary;
+    }
+    return new COSDictionary();
+  }
+
+  /**
+   * The decode parameters of a stage after the check of the predictor. A predictor (Flate and LZW)
+   * works row by row and allocates two buffers of one row before it writes anything, with the row
+   * length from {@code Columns}, {@code Colors}, and {@code BitsPerComponent} of the document. The
+   * values are checked with the same defaults as in PDFBox, and the row length is calculated without
+   * overflow: it has to fit in the limit of the stage and in {@link #MAX_PREDICTOR_ROW}.
+   *
+   * @throws IllegalArgumentException with {@code tooLarge} if the row exceeds the limit, or with a
+   *                                  message if a value is not valid or not supported
+   */
+  private static COSDictionary checkedParameters(COSStream stream,
+                                                 int index,
+                                                 int limit,
+                                                 String tooLarge) {
+    COSDictionary parameters = parametersOf(stream,
+                                            index);
+    int predictor = parameters.getInt(COSName.PREDICTOR);
+    if (predictor <= 1) {
+      return parameters;
+    }
+    if (predictor != 2 && (predictor < 10 || predictor > 15)) {
+      throw new IllegalArgumentException("The predictor " + predictor + " of a stream is not supported (2 and 10 to 15 are)");
+    }
+    int colors  = Math.min(parameters.getInt(COSName.COLORS,
+                                             1),
+                           32);
+    int bits    = parameters.getInt(COSName.BITS_PER_COMPONENT,
+                                    8);
+    int columns = parameters.getInt(COSName.COLUMNS,
+                                    1);
+    if (colors < 1 || columns < 1 || bits != 1 && bits != 2 && bits != 4 && bits != 8 && bits != 16) {
+      throw new IllegalArgumentException("The predictor of a stream has invalid parameters: Colors " + colors + ", BitsPerComponent " + bits + ", Columns " + columns);
+    }
+    long row = ((long) columns * colors * bits + 7) / 8;
+    if (row > Math.min(limit,
+                       MAX_PREDICTOR_ROW)) {
+      throw new IllegalArgumentException(row > limit ?
+                                         tooLarge :
+                                         "A predictor row of a stream has " + row + " bytes, more than " + MAX_PREDICTOR_ROW);
+    }
+    return parameters;
+  }
+
+  /**
    * The content of a stream with its filters decoded, at most {@code limit} bytes. Every filter stage
    * is decoded into a bounded buffer and stops at the first byte beyond the limit, so an intermediate
    * result is limited like the final one. The decoding of PDFBox itself
    * ({@code COSStream.createInputStream()}) is not used: it expands the whole stream into the heap
    * before the caller can count. The raw stream is as large as the PDF.
    *
+   * <p>A predictor allocates its row buffers before the first byte; its parameters are checked first,
+   * see {@link #checkedParameters}.
+   *
    * @throws IllegalArgumentException with {@code tooLarge} if a stage produces more than the limit, or
-   *                                  if the stream uses a filter that is not decoded
+   *                                  if the stream uses a filter that is not decoded or a predictor
+   *                                  that is not valid or too large
    */
   private static byte[] decode(COSStream stream,
                                int limit,
@@ -568,12 +642,13 @@ public final class PdfBoxFacturXSupport
     // Like PDFBox, a filter that is listed more than once is applied once (some producers write
     // /Filter [/FlateDecode /FlateDecode] for data that is encoded once); an abbreviation counts as
     // the same filter.
-    var filters = new java.util.LinkedHashSet<org.apache.pdfbox.filter.Filter>();
+    var filters = new java.util.LinkedHashMap<org.apache.pdfbox.filter.Filter, COSName>();
     for (COSName name : names) {
       if (!DECODABLE_FILTERS.contains(name.getName())) {
         throw new IllegalArgumentException("The stream filter " + name.getName() + " is not supported for embedded files");
       }
-      filters.add(FilterFactory.INSTANCE.getFilter(name));
+      filters.putIfAbsent(FilterFactory.INSTANCE.getFilter(name),
+                          name);
     }
     byte[] data;
     try (InputStream raw = stream.createRawInputStream()) {
@@ -584,12 +659,22 @@ public final class PdfBoxFacturXSupport
     }
     try {
       int index = 0;
-      for (var filter : filters) {
+      for (var entry : filters.entrySet()) {
+        // The decoder gets a dictionary of its own with exactly the parameters that were checked.
+        var stage = new COSDictionary();
+        stage.setItem(COSName.FILTER,
+                      entry.getValue());
+        stage.setItem(COSName.DECODE_PARMS,
+                      checkedParameters(stream,
+                                        index++,
+                                        limit,
+                                        tooLarge));
         var out = new BoundedOutput(limit);
-        filter.decode(new ByteArrayInputStream(data),
-                      out,
-                      stream,
-                      index++);
+        entry.getKey()
+             .decode(new ByteArrayInputStream(data),
+                     out,
+                     stage,
+                     0);
         data = out.toByteArray();
       }
     } catch (LimitExceeded e) {
@@ -1458,7 +1543,9 @@ public final class PdfBoxFacturXSupport
    * Reads the attachments within a budget. Every attachment is decoded with the remaining budget as
    * its limit, filter stage by filter stage, and decoding stops at the first byte beyond it. No
    * decoder produces more than the budget, so a small PDF cannot expand into the heap before the
-   * check; at most the budget plus the buffer of one stage is held for the attachment.
+   * check. A predictor allocates two row buffers before it writes a byte; its parameters are checked
+   * first, and a row has to fit in the limit and in {@link #MAX_PREDICTOR_ROW}. At most the budget
+   * plus the buffer of one stage and, with a predictor, two rows are held for the attachment.
    *
    * @throws IllegalArgumentException if there are more than {@code maxCount} attachments, an
    *                                  attachment exceeds {@link #MAX_FILE}, or the contents together
