@@ -72,4 +72,40 @@ public record ReadResult(Invoice invoice, List<ReadWarning> warnings, StatedAmou
   public boolean isExact() {
     return warnings.isEmpty();
   }
+
+  /**
+   * Requires that the invoice carries every amount as the document states it, for a caller that
+   * writes the invoice again and must not change a stated amount without noticing: a read in
+   * {@link ReadMode#LENIENT} can recalculate a net price or keep calculated totals, and an
+   * invoice written from it then states other amounts than the document.
+   *
+   * @return this result
+   * @throws IllegalArgumentException if a stated amount differs from the invoice; the message lists
+   *                                  the business terms with the stated and the calculated amount
+   */
+  public ReadResult requireNoDeviations() {
+    if (deviations.isEmpty()) {
+      return this;
+    }
+    var message = new StringBuilder("The invoice states other amounts than the document:");
+    for (AmountDeviation deviation : deviations) {
+      message.append(' ')
+             .append(deviation.businessTerm());
+      if (deviation.lineId() != null) {
+        message.append(" (line ")
+               .append(deviation.lineId())
+               .append(')');
+      }
+      message.append(": stated ")
+             .append(deviation.stated()
+                              .toPlainString())
+             .append(", invoice ")
+             .append(deviation.calculated() == null ?
+                     "none" :
+                     deviation.calculated()
+                              .toPlainString())
+             .append(';');
+    }
+    throw new IllegalArgumentException(message.toString());
+  }
 }

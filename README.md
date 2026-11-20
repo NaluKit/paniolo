@@ -169,9 +169,13 @@ Not included:
   CreditNote (KoSIT defines them for UBL Invoice only), and payment penalty terms in the XRechnung text form (`#VERZUG#`).
 - Exact reading of deviating amounts: by default, line net amounts must follow quantity x net
   price plus line charges minus line allowances, up to the rounding of the net price (as Peppol
-  rule PEPPOL-EN16931-R120 requires). `ReadMode.LENIENT` reads such documents, for example a
-  line amount that is a gross price including insurance tax, by recalculating the net price,
-  and reports the deviation; see [reading an invoice](#reading-an-invoice).
+  rule PEPPOL-EN16931-R120 requires); the rounding is half a unit of the last decimal that the price
+  states, at least half a cent, so a price with four decimals explains less than one in cents. A
+  difference that the rounding explains is kept and listed as BT-131 in `ReadResult.deviations()`.
+  `ReadMode.LENIENT` reads such documents, for example a line amount that is a gross price
+  including insurance tax, by recalculating the net price, and reports the deviation;
+  `ReadMode.LENIENT_KEEP_LINES` reads like `LENIENT` but rejects a line instead of changing its
+  price or quantity; see [reading an invoice](#reading-an-invoice).
 - XRechnung 1.0 and 1.1, for which no release is packaged. Their identifiers produce
   `XR-SPECIFICATION-UNSUPPORTED`; the configured rules still run and report their findings.
   A custom KoSIT bundle can supply additional identifiers through its `scenarios.xml`.
@@ -866,7 +870,9 @@ other producers or a line amount that is not quantity x net price, that would ot
 silently. A stated VAT amount of a category (BT-117) that differs only by the rounding of its lines,
 allowances, and charges (0.01 each, as BR-FXEXT-S-09 allows) is no such difference: the readers
 keep it as `Invoice.vatAmounts()`, so the invoice states the same VAT and amount due, and a
-normalized export writes them again. Run [validation](#validating-xml) first for documents from external sources; the readers check structure, not business rules.
+normalized export writes them again. Paniolo does not round such an amount again: 710.79 x 19 %
+is 135.0501, a document that states 135.04 keeps 135.04 in every read mode, without warning, and
+two cents are no rounding. Run [validation](#validating-xml) first for documents from external sources; the readers check structure, not business rules.
 
 Empty optional elements, such as a seller written as `<ram:SellerTradeParty><ram:ID/>...`, an empty
 `ram:GlobalID`, `cbc:EndpointID`, or `cac:PartyIdentification/cbc:ID`, count as absent in both read
@@ -900,6 +906,7 @@ result.warnings().forEach(w -> log(w.code(), w.lineId(), w.message()));
 | `READ-GROSS-PRICE`    | UBL: a price discount (BT-147) without gross price (BT-148)                                                                                                                     | The gross price is derived as net price plus discount; the original document keeps its form, a normalized export states the derived gross price                            |
 | `READ-LINE-QUANTITY`  | The stated line net amount has the opposite sign of quantity x net price outside the profiles that allow a negative net price                                                   | The quantity (BT-129) takes the sign of the amount, the price stays; `result.deviations()` lists BT-129 and BT-131                                                         |
 | `READ-TAX-RATE`       | A VAT category without a rate other than zero (Z, E, AE, K, G) states another rate or none, e.g. an exempt VAT breakdown with 19 % and VAT amount zero                         | Rate zero is kept; strict reading rejects the document with the location                                                                                                  |
+| `READ-ALLOWANCE-CHARGE-TOTAL` | A total of allowances (BT-107) or charges (BT-108) that the listed document allowances and charges do not explain, e.g. the total alone of a ZUGFeRD 1.0 BASIC invoice | No allowance or charge is invented (amount, sign and reason would be guesses); the totals of the invoice differ from the document and `result.deviations()` lists BT-107 or BT-108 with the other totals that follow. Given in strict reading as well, which rejects the document by its VAT total |
 | `READ-PERIOD`         | An invoicing period (BG-14, BG-26) with a date that is no calendar date, e.g. `20139102`, or an end before its start                                                           | The period is dropped; strict reading rejects the document with the location                                                                                             |
 
 Four warnings report values the model does not keep or interpret, or takes from somewhere else,
@@ -923,6 +930,24 @@ reading. `result.stated()` keeps the original amounts and `result.deviations()` 
 differences, including totals that strict reading does not compare. Lines with quantity zero,
 a negative recalculated price outside EXTENDED (BR-27) that a negated quantity does not explain, and structural errors, are still rejected. `ReadMode.STRICT` is
 the default of all methods without a mode.
+
+### Writing after a lenient read
+
+A lenient read can change what an invoice states: a recalculated net price, a negated quantity, or
+totals the model could not keep. Four things follow from that:
+
+- The change is never marked in the written XML; it is in the result. Every case is reported as
+  `ReadWarning` and as `AmountDeviation` (BT-146, BT-129, BT-107, BT-109, ...), and the CLI prints
+  both to standard error.
+- `ReadMode.LENIENT_KEEP_LINES` (CLI `read --keep-line-values`) never changes the price or quantity
+  of a line: it rejects such a line instead.
+- `result.requireNoDeviations()` (CLI `read --fail-on-deviation`) refuses any result whose invoice
+  states other amounts than the document, for a caller that writes the invoice again.
+- The CLI commands that write a document (`to-xml`, `to-facturx`) read their input strictly and
+  reject a document with deviating amounts; they do not convert it with other amounts. Converting
+  such a document takes two steps and is a conscious choice: `paniolo read --lenient FILE -o
+  invoice.json`, then `paniolo to-xml invoice.json --syntax CII`. The original document stays
+  available unchanged in the Java facade (`importInvoice`, `export(ORIGINAL)`).
 
 ### Writing a read invoice in another syntax
 

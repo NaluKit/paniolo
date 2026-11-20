@@ -1133,9 +1133,12 @@ public final class Paniolo
    *       recalculated from its stated net amount and the calculated totals are kept. Every deviation
    *       is reported as a {@link io.github.nalukit.paniolo.xml.ReadWarning}. Structural errors are
    *       still rejected.</li>
+   *   <li>{@link ReadMode#LENIENT_KEEP_LINES} &ndash; like {@code LENIENT}, but a line whose stated
+   *       net amount would need another net price or quantity is rejected, so that no unit price of
+   *       the document is changed.</li>
    * </ul>
    *
-   * <p>In both modes, {@link ReadResult#warnings()} also reports values the model does not keep or
+   * <p>In every mode, {@link ReadResult#warnings()} also reports values the model does not keep or
    * interpret, without changing any amount:
    * {@link io.github.nalukit.paniolo.xml.ReadWarning#CASH_DISCOUNT} for a payment terms line that
    * looks like a cash discount but is kept as text,

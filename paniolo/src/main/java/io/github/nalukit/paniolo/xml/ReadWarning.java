@@ -131,6 +131,14 @@ public record ReadWarning(String code, String lineId, String message) {
    * net price explains it; the original document keeps its form. The message names both quantities.
    */
   public static final String LINE_QUANTITY  = "READ-LINE-QUANTITY";
+  /**
+   * The document states a total of allowances (BT-107) or charges (BT-108) that the allowances and
+   * charges the document lists do not explain, for example the total alone of a ZUGFeRD 1.0 BASIC
+   * invoice, which has no allowance or charge elements. The model has no allowance or charge to hold
+   * it and does not invent one with an amount, sign and reason of its own, so the totals of the model
+   * (and of an invoice written from it) differ from the stated ones: the message names both values.
+   */
+  public static final String ALLOWANCE_CHARGE_TOTAL = "READ-ALLOWANCE-CHARGE-TOTAL";
 
   /**
    * Creates the warning.

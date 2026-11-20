@@ -54,7 +54,7 @@ GitHub token with the `read:packages` scope in a `<server>` entry with the id of
 | `validate FILE\|DIR... [--syntax TYPE \| --profile PROFILE] [-r] [--include GLOB] [--exclude GLOB] [--summary] [--expect valid\|invalid] [--expectations FILE]` | `validate(bytes)`, `validate(bytes, type)`, `validate(bytes, facturXProfile)`              |
 | `inventory FILE\|DIR... [-r] [--include GLOB] [--exclude GLOB] [--validate] [--summary-only] [-f text\|json]`                                                    | `detect`, `extractXml(pdf)`, `attachments(pdf)`, `producer(pdf)`; with `--validate` the validation methods |
 | `detect FILE`                                                                                                                                                   | `detect(bytes)`, `Paniolo.isPdf(bytes)`                                                    |
-| `read FILE [--lenient]`                                                                                                                                         | `read(bytes, ReadMode)`, written as JSON                                                   |
+| `read FILE [--lenient] [--keep-line-values] [--fail-on-deviation]`                                                                                              | `read(bytes, ReadMode)`, written as JSON                                                   |
 | `to-xml FILE --syntax UBL\|CII`                                                                                                                                 | `toBytes(invoice, syntax)`                                                                 |
 | `to-facturx FILE --pdf PDF --profile PROFILE [--attach FILE]...`                                                                                                | `toFacturX(invoice, pdfA, profile, attachments)`                                           |
 | `to-facturx FILE --profile PROFILE [layout options]`                                                                                                            | `toFacturX(invoice, profile, layout, attachments)`: renders the page                       |
@@ -86,7 +86,11 @@ case-insensitive (`--profile en16931`).
 
 - **Input**: the commands that write a document (`to-xml`, `to-facturx`, `order to-xml`, ...)
   accept the [Paniolo JSON](../paniolo-json/README.md) of the model or any document the facade can
-  read. `to-xml` converts between UBL and CII through the model. `read` followed by `to-xml`
+  read; the input is read strictly, so a document with deviating amounts is rejected instead of being
+  written with other amounts. To convert such a document on purpose, run `read --lenient FILE -o
+  invoice.json` (warnings and deviations go to standard error; `--keep-line-values` rejects a
+  changed price or quantity, `--fail-on-deviation` any other amount than the document states) and
+  `to-xml` on the JSON. `to-xml` converts between UBL and CII through the model. `read` followed by `to-xml`
   writes the loaded model again; unsupported input fields and original XML formatting are not
   preserved. For `to-facturx`, the invoice's specification identifier (BT-24) must match
   `--profile`; choosing a profile does not rewrite the identifier. The Java facade's `importInvoice` / `export` methods are not exposed as CLI commands.

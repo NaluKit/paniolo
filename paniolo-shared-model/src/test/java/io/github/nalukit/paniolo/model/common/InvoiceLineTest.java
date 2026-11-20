@@ -98,6 +98,54 @@ class InvoiceLineTest {
   }
 
   @Test
+  void theToleranceFollowsTheDecimalsOfTheNetPrice() {
+    // A price stated with two decimals is rounded to cents: 20 x 2.77 may be off by 20 half cents.
+    var cents = line().quantity(new BigDecimal("20"))
+                      .netUnitPrice(new BigDecimal("2.77"))
+                      .build();
+    assertEquals(new BigDecimal("55.46"),
+                 cents.withNetAmount(new BigDecimal("55.46"))
+                      .netAmount());
+    // The same price stated with four decimals is not rounded to cents: 55.46 is not explained.
+    var precise = line().quantity(new BigDecimal("20"))
+                        .netUnitPrice(new BigDecimal("2.7700"))
+                        .build();
+    assertEquals(new BigDecimal("55.40"),
+                 precise.withNetAmount(new BigDecimal("55.40"))
+                        .netAmount());
+    assertThrows(IllegalArgumentException.class,
+                 () -> precise.withNetAmount(new BigDecimal("55.46")));
+    // A large quantity keeps a rounding of the price at the last decimal: 804878.94 x 0.01146 = 9223.9..
+    var large = line().quantity(new BigDecimal("804878.94"))
+                      .netUnitPrice(new BigDecimal("0.01146"))
+                      .build();
+    assertEquals(new BigDecimal("9223.92"),
+                 large.withNetAmount(new BigDecimal("9223.92"))
+                      .netAmount());
+    assertThrows(IllegalArgumentException.class,
+                 () -> large.withNetAmount(new BigDecimal("9229.00")));
+  }
+
+  @Test
+  void theCalculatedAmountIgnoresTheStatedAmount() {
+    var base = priced("3",
+                      "1");
+    assertEquals(new BigDecimal("3.00"),
+                 base.withNetAmount(new BigDecimal("3.01"))
+                     .calculatedNetAmount());
+    var subtotal = line().quantity(null)
+                         .unitCode((UnitCode) null)
+                         .netUnitPrice(null)
+                         .tax(null)
+                         .extended(LineExtension.create()
+                                                .subtype(LineSubtype.GROUP)
+                                                .build())
+                         .netAmount(new BigDecimal("1000"))
+                         .build();
+    assertNull(subtotal.calculatedNetAmount());
+  }
+
+  @Test
   void aStatedAmountKeepsItsToleranceCheck() {
     var base = priced("3",
                       "1");

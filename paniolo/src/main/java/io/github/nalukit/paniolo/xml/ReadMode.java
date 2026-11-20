@@ -40,5 +40,13 @@ public enum ReadMode {
    * a line is recalculated from its stated net amount, and the totals of the model are kept when the
    * stated totals differ. Structural errors are still rejected.
    */
-  LENIENT
+  LENIENT,
+  /**
+   * Reads like {@link #LENIENT}, but never changes the net price (BT-146) or the quantity (BT-129)
+   * of a line: a line whose stated net amount is not quantity x net price, beyond the rounding of
+   * the net price, is rejected with an {@link IllegalArgumentException}, as in {@link #STRICT}.
+   * Every other deviation (totals, categories, texts) is accepted and reported as in
+   * {@link #LENIENT}. Use it when the written invoice must carry the unit prices of the document.
+   */
+  LENIENT_KEEP_LINES
 }

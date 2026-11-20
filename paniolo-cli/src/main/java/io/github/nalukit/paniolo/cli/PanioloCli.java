@@ -31,6 +31,7 @@ import io.github.nalukit.paniolo.validation.ValidationMessage;
 import io.github.nalukit.paniolo.validation.ValidationProfile;
 import io.github.nalukit.paniolo.validation.ValidationResult;
 import io.github.nalukit.paniolo.visualizer.PanioloVisualizer;
+import io.github.nalukit.paniolo.xml.AmountDeviation;
 import io.github.nalukit.paniolo.xml.ReadMode;
 import io.github.nalukit.paniolo.xml.ReadResult;
 import io.github.nalukit.paniolo.xml.ReadWarning;
@@ -240,13 +241,17 @@ public final class PanioloCli {
 
   @Command(name = "read",
            description = { "Reads an invoice from UBL, CII, ZUGFeRD 1.0, or a Factur-X / ZUGFeRD PDF and writes it as JSON.",
-                           "Deviations accepted with --lenient are printed to standard error." })
+                           "Warnings and deviations accepted with --lenient are printed to standard error; --fail-on-deviation refuses a result whose amounts differ from the document." })
   int read(
       @Option(names = "--lenient", description = "Accept line amounts and totals the model does not reproduce (ReadMode.LENIENT).") boolean lenient,
+      @Option(names = "--keep-line-values", description = "Like --lenient, but reject a line whose net price or quantity would have to change to fit its stated amount (ReadMode.LENIENT_KEEP_LINES).") boolean keepLineValues,
+      @Option(names = "--fail-on-deviation", description = "Exit with code 1 and write no JSON if the invoice states other amounts than the document, e.g. a recalculated net price or totals the model could not keep.") boolean failOnDeviation,
       @Option(names = { "-o",
                         "--output" }, paramLabel = "FILE", description = "JSON file; standard output if not given.") Path output,
       @Parameters(paramLabel = "FILE", description = "Invoice XML or PDF; - for standard input.") Path file) {
     ReadResult result = paniolo().read(io.read(file),
+                                       keepLineValues ?
+                                       ReadMode.LENIENT_KEEP_LINES :
                                        lenient ?
                                        ReadMode.LENIENT :
                                        ReadMode.STRICT);
@@ -258,6 +263,26 @@ public final class PanioloCli {
                    " (line " + warning.lineId() + ")") +
                   ": " +
                   warning.message());
+    }
+    for (AmountDeviation deviation : result.deviations()) {
+      err.println("deviation " +
+                  deviation.businessTerm() +
+                  (deviation.lineId() == null ?
+                   "" :
+                   " (line " + deviation.lineId() + ")") +
+                  ": document states " +
+                  deviation.stated()
+                           .toPlainString() +
+                  ", invoice has " +
+                  (deviation.calculated() == null ?
+                   "none" :
+                   deviation.calculated()
+                            .toPlainString()));
+    }
+    if (failOnDeviation && !result.deviations()
+                                  .isEmpty()) {
+      err.println("The invoice states other amounts than the document; nothing was written (--fail-on-deviation).");
+      return EXIT_INVALID;
     }
     io.write(output,
              json.toPrettyJson(result.invoice()));

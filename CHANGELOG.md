@@ -8,6 +8,19 @@ reference in `docs/api/<version>.md`.
 
 ### Fixed
 
+- A stated line amount (BT-131) was accepted if it differed from quantity x net price by no more
+  than half a cent per unit of quantity, whatever the decimals of the price. A price stated with
+  four or five decimals is not rounded to cents, so a document could carry a line amount that no
+  rounding of the price explains (for example 20 x 2.7700 stated as 55.46, or a difference of more
+  than 4,000 for a quantity of 800,000 at a price of 0.01146) without any message. The tolerance now
+  is half a unit of the last stated decimal of the price (at least half a cent) per unit of
+  quantity, plus half a cent for the amount. A price in cents explains as much as before; a more
+  precise price explains less, and the strict mode rejects the line, while the lenient mode
+  recalculates the net price and reports `READ-LINE-NET-PRICE` as for every other deviating line.
+- A stated line amount that the rounding of the price explains, but that differs from quantity x
+  net price, is now listed in `ReadResult.deviations()` as BT-131 with the line, the stated amount
+  and the calculated amount. Before, such a line was accepted without a trace. The amount and the
+  price of the line stay as stated; `isExact()` is unchanged (no warning).
 - The CII and ZUGFeRD 1.0 readers dropped the scheme of a payee identifier (BT-60-1) and of the
   deliver-to location identifier (BT-71-1) written as `ram:ID schemeID="…"`. The scheme is now
   kept. The scheme `SEPA`, which the model reserves for the creditor identifier, is still not
@@ -38,6 +51,29 @@ reference in `docs/api/<version>.md`.
 
 ### Added
 
+- Regression tests (`VatRoundingTest`) for a stated VAT amount that is one cent off the VAT
+  calculated once per category on a single line, in both directions (710.79 x 19 % stated as 135.04,
+  3986.34 x 19 % stated as 757.41, both from public corpus documents): the amount is kept in every
+  read mode without warning or deviation, the original and the normalized export state it, the
+  validation of every profile accepts it; two cents are rejected in strict reading. The behaviour
+  was already so; the tests and the README now state it.
+- ZUGFeRD 1.0 BASIC: a total of allowances (BT-107) without any allowance element, for example in
+  a correction invoice, made the model state other totals than the document (a tax basis of -7.90
+  instead of -7.67), and only the VAT total was reported. Paniolo does not invent an allowance for
+  it, because amount, sign and reason would be guesses. The new warning `READ-ALLOWANCE-CHARGE-TOTAL`
+  now names the stated and the listed total of allowances (BT-107) or charges (BT-108), in both
+  read modes. `ReadResult.requireNoDeviations()` and the CLI option `read --fail-on-deviation`
+  refuse a result whose invoice states other amounts than the document; `read` now also prints the
+  deviations (`deviation BT-107: document states -0.23, invoice has 0.00`) next to the warnings.
+- Documented: the CLI commands that write a document read their input strictly; converting a
+  document with deviating amounts takes `read --lenient` and `to-xml` on the JSON, see the README
+  section "Writing after a lenient read".
+- `ReadMode.LENIENT_KEEP_LINES` and the CLI option `read --keep-line-values`: read like
+  `LENIENT`, but reject a line whose net price (BT-146) or quantity (BT-129) would have to change to
+  fit its stated net amount, instead of recalculating the price (`READ-LINE-NET-PRICE`) or negating
+  the quantity (`READ-LINE-QUANTITY`). All other deviations stay accepted and reported as in
+  `LENIENT`. The change of a price or quantity in `LENIENT` is unchanged and, as before, reported
+  as warning and as deviation (BT-146, BT-129) of the result, never inside the written XML.
 - Document regressions for the line amount at the half cent (quantity 1, net price 1, price base
   quantity 200.0000001, amount 0.00): `LineRoundingDocumentTest` (invoice in UBL and CII),
   `OrderLineRoundingTest` (Order-X), and a test in `QuotationJsonTest` (quotation, its invoice, and

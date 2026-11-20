@@ -217,6 +217,137 @@ class VatRoundingTest {
     assertTrue(lenient.isNormalized());
   }
 
+  /**
+   * The document as Paniolo writes it for one line of the given price, with the VAT and the totals
+   * that follow from it replaced by the stated VAT.
+   */
+  private static byte[] singleLine(Profile profile,
+                                   String price,
+                                   String calculatedVat,
+                                   String statedVat) {
+    var line = InvoiceLine.create()
+                          .id("1")
+                          .name("Lieferung")
+                          .quantity(BigDecimal.ONE)
+                          .unitCode("C62")
+                          .netUnitPrice(new BigDecimal(price))
+                          .tax(VAT_19)
+                          .build();
+    var invoice = TestInvoices.builder(InvoiceTypeCode.CODE_380,
+                                       "RUND-2")
+                              .processControl(profile.processControl)
+                              .lines(List.of(line))
+                              .build();
+    assertEquals(new BigDecimal(calculatedVat),
+                 invoice.totals()
+                        .taxAmount());
+    String     xml           = PANIOLO.toXml(invoice,
+                                             InvoiceSyntax.CII);
+    BigDecimal calculatedGross = new BigDecimal(price).add(new BigDecimal(calculatedVat));
+    BigDecimal statedGross     = new BigDecimal(price).add(new BigDecimal(statedVat));
+    for (String expected : List.of("<ram:CalculatedAmount>" + calculatedVat + "</ram:CalculatedAmount>",
+                                   "<ram:TaxTotalAmount currencyID=\"EUR\">" + calculatedVat + "</ram:TaxTotalAmount>",
+                                   "<ram:GrandTotalAmount>" + calculatedGross.toPlainString() + "</ram:GrandTotalAmount>",
+                                   "<ram:DuePayableAmount>" + calculatedGross.toPlainString() + "</ram:DuePayableAmount>")) {
+      assertTrue(xml.contains(expected),
+                 () -> expected + " missing in " + xml);
+    }
+    return xml.replace("<ram:CalculatedAmount>" + calculatedVat + "<",
+                       "<ram:CalculatedAmount>" + statedVat + "<")
+              .replace("<ram:TaxTotalAmount currencyID=\"EUR\">" + calculatedVat + "<",
+                       "<ram:TaxTotalAmount currencyID=\"EUR\">" + statedVat + "<")
+              .replace("<ram:GrandTotalAmount>" + calculatedGross.toPlainString() + "<",
+                       "<ram:GrandTotalAmount>" + statedGross.toPlainString() + "<")
+              .replace("<ram:DuePayableAmount>" + calculatedGross.toPlainString() + "<",
+                       "<ram:DuePayableAmount>" + statedGross.toPlainString() + "<")
+              .getBytes(StandardCharsets.UTF_8);
+  }
+
+  /**
+   * One line, VAT rounded once by Paniolo, stated one cent higher or lower by the seller: the
+   * documents of the public corpus {@code roundingDifferenceIsInTolerance.xml} (710.79 x 19 % =
+   * 135.0501, stated 135.04) and {@code 01.06_minimal_test_ubl.xml} (3986.34 x 19 % = 757.4046,
+   * stated 757.41). The stated amount is kept, in every read mode and when the invoice is written
+   * again; a difference of two cents on one line is no rounding.
+   */
+  @ParameterizedTest
+  @EnumSource(Profile.class)
+  void keepsAStatedVatAmountOffByOneCentOnASingleLine(Profile profile) {
+    for (var amounts : List.of(List.of("710.79",
+                                       "135.05",
+                                       "135.04"),
+                               List.of("3986.34",
+                                       "757.40",
+                                       "757.41"))) {
+      byte[] xml        = singleLine(profile,
+                                     amounts.get(0),
+                                     amounts.get(1),
+                                     amounts.get(2));
+      var    validation = profile.validate(xml);
+      assertTrue(validation.isValid(),
+                 validation::toString);
+      assertEquals(List.of(),
+                   calculationFindings(validation));
+      for (var mode : ReadMode.values()) {
+        var imported = PANIOLO.importInvoice(xml,
+                                             mode);
+        assertEquals(List.of(),
+                     imported.warnings(),
+                     mode::toString);
+        assertEquals(List.of(),
+                     imported.deviations(),
+                     mode::toString);
+        assertEquals(List.of(new VatAmount(VAT_19,
+                                           new BigDecimal(amounts.get(2)))),
+                     imported.invoice()
+                             .vatAmounts());
+        assertEquals(new BigDecimal(amounts.get(2)),
+                     imported.invoice()
+                             .totals()
+                             .taxAmount());
+        assertArrayEquals(xml,
+                          PANIOLO.export(imported,
+                                         ExportVariant.ORIGINAL,
+                                         InvoiceSyntax.CII));
+        byte[] normalized = PANIOLO.export(imported,
+                                           ExportVariant.NORMALIZED,
+                                           InvoiceSyntax.CII);
+        assertTrue(new String(normalized,
+                              StandardCharsets.UTF_8).contains("<ram:CalculatedAmount>" + amounts.get(2) + "</ram:CalculatedAmount>"));
+        assertTrue(profile.validate(normalized)
+                          .isValid());
+      }
+    }
+  }
+
+  /**
+   * Two cents on one line are no rounding: strict reading rejects the document, lenient reading
+   * reports the stated VAT and keeps the calculated one.
+   */
+  @ParameterizedTest
+  @EnumSource(value = Profile.class, names = { "XRECHNUNG", "EN16931" })
+  void doesNotKeepAStatedVatAmountOffByTwoCentsOnASingleLine(Profile profile) {
+    byte[] xml = singleLine(profile,
+                            "710.79",
+                            "135.05",
+                            "135.03");
+    assertThrows(IllegalArgumentException.class,
+                 () -> PANIOLO.importInvoice(xml,
+                                             ReadMode.STRICT));
+    var lenient = PANIOLO.importInvoice(xml,
+                                        ReadMode.LENIENT);
+    assertEquals(List.of(),
+                 lenient.invoice()
+                        .vatAmounts());
+    assertEquals(new BigDecimal("135.05"),
+                 lenient.invoice()
+                        .totals()
+                        .taxAmount());
+    assertTrue(lenient.warnings()
+                      .stream()
+                      .anyMatch(w -> ReadWarning.TAX_TOTAL.equals(w.code())));
+  }
+
   @ParameterizedTest
   @EnumSource(Profile.class)
   void writesTheVatAmountTheSellerStates(Profile profile) {

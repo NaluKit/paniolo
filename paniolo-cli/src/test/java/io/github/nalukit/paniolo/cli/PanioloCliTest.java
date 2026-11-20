@@ -317,6 +317,77 @@ class PanioloCliTest {
   }
 
   /**
+   * A line amount that is not quantity x net price: --lenient recalculates the net price and says so
+   * on standard error, --keep-line-values rejects the document instead of changing the price.
+   */
+  @Test
+  void keepsTheLineValuesOnRequest()
+      throws IOException {
+    Path xml = dir.resolve("deviating-line.xml");
+    assertEquals(PanioloCli.EXIT_OK,
+                 run("to-xml",
+                     invoiceJson.toString(),
+                     "--syntax",
+                     "cii",
+                     "-o",
+                     xml.toString()).exitCode());
+    String content = Files.readString(xml);
+    var    matcher = java.util.regex.Pattern.compile("<ram:LineTotalAmount>([0-9.]+)<")
+                                             .matcher(content);
+    assertTrue(matcher.find(),
+               content);
+    String changed = content.substring(0,
+                                       matcher.start(1)) +
+                     new java.math.BigDecimal(matcher.group(1)).add(new java.math.BigDecimal("10.00"))
+                                                               .toPlainString() +
+                     content.substring(matcher.end(1));
+    Files.writeString(xml,
+                      changed);
+
+    var lenient = run("read",
+                      "--lenient",
+                      xml.toString());
+    assertEquals(PanioloCli.EXIT_OK,
+                 lenient.exitCode(),
+                 lenient.err());
+    assertTrue(lenient.err()
+                      .contains("READ-LINE-NET-PRICE"),
+               lenient.err());
+
+    var kept = run("read",
+                   "--keep-line-values",
+                   xml.toString());
+    assertTrue(kept.exitCode() != PanioloCli.EXIT_OK,
+               kept.err());
+    assertTrue(kept.err()
+                   .contains("LENIENT_KEEP_LINES"),
+               kept.err());
+
+    // Deviations are printed, not only warnings, and can be refused without writing a result.
+    assertTrue(lenient.err()
+                      .contains("deviation BT-146"),
+               lenient.err());
+    var refused = run("read",
+                      "--lenient",
+                      "--fail-on-deviation",
+                      xml.toString());
+    assertEquals(PanioloCli.EXIT_INVALID,
+                 refused.exitCode(),
+                 refused.err());
+    assertEquals("",
+                 refused.out());
+    assertTrue(refused.err()
+                      .contains("--fail-on-deviation"),
+               refused.err());
+
+    // to-xml reads strictly: the document is rejected instead of being converted with other amounts.
+    assertTrue(run("to-xml",
+                   xml.toString(),
+                   "--syntax",
+                   "ubl").exitCode() != PanioloCli.EXIT_OK);
+  }
+
+  /**
    * A specification identifier that states XRechnung but is not supported makes the document
    * invalid (Mustang issue 1343), which the exit code and the XML report show.
    */
