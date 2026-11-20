@@ -25,7 +25,9 @@ import java.util.Objects;
 
 /**
  * VAT category, percentage and optional exemption text / VATEX code. The model accepts the
- * categories S, Z, E, AE, K, G, O, L, and M. Category S requires a positive rate, L and M a
+ * categories S, Z, E, AE, K, G, O, L, and M. This is the part of the EN 16931 code list that Paniolo
+ * implements; the list also contains B (Italian split payment), which the model rejects instead of
+ * mapping it to another category. Category S requires a positive rate, L and M a
  * non-negative rate, O no rate, and all other categories a zero rate.
  *
  * <p>For French multi-vendor invoices, the exemption text can also carry the sub-invoice number;
@@ -49,7 +51,7 @@ public record TaxCategory(DutyTaxFeeCategory code, BigDecimal rate, String exemp
     Objects.requireNonNull(code,
                            "tax category code");
     if (!code.isAllowanceRelated()) {
-      throw new IllegalArgumentException("Unsupported EN 16931 VAT category: " + code + "; EN 16931 knows the categories S, Z, E, AE, K, G, O, L and M only, and the model does not replace the category stated by the document with another one, as that would change the VAT calculation (e.g. category B of the Italian split payment)");
+      throw new IllegalArgumentException("Unsupported VAT category: " + code + "; Paniolo supports the categories S, Z, E, AE, K, G, O, L and M. Other codes of the EN 16931 code list, e.g. category B of the Italian split payment, are not implemented, and the model does not replace the category stated by the document with another one, as that would change the VAT calculation");
     }
     if (code == DutyTaxFeeCategory.O) {
       if (rate != null) {

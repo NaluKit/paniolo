@@ -258,14 +258,29 @@ public final class CiiInvoiceReader
                                    location.text(),
                                    date,
                                    deliverTo,
-                                   location == null || location == local ?
+                                   location == null ?
                                    null :
                                    location.attribute("schemeID"));
   }
 
   static Party party(XmlElement party) {
     return party(party,
-                 false);
+                 false,
+                 null);
+  }
+
+  /**
+   * Reads a party and reports a value the model does not keep to the given read.
+   *
+   * @param party   the party element, or null
+   * @param context the state of the read that receives the warnings
+   * @return the party, or null
+   */
+  static Party party(XmlElement party,
+                     ReadContext context) {
+    return party(party,
+                 false,
+                 context);
   }
 
   /**
@@ -274,6 +289,18 @@ public final class CiiInvoiceReader
    */
   static Party party(XmlElement party,
                      boolean orderX) {
+    return party(party,
+                 orderX,
+                 null);
+  }
+
+  /**
+   * Reads a party. The model keeps one VAT identifier and one tax number per party; a further
+   * different value is reported to {@code context}, if given, and the last stated value is kept.
+   */
+  static Party party(XmlElement party,
+                     boolean orderX,
+                     ReadContext context) {
     if (party == null) {
       return null;
     }
@@ -282,9 +309,19 @@ public final class CiiInvoiceReader
     for (var registration : party.children("ram:SpecifiedTaxRegistration")) {
       var id = registration.find("ram:ID");
       if (id != null && "VA".equals(id.attribute("schemeID"))) {
-        vatId = id.text();
+        reportReplaced(context,
+                       party,
+                       id,
+                       vatId,
+                       "VAT identifier");
+        vatId = id.text() == null ? vatId : id.text();
       } else if (id != null && "FC".equals(id.attribute("schemeID"))) {
-        taxId = id.text();
+        reportReplaced(context,
+                       party,
+                       id,
+                       taxId,
+                       "tax number");
+        taxId = id.text() == null ? taxId : id.text();
       }
     }
     var uri     = party.findWithText("ram:URIUniversalCommunication/ram:URIID");
@@ -336,9 +373,11 @@ public final class CiiInvoiceReader
                                             legalId == null ?
                                             null :
                                             legalId.attribute("schemeID"));
-    // An identifier without scheme is ram:ID, one with scheme ram:GlobalID.
+    // EN 16931 writes an identifier with scheme as ram:GlobalID; the XRechnung extension (BR-DEX-05)
+    // and the CII schema also allow a scheme on ram:ID, which must not get lost.
     if (localId != null) {
-      builder.identifier(localId.text());
+      builder.identifier(localId.text(),
+                         localId.attribute("schemeID"));
     } else if (globalId != null) {
       builder.identifier(globalId.text(),
                          globalId.attribute("schemeID"));
@@ -350,7 +389,7 @@ public final class CiiInvoiceReader
       for (var id : party.children("ram:ID")) {
         if (id.text() != null) {
           further.add(new PartyIdentifier(id.text(),
-                                          null));
+                                          id.attribute("schemeID")));
         }
       }
       for (var id : party.children("ram:GlobalID")) {
@@ -366,6 +405,19 @@ public final class CiiInvoiceReader
       further.forEach(builder::addAdditionalIdentifier);
     }
     return builder.build();
+  }
+
+  private static void reportReplaced(ReadContext context,
+                                     XmlElement party,
+                                     XmlElement id,
+                                     String earlier,
+                                     String what) {
+    // The same value stated twice loses nothing; empty values count as absent.
+    if (context == null || earlier == null || id.text() == null || earlier.equals(id.text())) {
+      return;
+    }
+    context.lost(ReadWarning.IDENTIFIER,
+                 "Party at " + party.location() + " states several " + what + "s (schemeID " + id.attribute("schemeID") + "); the model keeps one, " + earlier + " is not kept, " + id.text() + " is kept");
   }
 
   static Address address(XmlElement address) {
@@ -533,21 +585,30 @@ public final class CiiInvoiceReader
     if (delivery != null) {
       extended.transportModeCode(delivery.text("ram:RelatedSupplyChainConsignment/ram:SpecifiedLogisticsTransportMovement/ram:ModeCode"));
     }
-    extended.salesAgent(party(agreement.find("ram:SalesAgentTradeParty")))
-            .buyerTaxRepresentative(party(agreement.find("ram:BuyerTaxRepresentativeTradeParty")))
-            .productEndUser(party(agreement.find("ram:ProductEndUserTradeParty")))
-            .buyerAgent(party(agreement.find("ram:BuyerAgentTradeParty")))
+    extended.salesAgent(party(agreement.find("ram:SalesAgentTradeParty"),
+                  readContext))
+            .buyerTaxRepresentative(party(agreement.find("ram:BuyerTaxRepresentativeTradeParty"),
+                  readContext))
+            .productEndUser(party(agreement.find("ram:ProductEndUserTradeParty"),
+                  readContext))
+            .buyerAgent(party(agreement.find("ram:BuyerAgentTradeParty"),
+                  readContext))
             .deliveryTermsCode(agreement.text("ram:ApplicableTradeDeliveryTerms/ram:DeliveryTypeCode"))
             .quotationReference(documentReference(agreement.find("ram:QuotationReferencedDocument")))
-            .invoicer(party(settlement.find("ram:InvoicerTradeParty")))
-            .invoicee(party(settlement.find("ram:InvoiceeTradeParty")))
-            .payer(party(settlement.find("ram:PayerTradeParty")));
+            .invoicer(party(settlement.find("ram:InvoicerTradeParty"),
+                  readContext))
+            .invoicee(party(settlement.find("ram:InvoiceeTradeParty"),
+                  readContext))
+            .payer(party(settlement.find("ram:PayerTradeParty"),
+                  readContext));
     for (var order : agreement.children("ram:UltimateCustomerOrderReferencedDocument")) {
       extended.addUltimateCustomerOrderReference(documentReference(order));
     }
     if (delivery != null) {
-      extended.ultimateShipTo(party(delivery.find("ram:UltimateShipToTradeParty")))
-              .shipFrom(party(delivery.find("ram:ShipFromTradeParty")))
+      extended.ultimateShipTo(party(delivery.find("ram:UltimateShipToTradeParty"),
+                  readContext))
+              .shipFrom(party(delivery.find("ram:ShipFromTradeParty"),
+                  readContext))
               .deliveryNoteReference(documentReference(delivery.find("ram:DeliveryNoteReferencedDocument")));
     }
     var services = settlement.children("ram:SpecifiedLogisticsServiceCharge");
@@ -735,7 +796,8 @@ public final class CiiInvoiceReader
       builder.buyerAccountingReference(settlement.text("ram:ReceivableSpecifiedTradeAccountingAccount/ram:ID"));
     }
     builder.extended(lineExtension(item,
-                                   lineOtherTaxes));
+                                   lineOtherTaxes,
+                                   context));
     return context.netAmount(builder.build(),
                              item.decimal("ram:SpecifiedLineTradeSettlement/ram:SpecifiedTradeSettlementLineMonetarySummation/ram:LineTotalAmount"));
   }
@@ -758,7 +820,8 @@ public final class CiiInvoiceReader
    * Reads the line information of the profile EXTENDED.
    */
   private static LineExtension lineExtension(XmlElement item,
-                                             List<OtherTax> otherTaxes) {
+                                             List<OtherTax> otherTaxes,
+                                             ReadContext context) {
     var document = item.find("ram:AssociatedDocumentLineDocument");
     var product  = item.find("ram:SpecifiedTradeProduct");
     var agree    = item.find("ram:SpecifiedLineTradeAgreement");
@@ -784,7 +847,8 @@ public final class CiiInvoiceReader
               .modelId(product.text("ram:ModelID"))
               .modelName(product.text("ram:ModelName"))
               .brandName(product.text("ram:BrandName"))
-              .manufacturer(party(product.find("ram:ManufacturerTradeParty")));
+              .manufacturer(party(product.find("ram:ManufacturerTradeParty"),
+                    context));
       for (var batch : product.children("ram:BatchID")) {
         extended.addBatchId(batch.text());
       }
@@ -831,7 +895,8 @@ public final class CiiInvoiceReader
               .sellerOrderReference(documentReference(agree.find("ram:SellerOrderReferencedDocument")))
               .quotationReference(documentReference(agree.find("ram:QuotationReferencedDocument")))
               .contractReference(documentReference(agree.find("ram:ContractReferencedDocument")))
-              .itemSeller(party(agree.find("ram:ItemSellerTradeParty")));
+              .itemSeller(party(agree.find("ram:ItemSellerTradeParty"),
+                    context));
       var gross = agree.find("ram:GrossPriceProductTradePrice");
       if (gross != null) {
         var adjustments = grossPriceAdjustments(gross);
@@ -854,8 +919,10 @@ public final class CiiInvoiceReader
       extended.chargeFreeQuantity(delivery.decimal("ram:ChargeFreeQuantity"))
               .packageQuantity(delivery.decimal("ram:PackageQuantity"))
               .perPackageUnitQuantity(delivery.decimal("ram:PerPackageUnitQuantity"))
-              .shipTo(party(delivery.find("ram:ShipToTradeParty")))
-              .ultimateShipTo(party(delivery.find("ram:UltimateShipToTradeParty")))
+              .shipTo(party(delivery.find("ram:ShipToTradeParty"),
+                    context))
+              .ultimateShipTo(party(delivery.find("ram:UltimateShipToTradeParty"),
+                    context))
               .actualDeliveryDate(delivery.basicDate("ram:ActualDeliverySupplyChainEvent/ram:OccurrenceDateTime/udt:DateTimeString"))
               .despatchAdviceReference(documentReference(delivery.find("ram:DespatchAdviceReferencedDocument")))
               .receivingAdviceReference(documentReference(delivery.find("ram:ReceivingAdviceReferencedDocument")))
@@ -884,30 +951,56 @@ public final class CiiInvoiceReader
     return extended.build();
   }
 
-  private static Payee payee(XmlElement payee) {
+  private static Payee payee(XmlElement payee,
+                             ReadContext context) {
     if (payee == null) {
       return null;
     }
-    // An identifier without scheme is ram:ID, one with scheme ram:GlobalID.
-    var globalId = payee.text("ram:ID") == null ?
-                   payee.findWithText("ram:GlobalID") :
-                   null;
     var legalId = payee.findWithText("ram:SpecifiedLegalOrganization/ram:ID");
-    return Payee.create()
-                .name(payee.text("ram:Name"))
-                .identifier(globalId == null ?
-                            payee.text("ram:ID") :
-                            globalId.text(),
-                            globalId == null ?
-                            null :
-                            globalId.attribute("schemeID"))
-                .legalRegistrationId(legalId == null ?
-                                     null :
-                                     legalId.text(),
-                                     legalId == null ?
-                                     null :
-                                     legalId.attribute("schemeID"))
-                .build();
+    var builder = Payee.create()
+                       .name(payee.text("ram:Name"))
+                       .legalRegistrationId(legalId == null ?
+                                            null :
+                                            legalId.text(),
+                                            legalId == null ?
+                                            null :
+                                            legalId.attribute("schemeID"));
+    payeeIdentifier(builder,
+                    payee,
+                    context);
+    return builder.build();
+  }
+
+  /**
+   * Sets the payee identifier (BT-60) with its scheme (BT-60-1). The scheme is stated on
+   * {@code ram:ID} or on {@code ram:GlobalID}; the scheme SEPA is reserved for the creditor
+   * identifier (BT-90), so it is not kept and reported.
+   *
+   * @param builder the payee under construction
+   * @param payee   the payee element
+   * @param context the state of the read that receives the warning, or null
+   */
+  static void payeeIdentifier(Payee.Builder builder,
+                              XmlElement payee,
+                              ReadContext context) {
+    var local = payee.findWithText("ram:ID");
+    var id    = local != null ?
+                local :
+                payee.findWithText("ram:GlobalID");
+    String scheme = id == null ?
+                    null :
+                    id.attribute("schemeID");
+    if (local != null && "SEPA".equals(scheme)) {
+      if (context != null) {
+        context.lost(ReadWarning.IDENTIFIER,
+                     "Payee identifier " + local.text() + " at " + payee.location() + " states the scheme SEPA, which the model reserves for the creditor identifier (BT-90); the scheme is not kept");
+      }
+      scheme = null;
+    }
+    builder.identifier(id == null ?
+                       null :
+                       id.text(),
+                       scheme);
   }
 
   /**
@@ -1031,15 +1124,18 @@ public final class CiiInvoiceReader
                        null :
                        builtReferences);
 
-    builder.seller(party(agreement.find("ram:SellerTradeParty")))
-           .buyer(party(agreement.find("ram:BuyerTradeParty")));
+    builder.seller(party(agreement.find("ram:SellerTradeParty"),
+                         readContext))
+           .buyer(party(agreement.find("ram:BuyerTradeParty"),
+                        readContext));
     var representative = agreement.find("ram:SellerTaxRepresentativeTradeParty");
     if (representative != null) {
       builder.taxRepresentative(new SellerTaxRepresentativeParty(representative.text("ram:Name"),
                                                                  representative.text("ram:SpecifiedTaxRegistration/ram:ID"),
                                                                  address(representative.find("ram:PostalTradeAddress"))));
     }
-    builder.payee(payee(settlement.find("ram:PayeeTradeParty")));
+    builder.payee(payee(settlement.find("ram:PayeeTradeParty"),
+                        readContext));
 
     String     taxCurrency = settlement.text("ram:TaxCurrencyCode");
     var        summation   = settlement.find("ram:SpecifiedTradeSettlementHeaderMonetarySummation");
@@ -1136,7 +1232,8 @@ public final class CiiInvoiceReader
                                                                        "ram:ActualPenaltyAmount"),
                                                 paymentTermsAdjustment(term.find("ram:ApplicableTradePaymentDiscountTerms"),
                                                                        "ram:ActualDiscountAmount"),
-                                                payee(term.find("ram:PayeeTradeParty"))));
+                                                payee(term.find("ram:PayeeTradeParty"),
+                                                      readContext)));
       } else if (terms == null) {
         terms = term;
       } else if (term.text("ram:Description") != null || term.find("ram:DueDateDateTime") != null) {

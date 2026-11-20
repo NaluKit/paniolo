@@ -8,6 +8,29 @@ reference in `docs/api/<version>.md`.
 
 ### Fixed
 
+- The CII and ZUGFeRD 1.0 readers dropped the scheme of a payee identifier (BT-60-1) and of the
+  deliver-to location identifier (BT-71-1) written as `ram:ID schemeID="…"`. The scheme is now
+  kept. The scheme `SEPA`, which the model reserves for the creditor identifier, is still not
+  kept on a payee, but is now reported as `READ-IDENTIFIER`.
+- The ZUGFeRD 1.0 reader read the deliver-to location identifier (BT-71) only from `ram:ID`. It now
+  also reads `ram:GlobalID` with its scheme and reports a second identifier as `READ-IDENTIFIER`,
+  as the CII reader does.
+- The ZUGFeRD 1.0 reader lost the further identifiers of a party (for example a global identifier
+  next to `ram:ID`) when it took the party over into a profile other than EXTENDED.
+- The warning for a dropped VAT identifier or tax number now also covers the EXTENDED line parties
+  (manufacturer, item seller, ship-to, ultimate ship-to).
+- The message for an unsupported VAT category, and the JavaDoc of `TaxCategory`, claimed that
+  EN 16931 knows only the categories S, Z, E, AE, K, G, O, L and M. The EN 16931 code list also
+  contains B (Italian split payment). The message now says that Paniolo does not implement the
+  category; the reader still rejects it and does not map it to another category.
+- The CII reader dropped the scheme of a party identifier written as `ram:ID schemeID="…"` (seller
+  or buyer, BT-29-1 / BT-46-1, also further identifiers), which the CII schema and the XRechnung
+  extension (BR-DEX-05) allow. The scheme is now kept in the model; the normal export writes the
+  qualified identifier as `ram:GlobalID` with its scheme.
+- The CII and ZUGFeRD 1.0 readers kept only the last of several different VAT identifiers or tax
+  numbers of a party without a message, because the model has one of each. The identifier not kept
+  is now reported as `READ-IDENTIFIER` in both read modes, with the party path and the scheme. The
+  kept value is unchanged; the same value stated twice and empty repetitions are not reported.
 - The CLI reported success when standard output could not be written, for example after a closed
   pipe, because a print stream keeps a failed write instead of throwing it. A failed write or flush
   of standard output now ends with exit code 3 and a message on standard error, also where the
