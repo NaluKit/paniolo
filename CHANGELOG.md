@@ -51,6 +51,12 @@ reference in `docs/api/<version>.md`.
 
 ### Added
 
+- `PrecedingInvoiceReferenceTest` documents why CII outside the Factur-X profiles EXTENDED and
+  EXTENDED-CTC-FR writes one preceding invoice reference (BG-3) only: the UN/CEFACT D16B schema of
+  the XRechnung, Peppol, and EN 16931 CII validation and the schema of the profile BASIC allow one
+  `ram:InvoiceReferencedDocument`; the schema of the Factur-X profile EN16931 accepts several, but
+  its specification identifier is the same as that of plain EN 16931. The error message now names
+  the way out (UBL, or one of these profiles); the rule is described at `Invoice`.
 - Regression tests (`VatRoundingTest`) for a stated VAT amount that is one cent off the VAT
   calculated once per category on a single line, in both directions (710.79 x 19 % stated as 135.04,
   3986.34 x 19 % stated as 757.41, both from public corpus documents): the amount is kept in every
