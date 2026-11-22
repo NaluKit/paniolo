@@ -1613,3 +1613,8 @@ The Paniolo logo and all variants in `docs/branding/` and in `src/content/paniol
 website repository [NaluKit/nalukit-web-site](https://github.com/NaluKit/nalukit-web-site) were
 traced and edited for the project; see the
 [branding README](docs/branding/README.md#origin-and-rights).
+
+## To get in touch with the developer
+Please visit us [nalu@element.io](https://app.element.io/#/room/#Nalukit42_Lobby:gitter.im) (former Gitter room).
+
+
