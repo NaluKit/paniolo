@@ -170,7 +170,8 @@ Not included:
 - Exact reading of deviating amounts: by default, line net amounts must follow quantity x net
   price plus line charges minus line allowances, up to the rounding of the net price (as Peppol
   rule PEPPOL-EN16931-R120 requires); the rounding is half a unit of the last decimal that the price
-  states, at least half a cent, so a price with four decimals explains less than one in cents. A
+  states, using at least two decimal places. This is at most half a cent per price unit, scaled
+  by the absolute quantity / price base quantity, plus half a cent for rounding the amount. A
   difference that the rounding explains is kept and listed as BT-131 in `ReadResult.deviations()`.
   `ReadMode.LENIENT` reads such documents, for example a line amount that is a gross price
   including insurance tax, by recalculating the net price, and reports the deviation;
@@ -778,8 +779,9 @@ All details in the example are fictitious.
 - Line allowances and charges (BG-27, BG-28): `LineAdjustment.createAllowance()` / `createCharge()`; they are
   part of the line net amount (BT-131) and use the line's VAT category.
 - Stated line net amount: `InvoiceLine.create()....netAmount(new BigDecimal("55.46"))` keeps BT-131 when the
-  shown net price is rounded to cents (20 x 2.77 shown, 55.46 charged). The difference must be explainable
-  by that rounding; otherwise the line is rejected.
+  shown net price is rounded (20 x 2.77 shown, 55.46 charged). The tolerance follows the stated
+  decimal places of the price: `2.7700` explains less than `2.77`, so 55.46 is rejected with
+  that four-decimal price. Price base quantity and line allowances and charges are included.
 - Stated VAT amount of a category: `.vatAmount(TaxCategory.standard(new BigDecimal("19")), new BigDecimal("38.18"))`
   keeps BT-117 when the seller rounds the VAT of every line (38.18 instead of 38.19 rounded once).
   It may differ by 0.01 per line, document allowance, document charge, and EXTENDED logistics
@@ -879,9 +881,15 @@ is 135.0501, a document that states 135.04 keeps 135.04 in every read mode, with
 two cents are no rounding. Run [validation](#validating-xml) first for documents from external sources; the readers check structure, not business rules.
 
 Empty optional elements, such as a seller written as `<ram:SellerTradeParty><ram:ID/>...`, an empty
-`ram:GlobalID`, `cbc:EndpointID`, or `cac:PartyIdentification/cbc:ID`, count as absent in both read
+`ram:GlobalID`, `cbc:EndpointID`, or `cac:PartyIdentification/cbc:ID`, count as absent in all read
 modes and give no warning. EN 16931 and Factur-X allow them; XRechnung and Peppol forbid them
 (`PEPPOL-EN16931-R008`), which validation reports.
+
+CII and ZUGFeRD 1.0 readers preserve schemes on party and deliver-to identifiers, including
+`schemeID` on `ram:ID`. A normalized CII export writes qualified identifiers as `ram:GlobalID`;
+the identifier and scheme are retained, but the XML form can change. Different VAT identifiers
+or tax numbers that cannot all be retained produce `READ-IDENTIFIER`, naming the party path and
+the value not kept; empty repetitions and repeated identical values give no warning.
 
 For the supported deviations below, pass `ReadMode.LENIENT`. Structural model restrictions
 still apply; this is not a general import mode for every valid invoice. The result carries the
@@ -915,12 +923,12 @@ result.warnings().forEach(w -> log(w.code(), w.lineId(), w.message()));
 
 Four warnings report values the model does not keep or interpret, or takes from somewhere else,
 without changing an amount.
-They are given in **both** modes, so `isExact()` can be `false` after a strict read as well:
+They are given in **all** modes, so `isExact()` can be `false` after a strict read as well:
 
 | Warning code                 | Reported value                                                                                                     |
 |------------------------------|--------------------------------------------------------------------------------------------------------------------|
 | `READ-CASH-DISCOUNT`         | A payment terms line (BT-20) that starts like an XRechnung cash discount but cannot be read as one; kept as text  |
-| `READ-IDENTIFIER`            | A further identifier of a business term the model keeps once, e.g. the global ID of the deliver-to location (BT-71) |
+| `READ-IDENTIFIER`            | An identifier the model does not keep, e.g. a further different VAT identifier or tax number, another deliver-to identifier (BT-71), or a payee identifier with the reserved scheme `SEPA` |
 | `READ-SPECIFICATION-VERSION` | A document of EN 16931:2026 (e.g. XRechnung 4.0), read with the business terms of EN 16931:2017                     |
 | `READ-TAX-CATEGORY`          | ZUGFeRD 1.0: no VAT category code where the model needs one. A rate above zero is the standard rate (S); a line, allowance, charge, or logistics service charge without VAT block belongs to the only VAT breakdown. A rate of zero or several breakdowns are rejected with the location, no category is guessed |
 
@@ -946,7 +954,8 @@ totals the model could not keep. Four things follow from that:
 - `ReadMode.LENIENT_KEEP_LINES` (CLI `read --keep-line-values`) never changes the price or quantity
   of a line: it rejects such a line instead.
 - `result.requireNoDeviations()` (CLI `read --fail-on-deviation`) refuses any result whose invoice
-  states other amounts than the document, for a caller that writes the invoice again.
+  lists amount differences, for a caller that writes the invoice again. This includes a retained
+  BT-131 within price-rounding tolerance, even though the stated line amount was kept.
 - The CLI commands that write a document (`to-xml`, `to-facturx`) read their input strictly and
   reject a document with deviating amounts; they do not convert it with other amounts. Converting
   such a document takes two steps and is a conscious choice: `paniolo read --lenient FILE -o

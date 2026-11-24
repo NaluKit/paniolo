@@ -1089,9 +1089,9 @@ public final class Paniolo
    * }</pre>
    *
    * <p>The document is read in {@link ReadMode#STRICT}: if line amounts or totals of the document
-   * differ from what the model calculates, the document is rejected instead of silently changing
-   * amounts. Use {@link #read(String, ReadMode)} with {@link ReadMode#LENIENT} to read such documents
-   * anyway.
+   * exceed the model's rounding tolerances, the checks described in {@link ReadMode#STRICT}
+   * reject the document. Strict reading can still report warnings and amount deviations. Use
+   * {@link #read(String, ReadMode)} with {@link ReadMode#LENIENT} to accept supported deviations.
    *
    * <p>Reading does not validate. A document can be readable and still violate business rules; call
    * {@link #validate(String)} to check them.
@@ -1120,17 +1120,21 @@ public final class Paniolo
   }
 
   /**
-   * Reads invoice XML in the given mode and returns the invoice together with the deviations that
-   * were accepted.
+   * Reads invoice XML in the given mode and returns the invoice, import warnings, stated amounts
+   * and amount deviations.
    *
    * <p>The model calculates line net amounts (quantity &times; net price) and document totals
-   * itself. Documents from other software sometimes state values that differ from this calculation,
-   * e.g. because of rounding per line or price units. The mode decides what happens then:
+   * itself, including price base quantity and line allowances and charges. Stated line and VAT
+   * amounts within the model's rounding tolerances are retained in every mode. A retained line
+   * amount (BT-131) that differs from the calculation is still listed in
+   * {@link ReadResult#deviations()}. For larger differences, the mode decides what happens:
    * <ul>
-   *   <li>{@link ReadMode#STRICT} &ndash; such a document is rejected with an
-   *       {@link IllegalArgumentException}. This is what {@link #read(String)} does.</li>
+   *   <li>{@link ReadMode#STRICT} &ndash; rejects a line beyond price-rounding tolerance, or a
+   *       differing VAT total or amount due, with an {@link IllegalArgumentException}. Other totals
+   *       are compared and listed as deviations. This is what {@link #read(String)} does.</li>
    *   <li>{@link ReadMode#LENIENT} &ndash; the document is read anyway: the net price of a line is
-   *       recalculated from its stated net amount and the calculated totals are kept. Every deviation
+   *       recalculated from its stated net amount, or its quantity negated, and calculated totals
+   *       are kept. Every supported change
    *       is reported as a {@link io.github.nalukit.paniolo.xml.ReadWarning}. Structural errors are
    *       still rejected.</li>
    *   <li>{@link ReadMode#LENIENT_KEEP_LINES} &ndash; like {@code LENIENT}, but a line whose stated
@@ -1157,15 +1161,18 @@ public final class Paniolo
    * }</pre>
    *
    * <p>Use {@link ReadMode#LENIENT} when you must process received documents (e.g. for booking)
-   * and want to keep an audit trail of the differences, and {@link ReadMode#STRICT} when the model
-   * must reproduce the document exactly, e.g. before converting it into another syntax.
+   * and want to review supported changes. Use {@link ReadMode#STRICT} to reject changes checked
+   * by strict reading, and {@link ReadResult#requireNoDeviations()} to reject every listed amount
+   * difference, including a retained BT-131 within rounding tolerance. Neither strict reading nor
+   * {@link ReadResult#isExact()} guarantees lossless import. Keep the original XML with
+   * {@link #importInvoice(byte[], ReadMode)} for archiving.
    *
    * @param xml  the invoice XML; must not be {@code null}
    * @param mode how deviating amounts are treated; must not be {@code null}
-   * @return the invoice and the warnings: accepted deviations and values not kept
+   * @return the invoice, warnings, stated amounts and amount deviations
    * @throws IllegalArgumentException if the XML is malformed, has an unsupported root element,
-   *                                  contains content the model does not carry, or (in
-   *                                  {@link ReadMode#STRICT}) its amounts deviate
+   *                                  contains content the model does not carry, or has amounts
+   *                                  rejected by the selected mode
    * @see #read(byte[], ReadMode)
    */
   public ReadResult read(String xml,
@@ -1230,9 +1237,9 @@ public final class Paniolo
    *
    * @param xml  the invoice XML or PDF; must not be {@code null}
    * @param mode how deviating amounts are treated; must not be {@code null}
-   * @return the invoice and the accepted deviations
+   * @return the invoice, warnings, stated amounts and amount deviations
    * @throws IllegalArgumentException if the document is not a supported invoice, the PDF contains
-   *                                  no invoice XML, or (in {@link ReadMode#STRICT}) its amounts deviate
+   *                                  no invoice XML, or has amounts rejected by the selected mode
    * @throws IllegalStateException    if the document is a PDF and {@code paniolo-facturx} is missing
    */
   public ReadResult read(byte[] xml,
@@ -1284,10 +1291,10 @@ public final class Paniolo
    *
    * @param xml  the stream with the invoice XML or PDF; must not be {@code null}
    * @param mode how deviating amounts are treated; must not be {@code null}
-   * @return the invoice and the accepted deviations
+   * @return the invoice, warnings, stated amounts and amount deviations
    * @throws UncheckedIOException     if reading the stream fails
-   * @throws IllegalArgumentException if the document is not a supported invoice, or (in
-   *                                  {@link ReadMode#STRICT}) its amounts deviate
+   * @throws IllegalArgumentException if the document is not a supported invoice or has amounts
+   *                                  rejected by the selected mode
    * @throws IllegalStateException    if the document is a PDF and {@code paniolo-facturx} is missing
    */
   public ReadResult read(InputStream xml,
@@ -1303,8 +1310,9 @@ public final class Paniolo
    * Imports a received invoice from XML or from a Factur-X / ZUGFeRD PDF and keeps what the sender
    * stated next to the invoice model.
    *
-   * <p>{@link #read(byte[], ReadMode)} returns only the invoice model, whose amounts are always
-   * consistent: in {@link ReadMode#LENIENT} a deviating line net amount changes the net price, and
+   * <p>{@link #read(byte[], ReadMode)} returns the invoice model, warnings, stated amounts and
+   * deviations, but no original XML. In {@link ReadMode#LENIENT}, a line amount beyond
+   * price-rounding tolerance can change the net price or quantity, and
    * deviating totals are replaced by the calculated ones. For received invoices that must be booked
    * or archived as stated, the import result keeps
    * <ul>
@@ -1329,7 +1337,7 @@ public final class Paniolo
    * @param mode     how deviating amounts are treated; must not be {@code null}
    * @return the original XML, the stated amounts, the invoice and their deviations
    * @throws IllegalArgumentException if the document is not a supported invoice, the PDF contains
-   *                                  no invoice XML, or (in {@link ReadMode#STRICT}) its amounts deviate
+   *                                  no invoice XML, or has amounts rejected by the selected mode
    * @throws IllegalStateException    if the document is a PDF and {@code paniolo-facturx} is missing
    * @see #export(ImportResult, ExportVariant, InvoiceSyntax)
    */

@@ -34,7 +34,10 @@ import java.util.Objects;
  *
  * <p>The line net amount (BT-131) is quantity x net price / price base quantity (BT-149) plus line
  * charges minus line allowances. A stated amount replaces the calculation when the document shows
- * a net price rounded to cents; the difference must be explainable by that rounding.
+ * a rounded net price; the difference must be explainable by that rounding. The tolerance is half
+ * a unit of the last price decimal, using at least two decimal places, multiplied by the absolute
+ * quantity / price base quantity, plus half a cent for rounding the amount. A price of {@code 2.7700}
+ * therefore permits less deviation than {@code 2.77}; the {@link BigDecimal} scale is significant.
  *
  * @param id                       line identifier (BT-126)
  * @param name                     item name (BT-153)
@@ -316,9 +319,10 @@ public record InvoiceLine(String id, String name, BigDecimal quantity, UnitCode 
 
   /**
    * The largest difference between a stated line amount and quantity x net price that the rounding of
-   * the net price explains: half a unit of the last stated decimal of the price (at least half a cent)
-   * for every unit of quantity, plus half a cent for the rounding of the amount itself. A price stated
-   * with four decimals therefore explains less than a price stated with two.
+   * the net price explains: half a unit of the last stated decimal of the price, using at least two
+   * decimal places, scaled by absolute quantity / price base quantity, plus half a cent for the
+   * rounding of the amount itself. A price stated with four decimals therefore explains less than
+   * a price stated with two.
    */
   private static BigDecimal amountTolerance(BigDecimal quantity,
                                             BigDecimal netUnitPrice,

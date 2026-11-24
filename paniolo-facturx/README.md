@@ -22,6 +22,9 @@ The visual part comes from you as a PDF/A-1, -2, or -3 document; Paniolo adds th
 association, and the XMP metadata. Without a PDF of your own, this module renders the pages from
 the model and embeds the XML in one step (`toFacturX(invoice, profile)`, `toOrderXPdf(order)`,
 `toDespatchAdvicePdf(advice)`); see [PDF layout](docs/pdf-layout.md).
+A preview with a watermark can use a placeholder invoice number such as `DRAFT`; an `Invoice`
+still needs a non-blank number. The preview does not allocate a final number. Assign it before
+creating the final invoice; see [PDF profiles](../README.md#pdf-profiles-of-topdf).
 
 ## Dependency
 

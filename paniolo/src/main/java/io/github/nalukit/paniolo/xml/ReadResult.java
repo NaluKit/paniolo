@@ -23,15 +23,16 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * An invoice read from a document, with the deviations accepted in {@link ReadMode#LENIENT} and
- * the values the model does not keep.
+ * An invoice read from a document, with import warnings, stated amounts and differences from the
+ * calculation. Warnings and amount deviations can occur in every {@link ReadMode}, including
+ * {@link ReadMode#STRICT}; neither strict reading nor {@link #isExact()} guarantees lossless import.
  *
  * @param invoice    the invoice
- * @param warnings   accepted deviations ({@link ReadMode#LENIENT} only) and, in both modes, values
- *                   the model does not keep, e.g. {@link ReadWarning#IDENTIFIER} or
- *                   {@link ReadWarning#SPECIFICATION_VERSION}
+ * @param warnings   accepted deviations, conversions and values the model does not keep, e.g.
+ *                   {@link ReadWarning#IDENTIFIER} or {@link ReadWarning#SPECIFICATION_VERSION}
  * @param stated     the amounts as the document states them
- * @param deviations the stated amounts that differ from the invoice
+ * @param deviations stated amounts that differ from the calculation or retained model values;
+ *                   includes a retained BT-131 that differs from quantity x net price
  */
 public record ReadResult(Invoice invoice, List<ReadWarning> warnings, StatedAmounts stated, List<AmountDeviation> deviations) {
   /**
@@ -74,13 +75,17 @@ public record ReadResult(Invoice invoice, List<ReadWarning> warnings, StatedAmou
   }
 
   /**
-   * Requires that the invoice carries every amount as the document states it, for a caller that
-   * writes the invoice again and must not change a stated amount without noticing: a read in
-   * {@link ReadMode#LENIENT} can recalculate a net price or keep calculated totals, and an
-   * invoice written from it then states other amounts than the document.
+   * Requires that {@link #deviations()} is empty, for a caller that must review any difference
+   * between stated and calculated amounts before writing the invoice again. A lenient read can
+   * recalculate a net price or keep calculated totals. Strict reading can also list differences,
+   * including a stated BT-131 retained within the price-rounding tolerance; this method rejects
+   * that difference too, even though the invoice retains the stated line amount.
+   *
+   * <p>This does not check warnings or XML fidelity; use {@link ImportResult#originalXml()} to
+   * retain the original XML.
    *
    * @return this result
-   * @throws IllegalArgumentException if a stated amount differs from the invoice; the message lists
+   * @throws IllegalArgumentException if deviations are listed; the message lists
    *                                  the business terms with the stated and the calculated amount
    */
   public ReadResult requireNoDeviations() {

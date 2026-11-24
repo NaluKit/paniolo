@@ -89,7 +89,8 @@ case-insensitive (`--profile en16931`).
   read; the input is read strictly, so a document with deviating amounts is rejected instead of being
   written with other amounts. To convert such a document on purpose, run `read --lenient FILE -o
   invoice.json` (warnings and deviations go to standard error; `--keep-line-values` rejects a
-  changed price or quantity, `--fail-on-deviation` any other amount than the document states) and
+  changed price or quantity, `--fail-on-deviation` any listed amount difference, including a
+  retained BT-131 within price-rounding tolerance) and
   `to-xml` on the JSON. `to-xml` converts between UBL and CII through the model. `read` followed by `to-xml`
   writes the loaded model again; unsupported input fields and original XML formatting are not
   preserved. For `to-facturx`, the invoice's specification identifier (BT-24) must match
@@ -106,6 +107,8 @@ case-insensitive (`--profile en16931`).
   `--bold-font`, `--accent`, `--footer`, `--watermark`, and `--pdf-profile` configure the rendered pages like
   `PdfLayout` ([PDF layout](../paniolo-facturx/docs/pdf-layout.md)). Without `--font`, the pages
   use IBM Plex Sans Regular and Bold; `--font` alone emboldens the given font for bold text.
+  A watermarked preview may use a placeholder invoice number such as `DRAFT`; the model still
+  requires a non-blank number. Assign the final number before creating the final invoice.
 - **Rules**: `--rules`, `--facturx-rules`, `--extended-ctc-fr-rules`, `--order-x-rules`, and
   `--despatch-advice-rules` configure the facade like the methods of `Paniolo.builder()`.
 - **Calculation check**: `--calculation-check` adds the optional recalculation of the amounts

@@ -21,12 +21,15 @@ import java.math.BigDecimal;
 import java.util.Objects;
 
 /**
- * A stated amount of a document that differs from the value of the invoice model read from it.
+ * A stated amount of a document that differs from the calculation or retained model value.
+ * For BT-131, the comparison uses the calculated line amount even when the invoice retains the
+ * stated amount within the price-rounding tolerance. Such a deviation can occur in every
+ * {@link ReadMode} and does not necessarily mean that the stated amount was changed.
  *
  * @param businessTerm the EN 16931 business term, e.g. {@code BT-131}
  * @param lineId       identifier of the affected line (BT-126), or null for the document level
  * @param stated       the amount the document states
- * @param calculated   the amount of the invoice model, or null if the model has none
+ * @param calculated   the calculated or retained model value, or null if the model has none
  */
 public record AmountDeviation(String businessTerm, String lineId, BigDecimal stated, BigDecimal calculated) {
   /**

@@ -72,9 +72,24 @@ not guarantee that every valid invoice can be read; see the
 byte[] received = Files.readAllBytes(path);
 ValidationResult result = paniolo.validate(received);
 Invoice invoice = paniolo.read(received);                              // strict
-ReadResult lenient = paniolo.read(received, ReadMode.LENIENT);         // deviations as warnings
+ReadResult lenient = paniolo.read(received, ReadMode.LENIENT);         // warnings and amount deviations
 ImportResult imported = paniolo.importInvoice(received, ReadMode.LENIENT); // original XML and stated amounts kept
 ```
+
+The three read modes apply the same structural model checks and do not run XML validation:
+
+| Mode | Deviating line price or quantity | Other supported deviations |
+|------|----------------------------------|----------------------------|
+| `STRICT` (default) | Rejects changes beyond price-rounding tolerance | Rejects a differing VAT total or amount due; reports other total differences |
+| `LENIENT` | Can recalculate the price or negate the quantity | Keeps the model's totals and reports changes |
+| `LENIENT_KEEP_LINES` | Rejects a line that would need either change | Handles other deviations like `LENIENT` |
+
+All modes can report import warnings and amount deviations. A stated line amount within the
+price-rounding tolerance is kept, but a difference from its calculated amount is still listed as
+BT-131 in `deviations()`. `isExact()` checks only warnings; use `requireNoDeviations()` to reject
+any listed amount difference, including after a strict read. It also rejects a listed BT-131
+difference whose stated amount was retained. Keep the original XML with `importInvoice` when
+archiving; see [reading an invoice](../README.md#reading-an-invoice).
 
 Build invoices with `Invoice.create()` and the model builders; see the
 [project README](../README.md#generating-an-invoice). Every method is described in detail, with
@@ -85,7 +100,7 @@ examples, in the Javadoc of [`Paniolo`](src/main/java/io/github/nalukit/paniolo/
 | `create()`, `builder()`                                                                                                                                               | Instance with the packaged rules, or with further rules (see [configuration](#configuration))                                                                         |
 | `warmUp`                                                                                                                                                              | Compile the XRechnung rules for UBL and CII now instead of on the first validation                                                                                    |
 | `toXml`, `toBytes`                                                                                                                                                    | Write an invoice as UBL or CII (`InvoiceSyntax`)                                                                                                                      |
-| `read`                                                                                                                                                                | Read UBL Invoice, UBL CreditNote, CII, ZUGFeRD 1.0, or a Factur-X PDF from `String`, `byte[]`, or `InputStream`; with `ReadMode.LENIENT` a `ReadResult` with warnings |
+| `read`                                                                                                                                                                | Read UBL Invoice, UBL CreditNote, CII, ZUGFeRD 1.0, or a Factur-X PDF from `String`, `byte[]`, or `InputStream`; with an explicit `ReadMode` a `ReadResult` with warnings, stated amounts, and deviations |
 | `importInvoice`, `export`                                                                                                                                             | Import a received invoice with original XML, stated amounts and deviations; export it explicitly as `ORIGINAL` or `NORMALIZED`                                        |
 | `validate`                                                                                                                                                            | Validate XML or a PDF with the rules detected from the content, an `Invoice` in a given syntax, or XML against an explicit document type or Factur-X profile          |
 | `detect`, `isPdf` | XML syntax (`UBL_INVOICE`, `UBL_CREDIT_NOTE`, `CII`); whether the content is a PDF |

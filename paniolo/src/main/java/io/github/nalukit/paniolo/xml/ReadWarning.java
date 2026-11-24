@@ -21,8 +21,8 @@ import java.util.Objects;
 
 /**
  * A deviation or conversion reported while reading an invoice. Amount deviations accepted in
- * {@link ReadMode#LENIENT} produce warnings; conversions and values the model does not keep can
- * produce warnings in either mode, e.g. {@link #IDENTIFIER} or {@link #SPECIFICATION_VERSION}.
+ * {@link ReadMode#LENIENT} and {@link ReadMode#LENIENT_KEEP_LINES} produce warnings; conversions
+ * and values the model does not keep can produce warnings in any mode, e.g. {@link #IDENTIFIER} or {@link #SPECIFICATION_VERSION}.
  * These warnings describe the import and are separate from XML validation findings.
  *
  * @param code    warning identifier, e.g. {@link #LINE_NET_PRICE}
@@ -61,7 +61,10 @@ public record ReadWarning(String code, String lineId, String message) {
   public static final String CASH_DISCOUNT  = "READ-CASH-DISCOUNT";
   /**
    * The document states more identifiers than the model keeps for a business term with one
-   * identifier, e.g. the deliver-to location (BT-71); the message names the identifier not kept.
+   * identifier, e.g. the deliver-to location (BT-71), VAT identifier or tax number of a party.
+   * A payee identifier with the reserved scheme {@code SEPA} is also reported. The message names
+   * the location and identifier not kept; repeated identical values and empty repetitions are not
+   * reported by the CII and ZUGFeRD 1.0 readers.
    */
   public static final String IDENTIFIER     = "READ-IDENTIFIER";
   /**
