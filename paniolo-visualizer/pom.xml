@@ -19,7 +19,7 @@
   <properties>
     <!-- The browser tests need a browser; they are compiled and run with -P browser-tests only. -->
     <browser.test.exclude>**/browser/**</browser.test.exclude>
-    <playwright.version>1.58.0</playwright.version>
+    <playwright.version>1.65.1</playwright.version>
   </properties>
 
   <dependencies>
