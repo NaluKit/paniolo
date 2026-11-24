@@ -18,7 +18,7 @@
 
   <properties>
     <picocli.version>4.7.7</picocli.version>
-    <plugin.shade.version>3.6.0</plugin.shade.version>
+    <plugin.shade.version>3.6.2</plugin.shade.version>
     <!-- GitHub Packages of the repository; the workflow passes -Dgithub.packages.url for the actual one -->
     <github.packages.url>https://maven.pkg.github.com/NaluKit/paniolo</github.packages.url>
   </properties>
