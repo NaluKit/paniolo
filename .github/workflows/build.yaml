@@ -249,8 +249,8 @@ jobs:
           java-version: '21'
           cache: maven
           server-id: central
-          server-username: MAVEN_USERNAME
-          server-password: MAVEN_PASSWORD
+          server-username-env-var: MAVEN_USERNAME
+          server-password-env-var: MAVEN_PASSWORD
       - name: Extract Maven project version
         id: project
         run: |
@@ -326,8 +326,8 @@ jobs:
           java-version: '21'
           cache: maven
           server-id: github
-          server-username: GITHUB_USER
-          server-password: GITHUB_TOKEN
+          server-username-env-var: GITHUB_USER
+          server-password-env-var: GITHUB_TOKEN
       - name: Deploy paniolo-cli to GitHub Packages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
