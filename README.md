@@ -415,6 +415,10 @@ PDF/A-1 has no transparency: the watermark becomes opaque light text below the c
 logos with transparency are placed on white. The methods that embed XML reject the preview
 profiles. The command line selects the profile with `--pdf-profile`.
 
+A preview is validated like any other document, so the invoice number must be filled. Paniolo does
+not switch validation off for a watermark. If the real number is not assigned yet, set a
+placeholder such as `VORSCHAU` or `PREVIEW` as the invoice number before you render the preview.
+
 ### Migrate ZUGFeRD 1.0
 
 ZUGFeRD 1.0 does not meet EN 16931 and is no longer accepted as an electronic invoice. Paniolo
