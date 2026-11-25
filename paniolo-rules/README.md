@@ -209,6 +209,33 @@ of France_RFE unmodified with the repository's `LICENSE` and a `SHA256SUMS`, cha
 `META-INF/NOTICE`, and run the tests; `ExtendedCtcFrTest` of `paniolo-facturx` validates the
 official examples of the release, which are kept in its test resources.
 
+## Message language
+
+The language of a rule message cannot be chosen. None of the packaged releases provides a rule
+message in more than one language: their Schematrons and stylesheets contain no `xml:lang`
+variants and no diagnostics. Each group of rules is published in exactly one language, and the
+validation of `paniolo` reports that text unchanged:
+
+| Rules                                                                  | Publisher                        | Language |
+|------------------------------------------------------------------------|----------------------------------|----------|
+| EN 16931 (`BR-*`, `BR-CO-*`, `BR-CL-*`, …) in all packaged releases    | CEN/TC 434, via KoSIT and FeRD   | English  |
+| `PEPPOL-EN16931-R*` of the XRechnung Schematron                        | KoSIT                            | English  |
+| `BR-DE-*`, `BR-DEX-*`, `BR-TMP-*` of the XRechnung Schematron          | KoSIT                            | German   |
+| Factur-X / ZUGFeRD profile rules (`BR-FX*`), ZUGFeRD 1.0, Order-X      | FeRD, FNFE-MPE                   | English  |
+| `BR-FREXT-*` of EXTENDED-CTC-FR                                        | FNFE-MPE                         | English  |
+| `BR-FR-*` of BR-FR (flux 2)                                            | FNFE-MPE                         | French   |
+
+A single validation can therefore return messages in more than one language, for example English
+and German for XRechnung, or English and French for EXTENDED-CTC-FR. Paniolo does not translate,
+rewrite, or supplement rule messages; the rule identifier, severity, location, and validity do not
+depend on the language of a message. To show messages in another language, map the rule
+identifier (`ValidationMessage.ruleId()`) to your own texts.
+
+When a finding carries more than one `svrl:text`, the validation uses the first one in document
+order. If a future official release provides messages in several languages, the selection of a
+language will be added for that release only; until then, this section describes the behavior for
+all packaged releases.
+
 ## Licenses
 
 The Paniolo code in this module is licensed under Apache 2.0. The packaged archives are

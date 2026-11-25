@@ -51,6 +51,12 @@ reference in `docs/api/<version>.md`.
 
 ### Added
 
+- The GitHub release of a version now carries its test evidence:
+  `paniolo-<version>-test-evidence.tar.gz` and `.json` with the test reports of the release run
+  (Java 21 and 25 with the invoice corpus, and the browser tests), the tool versions, the check
+  configuration, the commit and the workflow run, and every skipped test case with its reason.
+  Test reports are now uploaded for successful runs too, not only for failed ones, and the archive
+  carries a build provenance attestation. `check-release.sh` checks that the workflow does this.
 - `PrecedingInvoiceReferenceTest` documents why CII outside the Factur-X profiles EXTENDED and
   EXTENDED-CTC-FR writes one preceding invoice reference (BG-3) only: the UN/CEFACT D16B schema of
   the XRechnung, Peppol, and EN 16931 CII validation and the schema of the profile BASIC allow one

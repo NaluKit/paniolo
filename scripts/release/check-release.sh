@@ -113,6 +113,20 @@ else
   ok "tag $VERSION does not exist yet (created by the release workflow)"
 fi
 
+echo "Test evidence"
+WORKFLOW=.github/workflows/build.yaml
+if grep -Fq 'scripts/release/collect-test-evidence.sh' "$ROOT/$WORKFLOW" &&
+   grep -Fq 'release-files/*-test-evidence.tar.gz' "$ROOT/$WORKFLOW"; then
+  ok "the release workflow archives the test evidence with the release"
+else
+  fail "$WORKFLOW does not collect the test evidence and attach it to the GitHub release"
+fi
+if grep -B1 -A2 'uses: actions/upload-artifact' "$ROOT/$WORKFLOW" | grep -Fq 'if: failure()'; then
+  fail "$WORKFLOW uploads test reports only on failure; the release needs those of a successful run"
+else
+  ok "test reports are uploaded for successful runs too"
+fi
+
 echo "SECURITY.md"
 LINE=$(echo "$VERSION" | cut -d. -f1-2).x
 if grep -Eq "^\| *\`$LINE\` *\| *Yes" "$ROOT/SECURITY.md"; then

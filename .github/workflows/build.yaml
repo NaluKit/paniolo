@@ -69,13 +69,29 @@ jobs:
       # regression evidence for the validation results. Its fixtures are in the repository.
       - name: Verify with Maven
         run: mvn verify -ntp -P invoice-corpus
+      # Tool versions of this job, archived with the reports as part of the release evidence.
+      - name: Record the tool versions
+        if: always()
+        run: |
+          mkdir -p target/ci-evidence
+          {
+            echo "job: ${{ github.job }}"
+            echo "runner image: ${ImageOS:-unknown} ${ImageVersion:-unknown}"
+            echo "commit: $GITHUB_SHA"
+            echo "run: $GITHUB_RUN_ID attempt $GITHUB_RUN_ATTEMPT"
+            java -version 2>&1
+            mvn -version 2>&1
+          } > target/ci-evidence/environment.txt
+      # Always uploaded, not only on failure: the maven-deploy job archives the reports of a
+      # successful release run as a permanent part of the GitHub release.
       - uses: actions/upload-artifact@v7
-        if: failure()
+        if: always()
         with:
           name: test-reports-jdk${{ matrix.java }}
           path: |
             **/target/surefire-reports/
             **/target/failsafe-reports/
+            target/ci-evidence/
 
   # The web component of paniolo-visualizer in a real browser (Playwright): the parser and the component
   # load UBL, CII, and PDF documents, show sub-lines, attachments, and the validation report, switch the
@@ -102,11 +118,27 @@ jobs:
           -Dexec.args="install --with-deps chromium"
       - name: Test the visualizer in the browser
         run: mvn verify -ntp -P browser-tests -pl paniolo-visualizer
+      # Tool versions of this job, archived with the reports as part of the release evidence.
+      - name: Record the tool versions
+        if: always()
+        run: |
+          mkdir -p target/ci-evidence
+          {
+            echo "job: ${{ github.job }}"
+            echo "runner image: ${ImageOS:-unknown} ${ImageVersion:-unknown}"
+            echo "commit: $GITHUB_SHA"
+            echo "run: $GITHUB_RUN_ID attempt $GITHUB_RUN_ATTEMPT"
+            java -version 2>&1
+            mvn -version 2>&1
+          } > target/ci-evidence/environment.txt
       - uses: actions/upload-artifact@v7
-        if: failure()
+        if: always()
         with:
           name: visualizer-browser-reports
-          path: paniolo-visualizer/target/surefire-reports/
+          path: |
+            paniolo-visualizer/target/surefire-reports/
+            paniolo-visualizer/target/failsafe-reports/
+            target/ci-evidence/
 
   # Static release check (scripts/release/check-release.sh) for pull requests against main, so an
   # inconsistent release is found before the merge and not only in the deploy job.
@@ -336,7 +368,7 @@ jobs:
         # the other modules were installed into the local repository by the Maven Central deploy above
         run: mvn deploy -ntp -pl paniolo-cli -DskipTests -Drevision="$REVISION" -Dproject.build.outputTimestamp="$TIMESTAMP" -Dgithub.packages.url="https://maven.pkg.github.com/$GITHUB_REPOSITORY"
       # The evidence of the release: every published JAR with its SBOM, the SHA-256 checksums,
-      # the OWASP report of this run and the release notes from CHANGELOG.md.
+      # the OWASP report of this run, the test evidence and the release notes from CHANGELOG.md.
       - name: Collect release files
         if: steps.mode.outputs.release == 'true'
         env:
@@ -354,11 +386,26 @@ jobs:
         run: |
           report=$(find owasp-report -name dependency-check-report.html | head -n 1)
           cp "$report" "release-files/paniolo-$VERSION-dependency-check-report.html"
+      # The test evidence: the reports of Java 21 and 25, the invoice corpus and the browser tests of
+      # this run, the tool versions and the check configuration. Release assets are kept as long as the
+      # release exists and are not touched by the cleanup of workflow runs.
+      - uses: actions/download-artifact@v8
+        if: steps.mode.outputs.release == 'true'
+        with:
+          pattern: '{test-reports-jdk*,visualizer-browser-reports}'
+          path: test-reports
+      - name: Collect the test evidence
+        if: steps.mode.outputs.release == 'true'
+        env:
+          VERSION: ${{ steps.project.outputs.version }}
+        run: scripts/release/collect-test-evidence.sh "$VERSION" test-reports release-files
       - name: Attest build provenance
         if: steps.mode.outputs.release == 'true'
         uses: actions/attest-build-provenance@v4
         with:
-          subject-path: release-files/*.jar
+          subject-path: |
+            release-files/*.jar
+            release-files/*-test-evidence.tar.gz
       - name: Create GitHub release
         if: steps.mode.outputs.release == 'true'
         env:
@@ -367,4 +414,5 @@ jobs:
         run: |
           gh release create "$VERSION" --target "$GITHUB_SHA" --title "$VERSION" \
             --notes-file release-files/RELEASE-NOTES.md \
-            release-files/*.jar release-files/*.json release-files/*.html release-files/SHA256SUMS
+            release-files/*.jar release-files/*.json release-files/*.html release-files/SHA256SUMS \
+            release-files/*-test-evidence.tar.gz release-files/SHA256SUMS-test-evidence
