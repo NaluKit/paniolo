@@ -1564,7 +1564,9 @@ version in Git. Release version, tag, Maven artifacts, the versioned API referen
 after publishing; its header describes the static checks, the `--site` check of the website
 (maintained in [NaluKit/nalukit-web-site](https://github.com/NaluKit/nalukit-web-site)) and the
 `--artifacts` check against Maven Central. The CI build runs the static checks for every pull
-request against `main`. `HEAD-SNAPSHOT` is the development build of the `dev` branch and is not supported
+request against `main`. The GitHub release of a version also carries the test evidence of its
+release run (reports for Java 21 and 25, the invoice corpus and the browser tests, tool versions,
+commit and workflow run; see [SECURITY.md](SECURITY.md#how-releases-are-built)). `HEAD-SNAPSHOT` is the development build of the `dev` branch and is not supported
 for production use. Changes per release, and those not yet released, are listed in
 [CHANGELOG.md](CHANGELOG.md).
 
