@@ -6,6 +6,12 @@ reference in `docs/api/<version>.md`.
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-11-26
+
+Patch release: stricter and more transparent reading of stated amounts, limits for PDF streams and
+attachments, and corrections in the UBL, CII and ZUGFeRD 1.0 readers. See the
+[API reference for 1.0.1](docs/api/1.0.1.md).
+
 ### Fixed
 
 - The UBL reader recognised the tax scheme `VAT` of a `PartyTaxScheme` only in capitals. With `vat`
@@ -685,7 +691,8 @@ Second release candidate. See the [API reference for 1.0.0-rc02](docs/api/1.0.0-
 First release candidate, published to Maven Central under the group ID `io.github.nalukit`. See
 the [API reference for 1.0.0-rc01](docs/api/1.0.0-rc01.md).
 
-[Unreleased]: https://github.com/NaluKit/paniolo/compare/1.0.0...HEAD
+[Unreleased]: https://github.com/NaluKit/paniolo/compare/1.0.1...HEAD
+[1.0.1]: https://github.com/NaluKit/paniolo/releases/tag/1.0.1
 [1.0.0]: https://github.com/NaluKit/paniolo/releases/tag/1.0.0
 [1.0.0-rc02]: https://github.com/NaluKit/paniolo/releases/tag/1.0.0-rc02
 [1.0.0-rc01]: https://github.com/NaluKit/paniolo/releases/tag/1.0.0-rc01
