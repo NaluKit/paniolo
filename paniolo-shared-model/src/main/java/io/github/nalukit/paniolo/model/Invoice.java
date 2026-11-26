@@ -631,7 +631,9 @@ public record Invoice(String number, LocalDate issueDate, InvoiceTypeCode typeCo
     /**
      * Sets {@link Invoice#precedingInvoiceReferences() precedingInvoiceReferences}.
      *
-     * @param precedingInvoiceReferences references to earlier invoices (BG-3); an empty list if none
+     * @param precedingInvoiceReferences references to earlier invoices (BG-3); an empty list if none;
+     *                                   CII outside the Factur-X profiles EXTENDED and
+     *                                   EXTENDED-CTC-FR takes one only (D16B schema), UBL any number
      * @return this builder
      */
     public Builder precedingInvoiceReferences(List<PrecedingInvoiceReference> precedingInvoiceReferences) {

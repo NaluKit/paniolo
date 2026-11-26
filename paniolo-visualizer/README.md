@@ -120,11 +120,11 @@ const model = await parse(bytes);   // { kind, syntax, profile, number, seller, 
 
 All events bubble and cross the shadow boundary.
 
-| Event           | `detail`                                                                                                                          |
-|-----------------|-----------------------------------------------------------------------------------------------------------------------------------|
-| `paniolo-load`  | `{ model, title }`, e.g. title `Invoice R-2026-001` in English                                                                              |
-| `paniolo-error` | `{ error, code, message }`; codes: `empty`, `input`, `xml`, `unknownRoot`, `isReport`, `pdf`, `pdfEncrypted`, `pdfNoXml`, `fetch` |
-| `paniolo-tab`   | `{ tab }`                                                                                                                         |
+| Event           | `detail`                                                                                                                                                                                                                        |
+|-----------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `paniolo-load`  | `{ model, title }`, e.g. title `Invoice R-2026-001` in English                                                                                                                                                                  |
+| `paniolo-error` | `{ error, code, message }`; codes: `empty`, `input`, `xml`, `unknownRoot`, `isReport`, `notReport`, `lineHierarchy`, `invalidBoolean`, `pdf`, `pdfEncrypted`, `pdfNoXml`, `pdfTooLarge`, `fetch`; `unknown` for any other error |
+| `paniolo-tab`   | `{ tab }`                                                                                                                                                                                                                       |
 
 ### Styling
 
@@ -196,6 +196,17 @@ mvn verify -P browser-tests -pl paniolo-visualizer -Dpaniolo.browser.channel=chr
 ## Limits
 
 - Encrypted PDFs are not read. PDF streams with filters other than `FlateDecode` are skipped.
+- Reading a PDF inflates at most 64 MiB per stream and 256 MiB per document, counted over all
+  streams and all stages of a filter chain and checked while inflating. A PDF over a limit is not
+  read in part; it ends with the error code `pdfTooLarge`. The limits are the exported object
+  `pdfLimits` of the module (`streamBytes`, `documentBytes`, in bytes) and can be changed before a
+  document is loaded:
+
+  ```js
+  import {pdfLimits} from '/paniolo-visualizer/paniolo-visualizer.js';
+
+  pdfLimits.documentBytes = 512 * 1024 * 1024;
+  ```
 - The component shows the data; it does not validate. Validate with the `Paniolo` facade (or
   `paniolo validate -f xml`) and pass the report.
 - No PDF rendering of the visualization (Mustang uses Apache FOP for that); print to PDF with the
