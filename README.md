@@ -30,7 +30,7 @@ Invoice received = paniolo.read(Files.readAllBytes(path));    // UBL, CII, ZUGFe
 - [What Paniolo can do](#what-paniolo-can-do)
 - [Scope](#scope)
 - [Installation](#installation)
-- [Versioned API reference and reproducible quickstart](docs/api/1.0.0.md)
+- [Versioned API reference and reproducible quickstart](docs/api/1.0.1.md)
 - [Using Paniolo](#using-paniolo): [send an invoice](#send-an-xrechnung),
   [receive an invoice](#receive-and-process-an-invoice), [Factur-X](#create-a-factur-x--zugferd-pdf),
   [ZUGFeRD 1.0](#migrate-zugferd-10), [Order-X](#orders-order-x),
@@ -169,9 +169,14 @@ Not included:
   CreditNote (KoSIT defines them for UBL Invoice only), and payment penalty terms in the XRechnung text form (`#VERZUG#`).
 - Exact reading of deviating amounts: by default, line net amounts must follow quantity x net
   price plus line charges minus line allowances, up to the rounding of the net price (as Peppol
-  rule PEPPOL-EN16931-R120 requires). `ReadMode.LENIENT` reads such documents, for example a
-  line amount that is a gross price including insurance tax, by recalculating the net price,
-  and reports the deviation; see [reading an invoice](#reading-an-invoice).
+  rule PEPPOL-EN16931-R120 requires); the rounding is half a unit of the last decimal that the price
+  states, using at least two decimal places. This is at most half a cent per price unit, scaled
+  by the absolute quantity / price base quantity, plus half a cent for rounding the amount. A
+  difference that the rounding explains is kept and listed as BT-131 in `ReadResult.deviations()`.
+  `ReadMode.LENIENT` reads such documents, for example a line amount that is a gross price
+  including insurance tax, by recalculating the net price, and reports the deviation;
+  `ReadMode.LENIENT_KEEP_LINES` reads like `LENIENT` but rejects a line instead of changing its
+  price or quantity; see [reading an invoice](#reading-an-invoice).
 - XRechnung 1.0 and 1.1, for which no release is packaged. Their identifiers produce
   `XR-SPECIFICATION-UNSUPPORTED`; the configured rules still run and report their findings.
   A custom KoSIT bundle can supply additional identifiers through its `scenarios.xml`.
@@ -204,11 +209,11 @@ Technical references: [XRechnung](https://xeinkauf.de/xrechnung/),
 ## Installation
 
 For a complete, runnable example with a pinned source commit, exact Maven coordinates, and the
-expected output, see the [versioned API reference and reproducible quickstart](docs/api/1.0.0.md)
-(release `1.0.0` at `3a23b2b8f91d`). It also documents the facade, model, optional
+expected output, see the [versioned API reference and reproducible quickstart](docs/api/1.0.1.md)
+(release `1.0.1` at `4651ba648221`). It also documents the facade, model, optional
 modules, validation results, and how to generate the full JavaDoc for that baseline.
 
-The reference above describes release `1.0.0` and uses its Maven Central artifacts. Each release
+The reference above describes release `1.0.1` and uses its Maven Central artifacts. Each release
 gets its own reference `docs/api/<version>.md` whose quickstart
 uses the published Maven Central artifacts of exactly that version (see
 [releases and security](#releases-and-security)).
@@ -219,12 +224,12 @@ Paniolo needs **Java 21** or newer, at build and at run time; there is no build 
 versions. If an application cannot leave Java 11 or 17, run Paniolo in its own Java 21 process (the
 [CLI](#command-line) or a small service around the facade) and exchange XML, PDF, or JSON with it.
 
-The Maven group ID is `io.github.nalukit`. The current release is `1.0.0` on Maven Central. The
+The Maven group ID is `io.github.nalukit`. The current release is `1.0.1` on Maven Central. The
 development version `HEAD-SNAPSHOT` is built with `mvn install` from the repository root (see
 [building](#building-and-testing)).
 This README and the module READMEs describe the current source tree, including unreleased
-features. Dependency snippets use the published release `1.0.0`; its exact API is documented
-in the [versioned reference](docs/api/1.0.0.md). To use the current source after `mvn install`,
+features. Dependency snippets use the published release `1.0.1`; its exact API is documented
+in the [versioned reference](docs/api/1.0.1.md). To use the current source after `mvn install`,
 use `HEAD-SNAPSHOT` consistently for all Paniolo dependencies, or set `-Drevision=<version>` when
 building and use that version throughout the application.
 
@@ -234,7 +239,7 @@ Most applications need only `paniolo`:
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo</artifactId>
-  <version>1.0.0</version>
+  <version>1.0.1</version>
 </dependency>
 ```
 
@@ -410,6 +415,10 @@ byte[] facturX = PANIOLO.toFacturX(invoice, pdfA1, FacturXProfile.EN16931);
 PDF/A-1 has no transparency: the watermark becomes opaque light text below the content, and PNG
 logos with transparency are placed on white. The methods that embed XML reject the preview
 profiles. The command line selects the profile with `--pdf-profile`.
+
+A preview is validated like any other document, so the invoice number must be filled. Paniolo does
+not switch validation off for a watermark. If the real number is not assigned yet, set a
+placeholder such as `VORSCHAU` or `PREVIEW` as the invoice number before you render the preview.
 
 ### Migrate ZUGFeRD 1.0
 
@@ -770,8 +779,9 @@ All details in the example are fictitious.
 - Line allowances and charges (BG-27, BG-28): `LineAdjustment.createAllowance()` / `createCharge()`; they are
   part of the line net amount (BT-131) and use the line's VAT category.
 - Stated line net amount: `InvoiceLine.create()....netAmount(new BigDecimal("55.46"))` keeps BT-131 when the
-  shown net price is rounded to cents (20 x 2.77 shown, 55.46 charged). The difference must be explainable
-  by that rounding; otherwise the line is rejected.
+  shown net price is rounded (20 x 2.77 shown, 55.46 charged). The tolerance follows the stated
+  decimal places of the price: `2.7700` explains less than `2.77`, so 55.46 is rejected with
+  that four-decimal price. Price base quantity and line allowances and charges are included.
 - Stated VAT amount of a category: `.vatAmount(TaxCategory.standard(new BigDecimal("19")), new BigDecimal("38.18"))`
   keeps BT-117 when the seller rounds the VAT of every line (38.18 instead of 38.19 rounded once).
   It may differ by 0.01 per line, document allowance, document charge, and EXTENDED logistics
@@ -866,12 +876,20 @@ other producers or a line amount that is not quantity x net price, that would ot
 silently. A stated VAT amount of a category (BT-117) that differs only by the rounding of its lines,
 allowances, and charges (0.01 each, as BR-FXEXT-S-09 allows) is no such difference: the readers
 keep it as `Invoice.vatAmounts()`, so the invoice states the same VAT and amount due, and a
-normalized export writes them again. Run [validation](#validating-xml) first for documents from external sources; the readers check structure, not business rules.
+normalized export writes them again. Paniolo does not round such an amount again: 710.79 x 19 %
+is 135.0501, a document that states 135.04 keeps 135.04 in every read mode, without warning, and
+two cents are no rounding. Run [validation](#validating-xml) first for documents from external sources; the readers check structure, not business rules.
 
 Empty optional elements, such as a seller written as `<ram:SellerTradeParty><ram:ID/>...`, an empty
-`ram:GlobalID`, `cbc:EndpointID`, or `cac:PartyIdentification/cbc:ID`, count as absent in both read
+`ram:GlobalID`, `cbc:EndpointID`, or `cac:PartyIdentification/cbc:ID`, count as absent in all read
 modes and give no warning. EN 16931 and Factur-X allow them; XRechnung and Peppol forbid them
 (`PEPPOL-EN16931-R008`), which validation reports.
+
+CII and ZUGFeRD 1.0 readers preserve schemes on party and deliver-to identifiers, including
+`schemeID` on `ram:ID`. A normalized CII export writes qualified identifiers as `ram:GlobalID`;
+the identifier and scheme are retained, but the XML form can change. Different VAT identifiers
+or tax numbers that cannot all be retained produce `READ-IDENTIFIER`, naming the party path and
+the value not kept; empty repetitions and repeated identical values give no warning.
 
 For the supported deviations below, pass `ReadMode.LENIENT`. Structural model restrictions
 still apply; this is not a general import mode for every valid invoice. The result carries the
@@ -900,16 +918,17 @@ result.warnings().forEach(w -> log(w.code(), w.lineId(), w.message()));
 | `READ-GROSS-PRICE`    | UBL: a price discount (BT-147) without gross price (BT-148)                                                                                                                     | The gross price is derived as net price plus discount; the original document keeps its form, a normalized export states the derived gross price                            |
 | `READ-LINE-QUANTITY`  | The stated line net amount has the opposite sign of quantity x net price outside the profiles that allow a negative net price                                                   | The quantity (BT-129) takes the sign of the amount, the price stays; `result.deviations()` lists BT-129 and BT-131                                                         |
 | `READ-TAX-RATE`       | A VAT category without a rate other than zero (Z, E, AE, K, G) states another rate or none, e.g. an exempt VAT breakdown with 19 % and VAT amount zero                         | Rate zero is kept; strict reading rejects the document with the location                                                                                                  |
+| `READ-ALLOWANCE-CHARGE-TOTAL` | A total of allowances (BT-107) or charges (BT-108) that the listed document allowances and charges do not explain, e.g. the total alone of a ZUGFeRD 1.0 BASIC invoice | No allowance or charge is invented (amount, sign and reason would be guesses); the totals of the invoice differ from the document and `result.deviations()` lists BT-107 or BT-108 with the other totals that follow. Given in strict reading as well, which rejects the document by its VAT total |
 | `READ-PERIOD`         | An invoicing period (BG-14, BG-26) with a date that is no calendar date, e.g. `20139102`, or an end before its start                                                           | The period is dropped; strict reading rejects the document with the location                                                                                             |
 
 Four warnings report values the model does not keep or interpret, or takes from somewhere else,
 without changing an amount.
-They are given in **both** modes, so `isExact()` can be `false` after a strict read as well:
+They are given in **all** modes, so `isExact()` can be `false` after a strict read as well:
 
 | Warning code                 | Reported value                                                                                                     |
 |------------------------------|--------------------------------------------------------------------------------------------------------------------|
 | `READ-CASH-DISCOUNT`         | A payment terms line (BT-20) that starts like an XRechnung cash discount but cannot be read as one; kept as text  |
-| `READ-IDENTIFIER`            | A further identifier of a business term the model keeps once, e.g. the global ID of the deliver-to location (BT-71) |
+| `READ-IDENTIFIER`            | An identifier the model does not keep, e.g. a further different VAT identifier or tax number, another deliver-to identifier (BT-71), or a payee identifier with the reserved scheme `SEPA` |
 | `READ-SPECIFICATION-VERSION` | A document of EN 16931:2026 (e.g. XRechnung 4.0), read with the business terms of EN 16931:2017                     |
 | `READ-TAX-CATEGORY`          | ZUGFeRD 1.0: no VAT category code where the model needs one. A rate above zero is the standard rate (S); a line, allowance, charge, or logistics service charge without VAT block belongs to the only VAT breakdown. A rate of zero or several breakdowns are rejected with the location, no category is guessed |
 
@@ -923,6 +942,25 @@ reading. `result.stated()` keeps the original amounts and `result.deviations()` 
 differences, including totals that strict reading does not compare. Lines with quantity zero,
 a negative recalculated price outside EXTENDED (BR-27) that a negated quantity does not explain, and structural errors, are still rejected. `ReadMode.STRICT` is
 the default of all methods without a mode.
+
+### Writing after a lenient read
+
+A lenient read can change what an invoice states: a recalculated net price, a negated quantity, or
+totals the model could not keep. Four things follow from that:
+
+- The change is never marked in the written XML; it is in the result. Every case is reported as
+  `ReadWarning` and as `AmountDeviation` (BT-146, BT-129, BT-107, BT-109, ...), and the CLI prints
+  both to standard error.
+- `ReadMode.LENIENT_KEEP_LINES` (CLI `read --keep-line-values`) never changes the price or quantity
+  of a line: it rejects such a line instead.
+- `result.requireNoDeviations()` (CLI `read --fail-on-deviation`) refuses any result whose invoice
+  lists amount differences, for a caller that writes the invoice again. This includes a retained
+  BT-131 within price-rounding tolerance, even though the stated line amount was kept.
+- The CLI commands that write a document (`to-xml`, `to-facturx`) read their input strictly and
+  reject a document with deviating amounts; they do not convert it with other amounts. Converting
+  such a document takes two steps and is a conscious choice: `paniolo read --lenient FILE -o
+  invoice.json`, then `paniolo to-xml invoice.json --syntax CII`. The original document stays
+  available unchanged in the Java facade (`importInvoice`, `export(ORIGINAL)`).
 
 ### Writing a read invoice in another syntax
 
@@ -1239,7 +1277,7 @@ Hybrid invoices (a PDF/A-3 document with embedded CII XML) need the optional mod
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo-facturx</artifactId>
-  <version>1.0.0</version>
+  <version>1.0.1</version>
 </dependency>
 ```
 
@@ -1526,7 +1564,9 @@ version in Git. Release version, tag, Maven artifacts, the versioned API referen
 after publishing; its header describes the static checks, the `--site` check of the website
 (maintained in [NaluKit/nalukit-web-site](https://github.com/NaluKit/nalukit-web-site)) and the
 `--artifacts` check against Maven Central. The CI build runs the static checks for every pull
-request against `main`. `HEAD-SNAPSHOT` is the development build of the `dev` branch and is not supported
+request against `main`. The GitHub release of a version also carries the test evidence of its
+release run (reports for Java 21 and 25, the invoice corpus and the browser tests, tool versions,
+commit and workflow run; see [SECURITY.md](SECURITY.md#how-releases-are-built)). `HEAD-SNAPSHOT` is the development build of the `dev` branch and is not supported
 for production use. Changes per release, and those not yet released, are listed in
 [CHANGELOG.md](CHANGELOG.md).
 
@@ -1588,3 +1628,8 @@ The Paniolo logo and all variants in `docs/branding/` and in `src/content/paniol
 website repository [NaluKit/nalukit-web-site](https://github.com/NaluKit/nalukit-web-site) were
 traced and edited for the project; see the
 [branding README](docs/branding/README.md#origin-and-rights).
+
+## To get in touch with the developer
+Please visit us [nalu@element.io](https://app.element.io/#/room/#Nalukit42_Lobby:gitter.im) (former Gitter room).
+
+

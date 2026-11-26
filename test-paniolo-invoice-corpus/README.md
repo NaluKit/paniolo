@@ -7,7 +7,7 @@ examples, and legacy compatibility cases.
 
 **Results: 153 files pass the selected validation profile; 15 are rejected.
 Paniolo currently cannot read 1 valid file into its invoice model: the Italian VAT category B
-(split payment), which EN 16931 does not know.**
+(split payment), which EN 16931 lists but Paniolo does not implement.**
 `ManifestSummaryTest` compares these numbers with the manifest, so they cannot drift apart.
 A passing corpus test confirms the documented baseline, including these known limitations.
 It does not establish full format conformance for Paniolo.

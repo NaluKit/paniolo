@@ -6,6 +6,145 @@ reference in `docs/api/<version>.md`.
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-11-26
+
+Patch release: stricter and more transparent reading of stated amounts, limits for PDF streams and
+attachments, and corrections in the UBL, CII and ZUGFeRD 1.0 readers. See the
+[API reference for 1.0.1](docs/api/1.0.1.md).
+
+### Fixed
+
+- The UBL reader recognised the tax scheme `VAT` of a `PartyTaxScheme` only in capitals. With `vat`
+  or `Vat` (valid in EN 16931, whose UBL model rules compare in upper case) the VAT identifier of a
+  seller was read as its tax number, a real tax number in a further entry was dropped, and the VAT
+  identifier of a buyer was lost, all without a message; a CII export then lacked the VAT
+  identifier (`BR-CO-26`). The scheme is now compared ignoring case, also for the tax category
+  check. The values of the identifiers are unchanged.
+- A stated line amount (BT-131) was accepted if it differed from quantity x net price by no more
+  than half a cent per unit of quantity, whatever the decimals of the price. A price stated with
+  four or five decimals is not rounded to cents, so a document could carry a line amount that no
+  rounding of the price explains (for example 20 x 2.7700 stated as 55.46, or a difference of more
+  than 4,000 for a quantity of 800,000 at a price of 0.01146) without any message. The tolerance now
+  is half a unit of the last stated decimal of the price (at least half a cent) per unit of
+  quantity, plus half a cent for the amount. A price in cents explains as much as before; a more
+  precise price explains less, and the strict mode rejects the line, while the lenient mode
+  recalculates the net price and reports `READ-LINE-NET-PRICE` as for every other deviating line.
+- A stated line amount that the rounding of the price explains, but that differs from quantity x
+  net price, is now listed in `ReadResult.deviations()` as BT-131 with the line, the stated amount
+  and the calculated amount. Before, such a line was accepted without a trace. The amount and the
+  price of the line stay as stated; `isExact()` is unchanged (no warning).
+- The CII and ZUGFeRD 1.0 readers dropped the scheme of a payee identifier (BT-60-1) and of the
+  deliver-to location identifier (BT-71-1) written as `ram:ID schemeID="…"`. The scheme is now
+  kept. The scheme `SEPA`, which the model reserves for the creditor identifier, is still not
+  kept on a payee, but is now reported as `READ-IDENTIFIER`.
+- The ZUGFeRD 1.0 reader read the deliver-to location identifier (BT-71) only from `ram:ID`. It now
+  also reads `ram:GlobalID` with its scheme and reports a second identifier as `READ-IDENTIFIER`,
+  as the CII reader does.
+- The ZUGFeRD 1.0 reader lost the further identifiers of a party (for example a global identifier
+  next to `ram:ID`) when it took the party over into a profile other than EXTENDED.
+- The warning for a dropped VAT identifier or tax number now also covers the EXTENDED line parties
+  (manufacturer, item seller, ship-to, ultimate ship-to).
+- The message for an unsupported VAT category, and the JavaDoc of `TaxCategory`, claimed that
+  EN 16931 knows only the categories S, Z, E, AE, K, G, O, L and M. The EN 16931 code list also
+  contains B (Italian split payment). The message now says that Paniolo does not implement the
+  category; the reader still rejects it and does not map it to another category.
+- The CII reader dropped the scheme of a party identifier written as `ram:ID schemeID="…"` (seller
+  or buyer, BT-29-1 / BT-46-1, also further identifiers), which the CII schema and the XRechnung
+  extension (BR-DEX-05) allow. The scheme is now kept in the model; the normal export writes the
+  qualified identifier as `ram:GlobalID` with its scheme.
+- The CII and ZUGFeRD 1.0 readers kept only the last of several different VAT identifiers or tax
+  numbers of a party without a message, because the model has one of each. The identifier not kept
+  is now reported as `READ-IDENTIFIER` in both read modes, with the party path and the scheme. The
+  kept value is unchanged; the same value stated twice and empty repetitions are not reported.
+- The CLI reported success when standard output could not be written, for example after a closed
+  pipe, because a print stream keeps a failed write instead of throwing it. A failed write or flush
+  of standard output now ends with exit code 3 and a message on standard error, also where the
+  command would have returned 0 or 1.
+
+### Added
+
+- The GitHub release of a version now carries its test evidence:
+  `paniolo-<version>-test-evidence.tar.gz` and `.json` with the test reports of the release run
+  (Java 21 and 25 with the invoice corpus, and the browser tests), the tool versions, the check
+  configuration, the commit and the workflow run, and every skipped test case with its reason.
+  Test reports are now uploaded for successful runs too, not only for failed ones, and the archive
+  carries a build provenance attestation. `check-release.sh` checks that the workflow does this.
+- `PrecedingInvoiceReferenceTest` documents why CII outside the Factur-X profiles EXTENDED and
+  EXTENDED-CTC-FR writes one preceding invoice reference (BG-3) only: the UN/CEFACT D16B schema of
+  the XRechnung, Peppol, and EN 16931 CII validation and the schema of the profile BASIC allow one
+  `ram:InvoiceReferencedDocument`; the schema of the Factur-X profile EN16931 accepts several, but
+  its specification identifier is the same as that of plain EN 16931. The error message now names
+  the way out (UBL, or one of these profiles); the rule is described at `Invoice`.
+- Regression tests (`VatRoundingTest`) for a stated VAT amount that is one cent off the VAT
+  calculated once per category on a single line, in both directions (710.79 x 19 % stated as 135.04,
+  3986.34 x 19 % stated as 757.41, both from public corpus documents): the amount is kept in every
+  read mode without warning or deviation, the original and the normalized export state it, the
+  validation of every profile accepts it; two cents are rejected in strict reading. The behaviour
+  was already so; the tests and the README now state it.
+- ZUGFeRD 1.0 BASIC: a total of allowances (BT-107) without any allowance element, for example in
+  a correction invoice, made the model state other totals than the document (a tax basis of -7.90
+  instead of -7.67), and only the VAT total was reported. Paniolo does not invent an allowance for
+  it, because amount, sign and reason would be guesses. The new warning `READ-ALLOWANCE-CHARGE-TOTAL`
+  now names the stated and the listed total of allowances (BT-107) or charges (BT-108), in both
+  read modes. `ReadResult.requireNoDeviations()` and the CLI option `read --fail-on-deviation`
+  refuse a result whose invoice states other amounts than the document; `read` now also prints the
+  deviations (`deviation BT-107: document states -0.23, invoice has 0.00`) next to the warnings.
+- Documented: the CLI commands that write a document read their input strictly; converting a
+  document with deviating amounts takes `read --lenient` and `to-xml` on the JSON, see the README
+  section "Writing after a lenient read".
+- `ReadMode.LENIENT_KEEP_LINES` and the CLI option `read --keep-line-values`: read like
+  `LENIENT`, but reject a line whose net price (BT-146) or quantity (BT-129) would have to change to
+  fit its stated net amount, instead of recalculating the price (`READ-LINE-NET-PRICE`) or negating
+  the quantity (`READ-LINE-QUANTITY`). All other deviations stay accepted and reported as in
+  `LENIENT`. The change of a price or quantity in `LENIENT` is unchanged and, as before, reported
+  as warning and as deviation (BT-146, BT-129) of the result, never inside the written XML.
+- Document regressions for the line amount at the half cent (quantity 1, net price 1, price base
+  quantity 200.0000001, amount 0.00): `LineRoundingDocumentTest` (invoice in UBL and CII),
+  `OrderLineRoundingTest` (Order-X), and a test in `QuotationJsonTest` (quotation, its invoice, and
+  the JSON round trip) check the line amount and the document totals in the model, in the written
+  XML, and after reading back, against fixed values.
+- `CliProcessIT` starts the packaged `paniolo-cli-*-all.jar` with `java -jar` as a real process
+  after `package`: version, exit codes 0, 1, 2, and 3, byte-exact `extract-xml` output with
+  separate standard error, PDF/A conformance through the merged ServiceLoader entries, the limit
+  of attachments, and a failed write to standard output. The child process has only the JAR on its
+  class path and a time budget of 60 seconds.
+
+### Changed
+
+- The net amount of an invoice, order, or quotation line is rounded to cents once. It was divided
+  to ten decimals first and rounded again, which could move an amount by one cent near a half cent,
+  for example quantity 1, net price 1, and price base quantity 200.0000001 (now 0.00, was 0.01).
+  Amounts and totals of such edge cases can change by one cent. The check of a stated line amount
+  against quantity x price is unchanged. New: `ModelChecks.lineNetAmount` and
+  `LineAdjustment.netEffect`.
+- The PDF reader of the visualizer limits the bytes that Flate streams inflate to: 64 MiB per
+  stream and 256 MiB per document, counted over all streams and all stages of a filter chain and
+  checked while inflating. A PDF over a limit ends with the new error code `pdfTooLarge` (message in
+  German, English and French); it is no longer read in part, and a skipped object stream or embedded
+  file no longer hides it. The limits are the exported object `pdfLimits` of the module and can be
+  changed before a document is loaded.
+- `Paniolo.attachments(byte[])` and the CLI command `attachments` now limit the attachments of one
+  PDF in total: at most 1,000 files and 256 MiB of content together, counted by the bytes actually
+  read, in addition to the existing limit of 100 MiB per file. A PDF over a limit is rejected with
+  an `IllegalArgumentException` (exit code 3 in the CLI); several file specifications that share one
+  embedded stream each count in full. PDFs with more or larger attachments, which were read before,
+  are now rejected.
+- Embedded files and the XMP metadata of a PDF are decoded with the limit applied while decoding,
+  filter stage by filter stage, so a small PDF with a highly compressed stream can no longer expand
+  into the heap before the limit is checked (the decoding of PDFBox expanded the whole stream first;
+  a PDF of 1 MiB with 1 GiB of content ended in an `OutOfMemoryError`). Only the filters Flate, LZW,
+  ASCII85, ASCIIHex, and RunLength are decoded; a file with another filter is refused. A filter that
+  is listed twice is applied once, as PDFBox does. XMP metadata over 20 MiB counts as missing.
+  PDFBox itself still expands object streams while a PDF is loaded; that is not limited here.
+- The predictor of an embedded file (`/DecodeParms` with `Predictor`) is checked before decoding:
+  PDFBox allocates two buffers of one row (`Columns` x `Colors` x `BitsPerComponent`) before it
+  writes a byte, so a small PDF with `Columns` 2000000000 ended in an `OutOfMemoryError` although
+  the output was limited. Accepted are the predictors 2 and 10 to 15, `Columns` of 1 or more,
+  `Colors` of 1 to 32, `BitsPerComponent` of 1, 2, 4, 8, or 16, and a row of up to 8 MiB that also
+  fits in the limit of the stage; the row length is calculated without integer overflow. Other
+  values are refused; a predictor of 1 or less is ignored as in PDFBox. The parameters are taken
+  per stage like PDFBox does (including a filter listed twice) and passed to the decoder as checked.
+
 ## [1.0.0] - 2026-11-18
 
 First stable release. See the [API reference for 1.0.0](docs/api/1.0.0.md).
@@ -552,7 +691,8 @@ Second release candidate. See the [API reference for 1.0.0-rc02](docs/api/1.0.0-
 First release candidate, published to Maven Central under the group ID `io.github.nalukit`. See
 the [API reference for 1.0.0-rc01](docs/api/1.0.0-rc01.md).
 
-[Unreleased]: https://github.com/NaluKit/paniolo/compare/1.0.0...HEAD
+[Unreleased]: https://github.com/NaluKit/paniolo/compare/1.0.1...HEAD
+[1.0.1]: https://github.com/NaluKit/paniolo/releases/tag/1.0.1
 [1.0.0]: https://github.com/NaluKit/paniolo/releases/tag/1.0.0
 [1.0.0-rc02]: https://github.com/NaluKit/paniolo/releases/tag/1.0.0-rc02
 [1.0.0-rc01]: https://github.com/NaluKit/paniolo/releases/tag/1.0.0-rc01

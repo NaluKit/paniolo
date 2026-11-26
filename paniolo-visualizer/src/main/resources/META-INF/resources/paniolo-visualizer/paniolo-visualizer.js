@@ -1286,19 +1286,38 @@ const PDF_DOC_ENCODING = (() => {
     return map;
 })();
 
-async function inflate(data) {
+/**
+ * Limits for the bytes that reading a PDF inflates: per decoded stream and for the whole document. A
+ * small PDF can hold streams that inflate by a factor of about 1000, which would exhaust the memory of
+ * the tab. The values are in bytes and may be lowered or raised before a document is loaded.
+ */
+export const pdfLimits = {streamBytes: 64 * 1024 * 1024, documentBytes: 256 * 1024 * 1024};
+
+/**
+ * Inflates a Flate stream. The inflated bytes of every call, also of the stages of a filter chain,
+ * count against the budget of the document; a stage that exceeds the limit of one stream or the rest
+ * of the budget ends with the error pdfTooLarge as soon as the limit is crossed, and the reader is
+ * cancelled. Trailing bytes after the zlib stream are tolerated, an exceeded limit never is.
+ */
+async function inflate(data, budget) {
+    const limit = Math.min(pdfLimits.streamBytes, budget.remaining);
     const stream = new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate'));
     const reader = stream.getReader();
-    const chunks = [];
+    let chunks = [];
     let size = 0;
+    let exceeded = false;
     try {
         for (; ;) {
             const {done, value} = await reader.read();
             if (done) {
                 break;
             }
-            chunks.push(value);
             size += value.length;
+            if (size > limit) {
+                exceeded = true;
+                break;
+            }
+            chunks.push(value);
         }
     } catch (e) {
         // trailing bytes after the zlib stream are common; keep what was decoded
@@ -1306,6 +1325,12 @@ async function inflate(data) {
             throw e;
         }
     }
+    if (exceeded) {
+        chunks = null;
+        await reader.cancel().catch(() => undefined);
+        throw new PanioloError('pdfTooLarge', 'more than ' + limit + ' bytes inflated');
+    }
+    budget.remaining -= size;
     const out = new Uint8Array(size);
     let offset = 0;
     for (const chunk of chunks) {
@@ -1315,8 +1340,14 @@ async function inflate(data) {
     return out;
 }
 
+/** The limit error must reach the caller; other damage in a stream only skips the stream. */
+function isTooLarge(e) {
+    return e instanceof PanioloError && e.code === 'pdfTooLarge';
+}
+
 async function readPdf(bytes) {
     const s = latin1(bytes);
+    const budget = {remaining: pdfLimits.documentBytes};
     const objects = new Map();
     // The file trailers: the dictionaries after the keyword trailer and the cross-reference streams. The
     // last one is the active one and declares the encryption (/Encrypt); a comment, a string, or an
@@ -1410,7 +1441,7 @@ async function readPdf(bytes) {
         let data = object.data;
         for (const f of filters) {
             if (f === 'FlateDecode' || f === 'Fl') {
-                data = await inflate(data);
+                data = await inflate(data, budget);
             } else {
                 throw new PanioloError('pdf', 'filter ' + f);
             }
@@ -1438,6 +1469,9 @@ async function readPdf(bytes) {
                 }
             }
         } catch (e) {
+            if (isTooLarge(e)) {
+                throw e;
+            }
             // skip a broken object stream
         }
     }
@@ -1487,6 +1521,9 @@ async function readPdf(bytes) {
         try {
             data = await decode(object);
         } catch (e) {
+            if (isTooLarge(e)) {
+                throw e;
+            }
             continue;
         }
         const mime = nameOf(object.value.dict.get('Subtype'));
@@ -1848,6 +1885,7 @@ const TEXTS = {
             notReport: 'Dieses XML ist kein Prüfbericht.',
             pdf: 'Das PDF kann nicht gelesen werden.',
             pdfEncrypted: 'Das PDF ist verschlüsselt und kann nicht gelesen werden.',
+            pdfTooLarge: 'Das PDF enthält zu große komprimierte Daten und wird nicht gelesen.',
             pdfNoXml: 'Das PDF enthält keine eingebettete E-Rechnung (Factur-X / ZUGFeRD).',
             fetch: 'Das Dokument konnte nicht geladen werden.',
             unknown: 'Das Dokument kann nicht angezeigt werden.'
@@ -1939,6 +1977,7 @@ const TEXTS = {
             notReport: 'This XML is not a validation report.',
             pdf: 'The PDF cannot be read.',
             pdfEncrypted: 'The PDF is encrypted and cannot be read.',
+            pdfTooLarge: 'The PDF contains too much compressed data and is not read.',
             pdfNoXml: 'The PDF contains no embedded e-invoice (Factur-X / ZUGFeRD).',
             fetch: 'The document could not be loaded.',
             unknown: 'The document cannot be shown.'
@@ -2031,6 +2070,7 @@ const TEXTS = {
             notReport: 'Ce XML n’est pas un rapport de contrôle.',
             pdf: 'Le PDF ne peut pas être lu.',
             pdfEncrypted: 'Le PDF est chiffré et ne peut pas être lu.',
+            pdfTooLarge: "Le PDF contient trop de données compressées et n'est pas lu.",
             pdfNoXml: 'Le PDF ne contient pas de facture électronique intégrée (Factur-X / ZUGFeRD).',
             fetch: 'Le document n’a pas pu être chargé.',
             unknown: 'Le document ne peut pas être affiché.'

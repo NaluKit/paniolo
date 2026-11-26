@@ -286,7 +286,7 @@ public final class UblInvoiceReader
     for (var scheme : party.children("cac:PartyTaxScheme")) {
       String type = scheme.text("cac:TaxScheme/cbc:ID");
       String id   = scheme.text("cbc:CompanyID");
-      if (type != null && "VAT".equals(type.strip())) {
+      if (isVatScheme(type)) {
         vatId = id;
       } else if (taxId == null && id != null && !id.isBlank() && (seller || type != null && "FC".equals(type.strip()))) {
         taxId = id;
@@ -411,13 +411,21 @@ public final class UblInvoiceReader
   }
 
   /**
+   * Whether a tax scheme identifier denotes VAT; the case is ignored, as the EN 16931 UBL model
+   * rules do.
+   */
+  private static boolean isVatScheme(String scheme) {
+    return scheme != null && "VAT".equalsIgnoreCase(scheme.strip());
+  }
+
+  /**
    * Whether a tax category belongs to VAT; a category without tax scheme counts as VAT.
    */
   private static boolean isVat(XmlElement category) {
     String scheme = category == null ?
                     null :
                     category.text("cac:TaxScheme/cbc:ID");
-    return scheme == null || "VAT".equals(scheme.strip());
+    return scheme == null || isVatScheme(scheme);
   }
 
   /**

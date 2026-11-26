@@ -195,6 +195,91 @@ class InvoiceXmlReaderTest {
   }
 
   @Test
+  void keepLinesModeRejectsALineThatWouldChangeItsPrice() {
+    var invoice = InvoiceSamples.basic(InvoiceSamples.invoice())
+                                .build();
+    var ubl = new UblInvoiceWriter().toXml(invoice)
+                                    .replace("<cbc:LineExtensionAmount currencyID=\"EUR\">200.00<",
+                                             "<cbc:LineExtensionAmount currencyID=\"EUR\">210.00<");
+    var cii = new CiiInvoiceWriter().toXml(invoice)
+                                    .replace("<ram:LineTotalAmount>200.00<",
+                                             "<ram:LineTotalAmount>210.00<");
+    var uble = assertThrows(IllegalArgumentException.class,
+                            () -> new UblInvoiceReader().fromXml(ubl,
+                                                                 ReadMode.LENIENT_KEEP_LINES));
+    assertTrue(uble.getMessage()
+                   .contains("does not change the net price or the quantity of a line"),
+               uble::getMessage);
+    assertThrows(IllegalArgumentException.class,
+                 () -> new CiiInvoiceReader().fromXml(cii,
+                                                      ReadMode.LENIENT_KEEP_LINES));
+    // A stated amount that the rounding of the price explains is not a change and still reads.
+    var rounded = new CiiInvoiceWriter().toXml(invoice)
+                                        .replace("<ram:LineTotalAmount>200.00<",
+                                                 "<ram:LineTotalAmount>200.01<");
+    var result = new CiiInvoiceReader().fromXml(rounded,
+                                                ReadMode.LENIENT_KEEP_LINES);
+    assertEquals(0,
+                 new BigDecimal("100.00").compareTo(result.invoice()
+                                                          .lines()
+                                                          .get(0)
+                                                          .netUnitPrice()));
+    // Deviations that change no line stay lenient: a stated total the model does not reproduce.
+    var payable = ">" + invoice.totals()
+                               .payableAmount()
+                               .toPlainString() + "<";
+    var total = new CiiInvoiceWriter().toXml(invoice)
+                                      .replace(payable,
+                                               ">9999.99<");
+    assertTrue(new CiiInvoiceReader().fromXml(total,
+                                              ReadMode.LENIENT_KEEP_LINES)
+                                     .warnings()
+                                     .stream()
+                                     .anyMatch(w -> ReadWarning.PAYABLE_AMOUNT.equals(w.code())));
+  }
+
+  @Test
+  void reportsAStatedLineAmountThatOnlyThePriceRoundingExplains() {
+    var invoice = InvoiceSamples.basic(InvoiceSamples.invoice())
+                                .build();
+    // Line 1 states 200.01 for 2 x 100.00: within the rounding of a price stated in cents.
+    var ubl = new UblInvoiceWriter().toXml(invoice)
+                                    .replace("<cbc:LineExtensionAmount currencyID=\"EUR\">200.00<",
+                                             "<cbc:LineExtensionAmount currencyID=\"EUR\">200.01<");
+    var cii = new CiiInvoiceWriter().toXml(invoice)
+                                    .replace("<ram:LineTotalAmount>200.00<",
+                                             "<ram:LineTotalAmount>200.01<");
+    for (var result : List.of(new UblInvoiceReader().fromXml(ubl,
+                                                             ReadMode.LENIENT),
+                              new CiiInvoiceReader().fromXml(cii,
+                                                             ReadMode.LENIENT))) {
+      // The stated amount and the price are kept; nothing is recalculated.
+      var line = result.invoice()
+                       .lines()
+                       .get(0);
+      assertEquals(new BigDecimal("200.01"),
+                   line.netAmount());
+      assertEquals(0,
+                   new BigDecimal("100.00").compareTo(line.netUnitPrice()));
+      assertTrue(result.warnings()
+                       .stream()
+                       .noneMatch(w -> ReadWarning.LINE_NET_PRICE.equals(w.code())),
+                 result.warnings()::toString);
+      // But the difference to quantity x net price is shown, with both values.
+      assertTrue(result.deviations()
+                       .stream()
+                       .anyMatch(d -> d.businessTerm()
+                                       .equals("BT-131") &&
+                                      "1".equals(d.lineId()) &&
+                                      d.stated()
+                                       .compareTo(new BigDecimal("200.01")) == 0 &&
+                                      d.calculated()
+                                       .compareTo(new BigDecimal("200.00")) == 0),
+                 result.deviations()::toString);
+    }
+  }
+
+  @Test
   void importKeepsStatedAmountsAndOriginalXml() {
     var invoice = InvoiceSamples.basic(InvoiceSamples.invoice())
                                 .build();

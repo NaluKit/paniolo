@@ -45,7 +45,7 @@ For XML output only, `paniolo.toXml(invoice, InvoiceSyntax.CII)` or `InvoiceSynt
 
 ## Mapping principles
 
-- **Amounts are calculated.** Paniolo calculates line amounts and totals from quantity, price, allowances, and charges. A stated line amount (`getLineTotalAmount`) is taken over but must agree up to the rounding of the net price. Totals are not stated.
+- **Amounts are calculated.** Paniolo calculates line amounts and totals from quantity, price, allowances, and charges. A stated line amount (`getLineTotalAmount`) is taken over but must agree up to the rounding of the net price (half a unit of its last stated decimal, at least half a cent); a difference that this explains is listed as BT-131 in `ReadResult.deviations()`. Totals are not stated. A stated VAT amount that differs by one cent per line, allowance, or charge from the VAT calculated once per category (e.g. 135.04 stated for 710.79 x 19 %) is kept as stated and written again; Mustang calculates it again and writes 135.05.
 - **Prices.** Mustang's `Item.getPrice()` is the gross price. Allowances from `Product.getAllowances()` reduce it to the net price (BT-146 = BT-148 − BT-147). Allowances and charges of the line come from `Item.getItemAllowances()` and `getItemCharges()`.
 - **Dates.** Mustang returns `java.util.Date`, Paniolo `LocalDate`. The conversion needs a time zone; it is a decision of the application (in the example `Europe/Berlin`).
 - **Codes.** Mustang returns codes as strings, Paniolo expects code lists (`InvoiceTypeCode.of`, `CurrencyCode.of`, `Country.of`, `DutyTaxFeeCategory.of`, `PaymentMeansCode.of`). Invalid codes are therefore noticed during the mapping already.

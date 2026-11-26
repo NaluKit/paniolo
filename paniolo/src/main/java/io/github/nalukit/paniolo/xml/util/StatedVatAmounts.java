@@ -41,6 +41,12 @@ public final class StatedVatAmounts {
   private final List<BigDecimal>  amounts    = new ArrayList<>();
 
   /**
+   * Creates an empty collection; add the stated amounts with {@link #add(TaxCategory, BigDecimal)}.
+   */
+  public StatedVatAmounts() {
+  }
+
+  /**
    * Adds the stated amount of a VAT breakdown of the document.
    *
    * @param category the VAT category of the breakdown as read

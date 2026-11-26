@@ -73,4 +73,26 @@ public final class ModelChecks {
     return value.setScale(2,
                           RoundingMode.HALF_UP);
   }
+
+  /**
+   * The net amount of a line in cents: {@code (quantity x price + adjustment x base) / base}, rounded
+   * half up once. The quotient is not rounded before; a rounding to a fixed number of decimals first
+   * can move the result across a half cent.
+   *
+   * @param quantity          the quantity; must not be null
+   * @param netUnitPrice      the net price; must not be null
+   * @param priceBaseQuantity the quantity the price refers to; must be positive
+   * @param adjustment        line charges minus line allowances; must not be null
+   * @return the line net amount with two decimal places
+   */
+  public static BigDecimal lineNetAmount(BigDecimal quantity,
+                                         BigDecimal netUnitPrice,
+                                         BigDecimal priceBaseQuantity,
+                                         BigDecimal adjustment) {
+    return quantity.multiply(netUnitPrice)
+                   .add(adjustment.multiply(priceBaseQuantity))
+                   .divide(priceBaseQuantity,
+                           2,
+                           RoundingMode.HALF_UP);
+  }
 }

@@ -68,7 +68,8 @@ import java.util.Set;
  * @param processControl             business process and specification identifier (BT-23 / BT-24); the builder defaults to XRechnung
  * @param buyerReference             buyer reference (BT-10), e.g. the Leitweg-ID; or null
  * @param references                 document and project references (BT-11 to BT-19), or null
- * @param precedingInvoiceReferences references to earlier invoices (BG-3); an empty list if none
+ * @param precedingInvoiceReferences references to earlier invoices (BG-3); an empty list if none; CII outside the Factur-X profiles EXTENDED and EXTENDED-CTC-FR
+ *                                   takes one only (D16B schema), UBL any number
  * @param dueDate                    payment due date (BT-9), or null; UBL CreditNote represents it in payment terms
  * @param taxPointDate               VAT point date (BT-7), or null; mutually exclusive with taxPointDateCode
  * @param taxPointDateCode           VAT point date code (BT-8), or null; only 3, 35 and 432 are accepted
@@ -630,7 +631,9 @@ public record Invoice(String number, LocalDate issueDate, InvoiceTypeCode typeCo
     /**
      * Sets {@link Invoice#precedingInvoiceReferences() precedingInvoiceReferences}.
      *
-     * @param precedingInvoiceReferences references to earlier invoices (BG-3); an empty list if none
+     * @param precedingInvoiceReferences references to earlier invoices (BG-3); an empty list if none;
+     *                                   CII outside the Factur-X profiles EXTENDED and
+     *                                   EXTENDED-CTC-FR takes one only (D16B schema), UBL any number
      * @return this builder
      */
     public Builder precedingInvoiceReferences(List<PrecedingInvoiceReference> precedingInvoiceReferences) {

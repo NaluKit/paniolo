@@ -94,8 +94,9 @@ fi
   echo
   echo "The JARs are published to Maven Central with GPG signatures. This release carries for every"
   echo "module the SBOM (\`*-cyclonedx.json\`), the SHA-256 checksums of all files (\`SHA256SUMS\`), the"
-  echo "OWASP Dependency-Check report of the release build, and a build provenance attestation of"
-  echo "GitHub. The build is reproducible; see [Verifying a release](https://github.com/NaluKit/paniolo/blob/main/SECURITY.md#verifying-a-release)."
+  echo "OWASP Dependency-Check report of the release build, the test evidence of the release run"
+  echo "(\`*-test-evidence.tar.gz\`, \`*-test-evidence.json\`, \`SHA256SUMS-test-evidence\`), and a build"
+  echo "provenance attestation of GitHub. The build is reproducible; see [Verifying a release](https://github.com/NaluKit/paniolo/blob/main/SECURITY.md#verifying-a-release)."
 } > "$OUT/RELEASE-NOTES.md"
 
 echo "Collected $count JARs of version $VERSION in $OUT"

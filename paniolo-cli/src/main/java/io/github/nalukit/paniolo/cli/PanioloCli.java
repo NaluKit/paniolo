@@ -31,6 +31,7 @@ import io.github.nalukit.paniolo.validation.ValidationMessage;
 import io.github.nalukit.paniolo.validation.ValidationProfile;
 import io.github.nalukit.paniolo.validation.ValidationResult;
 import io.github.nalukit.paniolo.visualizer.PanioloVisualizer;
+import io.github.nalukit.paniolo.xml.AmountDeviation;
 import io.github.nalukit.paniolo.xml.ReadMode;
 import io.github.nalukit.paniolo.xml.ReadResult;
 import io.github.nalukit.paniolo.xml.ReadWarning;
@@ -147,6 +148,11 @@ public final class PanioloCli {
 
   /**
    * Runs one command and returns its exit code; the streams are not closed.
+   *
+   * <p>A {@link PrintStream} keeps a failed write instead of throwing it. If standard output could not
+   * be written or flushed, for example after a closed pipe, the result is exit code 3 whatever the
+   * command returned, and the error is reported on standard error. A stream that is already in the
+   * error state when it is passed counts as failed.
    */
   static int execute(InputStream in,
                      PrintStream out,
@@ -156,11 +162,13 @@ public final class PanioloCli {
                              out,
                              err);
     var commandLine = new CommandLine(cli);
+    var outWriter   = new PrintWriter(out,
+                                      true);
+    var errWriter = new PrintWriter(err,
+                                    true);
     commandLine.setCaseInsensitiveEnumValuesAllowed(true)
-               .setOut(new PrintWriter(out,
-                                       true))
-               .setErr(new PrintWriter(err,
-                                       true))
+               .setOut(outWriter)
+               .setErr(errWriter)
                .setExecutionStrategy(parseResult -> {
                  cli.configureLogging();
                  return new CommandLine.RunLast().execute(parseResult);
@@ -174,7 +182,14 @@ public final class PanioloCli {
                  return EXIT_ERROR;
                });
     int exitCode = commandLine.execute(args);
+    outWriter.flush();
     out.flush();
+    if (out.checkError()) {
+      // The result did not reach the caller, so a success or a finding must not be reported.
+      err.println("paniolo: cannot write to standard output");
+      err.flush();
+      return EXIT_ERROR;
+    }
     return exitCode;
   }
 
@@ -226,13 +241,17 @@ public final class PanioloCli {
 
   @Command(name = "read",
            description = { "Reads an invoice from UBL, CII, ZUGFeRD 1.0, or a Factur-X / ZUGFeRD PDF and writes it as JSON.",
-                           "Deviations accepted with --lenient are printed to standard error." })
+                           "Warnings and deviations accepted with --lenient are printed to standard error; --fail-on-deviation refuses a result whose amounts differ from the document." })
   int read(
       @Option(names = "--lenient", description = "Accept line amounts and totals the model does not reproduce (ReadMode.LENIENT).") boolean lenient,
+      @Option(names = "--keep-line-values", description = "Like --lenient, but reject a line whose net price or quantity would have to change to fit its stated amount (ReadMode.LENIENT_KEEP_LINES).") boolean keepLineValues,
+      @Option(names = "--fail-on-deviation", description = "Exit with code 1 and write no JSON if the invoice states other amounts than the document, e.g. a recalculated net price or totals the model could not keep.") boolean failOnDeviation,
       @Option(names = { "-o",
                         "--output" }, paramLabel = "FILE", description = "JSON file; standard output if not given.") Path output,
       @Parameters(paramLabel = "FILE", description = "Invoice XML or PDF; - for standard input.") Path file) {
     ReadResult result = paniolo().read(io.read(file),
+                                       keepLineValues ?
+                                       ReadMode.LENIENT_KEEP_LINES :
                                        lenient ?
                                        ReadMode.LENIENT :
                                        ReadMode.STRICT);
@@ -244,6 +263,26 @@ public final class PanioloCli {
                    " (line " + warning.lineId() + ")") +
                   ": " +
                   warning.message());
+    }
+    for (AmountDeviation deviation : result.deviations()) {
+      err.println("deviation " +
+                  deviation.businessTerm() +
+                  (deviation.lineId() == null ?
+                   "" :
+                   " (line " + deviation.lineId() + ")") +
+                  ": document states " +
+                  deviation.stated()
+                           .toPlainString() +
+                  ", invoice has " +
+                  (deviation.calculated() == null ?
+                   "none" :
+                   deviation.calculated()
+                            .toPlainString()));
+    }
+    if (failOnDeviation && !result.deviations()
+                                  .isEmpty()) {
+      err.println("The invoice states other amounts than the document; nothing was written (--fail-on-deviation).");
+      return EXIT_INVALID;
     }
     io.write(output,
              json.toPrettyJson(result.invoice()));
@@ -359,7 +398,8 @@ public final class PanioloCli {
            description = { "Lists the files embedded in a PDF apart from the invoice XML: name, MIME type, relationship, size.",
                            "With --extract, the files are written to a directory; a fifth column then names the file written.",
                            "Attachments with the same file name get a numeric suffix. Existing files and symbolic links are never touched; " +
-                           "the command fails before writing anything unless --overwrite replaces existing regular files." })
+                           "the command fails before writing anything unless --overwrite replaces existing regular files.",
+                           "A PDF with more than 1000 attachments, a file over 100 MiB, or more than 256 MiB of content in total is rejected (exit code 3)." })
   int attachments(
       @Option(names = { "-x",
                         "--extract" }, paramLabel = "DIR", description = "Directory to write the attachments to.") Path directory,

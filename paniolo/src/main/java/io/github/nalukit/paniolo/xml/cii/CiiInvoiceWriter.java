@@ -1796,9 +1796,16 @@ public final class CiiInvoiceWriter
     }
     boolean extendedProfile = invoice.processControl()
                                      .isExtended();
+    // BG-3 (preceding invoice reference) may repeat in UBL, but the UN/CEFACT D16B schema of the CII
+    // validation of XRechnung, Peppol, and EN 16931 allows one ram:InvoiceReferencedDocument only
+    // (HeaderTradeSettlementType, minOccurs 0, no maxOccurs), as does the schema of the Factur-X
+    // profile BASIC; a second one is a schema error there. Only the Factur-X profiles EXTENDED and
+    // EXTENDED-CTC-FR repeat it. The specification identifier urn:cen.eu:en16931:2017 names both the
+    // Factur-X profile EN16931, whose schema accepts several, and the plain EN 16931 syntax of the D16B
+    // schema, so it is not told apart and written with one reference only.
     if (invoice.precedingInvoiceReferences()
                .size() > 1 && !extendedProfile) {
-      throw new IllegalArgumentException("CII D16B supports only one preceding invoice reference outside the Factur-X profiles EXTENDED and EXTENDED-CTC-FR");
+      throw new IllegalArgumentException("CII D16B supports only one preceding invoice reference outside the Factur-X profiles EXTENDED and EXTENDED-CTC-FR; write UBL, which repeats it, or use one of these profiles");
     }
     if (invoice.hasOtherTaxes() && !extendedProfile) {
       throw new IllegalArgumentException("Taxes of another type than VAT, e.g. the insurance tax AAM, can only be written in the Factur-X profile EXTENDED (ProcessControl.facturXExtended()); the profile of this invoice has no place for them, and writing it without them would change the amounts");

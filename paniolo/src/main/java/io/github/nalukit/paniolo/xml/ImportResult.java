@@ -130,7 +130,8 @@ public final class ImportResult {
   /**
    * Returns the stated amounts that differ from the invoice model.
    *
-   * @return the deviations; in {@link ReadMode#STRICT} only totals that strict reading does not
+   * @return the deviations; strict reading can also list retained line amounts (BT-131) that
+   *         differ from the calculation within price-rounding tolerance, and totals it does not
    *         compare, e.g. the sum of line net amounts (BT-106)
    */
   public List<AmountDeviation> deviations() {
@@ -140,8 +141,8 @@ public final class ImportResult {
   /**
    * Returns accepted deviations, conversions, and values the model does not keep as messages.
    *
-   * @return the warnings; amount deviations occur only in {@link ReadMode#LENIENT}, while
-   *         identifier and specification-version warnings can occur in either mode
+   * @return the warnings accepted in the selected mode; conversions, values not kept, and
+   *         unexplained allowance or charge totals can produce warnings in every mode
    */
   public List<ReadWarning> warnings() {
     return read.warnings();

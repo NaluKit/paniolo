@@ -28,16 +28,16 @@ For daily use, put a small wrapper on the `PATH`, e.g. `~/bin/paniolo`:
 
 ```sh
 #!/bin/sh
-exec java -jar /opt/paniolo/paniolo-cli-1.0.0-all.jar "$@"
+exec java -jar /opt/paniolo/paniolo-cli-1.0.1-all.jar "$@"
 ```
 
 The default source build uses `HEAD-SNAPSHOT`; replace the wrapper's file name with the version
 you built or downloaded. To build a different version, add `-Drevision=<version>` to Maven.
 The examples below describe the current source; the released API is documented in the
-[versioned reference](../docs/api/1.0.0.md).
+[versioned reference](../docs/api/1.0.1.md).
 
 The build attaches this jar with the classifier `all`; the plain artifact `paniolo-cli` contains
-only the CLI classes. The release `1.0.0` is available as a download from GitHub Packages (see
+only the CLI classes. The release `1.0.1` is available as a download from GitHub Packages (see
 below); see also the [installation status](../README.md#installation).
 
 Unlike the library modules, `paniolo-cli` is **not published to Maven Central**. The CI workflow
@@ -54,7 +54,7 @@ GitHub token with the `read:packages` scope in a `<server>` entry with the id of
 | `validate FILE\|DIR... [--syntax TYPE \| --profile PROFILE] [-r] [--include GLOB] [--exclude GLOB] [--summary] [--expect valid\|invalid] [--expectations FILE]` | `validate(bytes)`, `validate(bytes, type)`, `validate(bytes, facturXProfile)`              |
 | `inventory FILE\|DIR... [-r] [--include GLOB] [--exclude GLOB] [--validate] [--summary-only] [-f text\|json]`                                                    | `detect`, `extractXml(pdf)`, `attachments(pdf)`, `producer(pdf)`; with `--validate` the validation methods |
 | `detect FILE`                                                                                                                                                   | `detect(bytes)`, `Paniolo.isPdf(bytes)`                                                    |
-| `read FILE [--lenient]`                                                                                                                                         | `read(bytes, ReadMode)`, written as JSON                                                   |
+| `read FILE [--lenient] [--keep-line-values] [--fail-on-deviation]`                                                                                              | `read(bytes, ReadMode)`, written as JSON                                                   |
 | `to-xml FILE --syntax UBL\|CII`                                                                                                                                 | `toBytes(invoice, syntax)`                                                                 |
 | `to-facturx FILE --pdf PDF --profile PROFILE [--attach FILE]...`                                                                                                | `toFacturX(invoice, pdfA, profile, attachments)`                                           |
 | `to-facturx FILE --profile PROFILE [layout options]`                                                                                                            | `toFacturX(invoice, profile, layout, attachments)`: renders the page                       |
@@ -86,7 +86,12 @@ case-insensitive (`--profile en16931`).
 
 - **Input**: the commands that write a document (`to-xml`, `to-facturx`, `order to-xml`, ...)
   accept the [Paniolo JSON](../paniolo-json/README.md) of the model or any document the facade can
-  read. `to-xml` converts between UBL and CII through the model. `read` followed by `to-xml`
+  read; the input is read strictly, so a document with deviating amounts is rejected instead of being
+  written with other amounts. To convert such a document on purpose, run `read --lenient FILE -o
+  invoice.json` (warnings and deviations go to standard error; `--keep-line-values` rejects a
+  changed price or quantity, `--fail-on-deviation` any listed amount difference, including a
+  retained BT-131 within price-rounding tolerance) and
+  `to-xml` on the JSON. `to-xml` converts between UBL and CII through the model. `read` followed by `to-xml`
   writes the loaded model again; unsupported input fields and original XML formatting are not
   preserved. For `to-facturx`, the invoice's specification identifier (BT-24) must match
   `--profile`; choosing a profile does not rewrite the identifier. The Java facade's `importInvoice` / `export` methods are not exposed as CLI commands.
@@ -102,6 +107,8 @@ case-insensitive (`--profile en16931`).
   `--bold-font`, `--accent`, `--footer`, `--watermark`, and `--pdf-profile` configure the rendered pages like
   `PdfLayout` ([PDF layout](../paniolo-facturx/docs/pdf-layout.md)). Without `--font`, the pages
   use IBM Plex Sans Regular and Bold; `--font` alone emboldens the given font for bold text.
+  A watermarked preview may use a placeholder invoice number such as `DRAFT`; the model still
+  requires a non-blank number. Assign the final number before creating the final invoice.
 - **Rules**: `--rules`, `--facturx-rules`, `--extended-ctc-fr-rules`, `--order-x-rules`, and
   `--despatch-advice-rules` configure the facade like the methods of `Paniolo.builder()`.
 - **Calculation check**: `--calculation-check` adds the optional recalculation of the amounts

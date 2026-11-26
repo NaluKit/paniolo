@@ -34,7 +34,10 @@ import java.util.Objects;
  *
  * <p>The line net amount (BT-131) is quantity x net price / price base quantity (BT-149) plus line
  * charges minus line allowances. A stated amount replaces the calculation when the document shows
- * a net price rounded to cents; the difference must be explainable by that rounding.
+ * a rounded net price; the difference must be explainable by that rounding. The tolerance is half
+ * a unit of the last price decimal, using at least two decimal places, multiplied by the absolute
+ * quantity / price base quantity, plus half a cent for rounding the amount. A price of {@code 2.7700}
+ * therefore permits less deviation than {@code 2.77}; the {@link BigDecimal} scale is significant.
  *
  * @param id                       line identifier (BT-126)
  * @param name                     item name (BT-153)
@@ -78,6 +81,7 @@ public record InvoiceLine(String id, String name, BigDecimal quantity, UnitCode 
    * Half a cent: the largest error of a net price rounded to two decimals.
    */
   private static final BigDecimal HALF_CENT = new BigDecimal("0.005");
+  private static final BigDecimal HALF      = new BigDecimal("0.5");
 
   /**
    * Applies the checks of the model and copies the lists.
@@ -192,12 +196,9 @@ public record InvoiceLine(String id, String name, BigDecimal quantity, UnitCode 
                                         netUnitPrice,
                                         priceBaseQuantity,
                                         adjustments);
-      BigDecimal tolerance = quantity.abs()
-                                     .divide(priceBaseQuantity,
-                                             10,
-                                             RoundingMode.HALF_UP)
-                                     .multiply(HALF_CENT)
-                                     .add(HALF_CENT);
+      BigDecimal tolerance = amountTolerance(quantity,
+                                             netUnitPrice,
+                                             priceBaseQuantity);
       if (statedNetAmount.subtract(exact)
                          .abs()
                          .compareTo(tolerance) > 0) {
@@ -211,10 +212,10 @@ public record InvoiceLine(String id, String name, BigDecimal quantity, UnitCode 
                        statedNetAmount :
                        netUnitPrice == null || quantity == null ?
                        sum :
-                       ModelChecks.money(exactNetAmount(quantity,
-                                                        netUnitPrice,
-                                                        priceBaseQuantity,
-                                                        adjustments));
+                       ModelChecks.lineNetAmount(quantity,
+                                                 netUnitPrice,
+                                                 priceBaseQuantity,
+                                                 LineAdjustment.netEffect(adjustments));
       if (net.compareTo(sum) != 0) {
         throw new IllegalArgumentException("Line " + id + ": net amount " + net.toPlainString() + " differs from the sum of its sub-lines " + sum.toPlainString() + " (BR-DEX-02)");
       }
@@ -316,6 +317,47 @@ public record InvoiceLine(String id, String name, BigDecimal quantity, UnitCode 
                            BigDecimal::add);
   }
 
+  /**
+   * The largest difference between a stated line amount and quantity x net price that the rounding of
+   * the net price explains: half a unit of the last stated decimal of the price, using at least two
+   * decimal places, scaled by absolute quantity / price base quantity, plus half a cent for the
+   * rounding of the amount itself. A price stated with four decimals therefore explains less than
+   * a price stated with two.
+   */
+  private static BigDecimal amountTolerance(BigDecimal quantity,
+                                            BigDecimal netUnitPrice,
+                                            BigDecimal priceBaseQuantity) {
+    BigDecimal halfUnit = BigDecimal.ONE.movePointLeft(Math.max(2,
+                                                                netUnitPrice.scale()))
+                                        .multiply(HALF);
+    return quantity.abs()
+                   .divide(priceBaseQuantity,
+                           10,
+                           RoundingMode.HALF_UP)
+                   .multiply(halfUnit)
+                   .add(HALF_CENT);
+  }
+
+  /**
+   * The line net amount calculated from quantity, net price and the line allowances and charges,
+   * ignoring a stated amount.
+   *
+   * @return the calculated amount, or null if the line has no quantity or net price
+   */
+  public BigDecimal calculatedNetAmount() {
+    if (netUnitPrice == null || quantity == null) {
+      return null;
+    }
+    return ModelChecks.lineNetAmount(quantity,
+                                     netUnitPrice,
+                                     priceBaseQuantity,
+                                     LineAdjustment.netEffect(adjustments));
+  }
+
+  /**
+   * The net amount before any rounding to cents, to compare a stated amount with. The amount of the
+   * line itself is {@link ModelChecks#lineNetAmount}, which rounds once.
+   */
   private static BigDecimal exactNetAmount(BigDecimal quantity,
                                            BigDecimal netUnitPrice,
                                            BigDecimal priceBaseQuantity,
@@ -347,10 +389,10 @@ public record InvoiceLine(String id, String name, BigDecimal quantity, UnitCode 
       // without quantity takes the amount of its sub-lines.
       return subLineTotal(subLines);
     }
-    return ModelChecks.money(exactNetAmount(quantity,
-                                            netUnitPrice,
-                                            priceBaseQuantity,
-                                            adjustments));
+    return ModelChecks.lineNetAmount(quantity,
+                                     netUnitPrice,
+                                     priceBaseQuantity,
+                                     LineAdjustment.netEffect(adjustments));
   }
 
   /**

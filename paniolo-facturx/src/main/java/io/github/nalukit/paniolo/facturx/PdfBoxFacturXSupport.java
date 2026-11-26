@@ -30,6 +30,8 @@ import org.apache.pdfbox.cos.COSArray;
 import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSName;
+import org.apache.pdfbox.cos.COSStream;
+import org.apache.pdfbox.filter.FilterFactory;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDDocumentCatalog;
 import org.apache.pdfbox.pdmodel.PDDocumentNameDictionary;
@@ -49,6 +51,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -95,6 +98,16 @@ public final class PdfBoxFacturXSupport
    * Embedded attachments larger than this are rejected when reading.
    */
   private static final int           MAX_FILE      = 100 * 1024 * 1024;
+  /**
+   * Most attachments {@link #attachments(byte[])} returns for one PDF; more are rejected.
+   */
+  static final int                   MAX_ATTACHMENTS      = 1_000;
+  /**
+   * Most content bytes {@link #attachments(byte[])} returns for one PDF, summed over all
+   * attachments; the limit is inclusive and counts every returned copy, also of attachments that
+   * share one embedded stream.
+   */
+  static final long                  MAX_ATTACHMENT_BYTES = 256L * 1024 * 1024;
   /**
    * File names of embedded invoices, including ZUGFeRD 1.0.
    */
@@ -425,17 +438,249 @@ public final class PdfBoxFacturXSupport
   private static byte[] read(PDComplexFileSpecification file,
                              int limit)
       throws IOException {
+    return read(file,
+                limit,
+                "Embedded file " + fileName(file) + " exceeds " + limit + " bytes");
+  }
+
+  private static byte[] read(PDComplexFileSpecification file,
+                             int limit,
+                             String tooLarge)
+      throws IOException {
     PDEmbeddedFile embedded = embeddedFile(file);
     if (embedded == null) {
       throw new IllegalArgumentException("Embedded file " + fileName(file) + " has no content");
     }
-    try (InputStream input = embedded.createInputStream()) {
-      byte[] content = input.readNBytes(limit + 1);
-      if (content.length > limit) {
-        throw new IllegalArgumentException("Embedded file " + fileName(file) + " exceeds " + limit + " bytes");
-      }
-      return content;
+    return decode(embedded.getCOSObject(),
+                  limit,
+                  tooLarge);
+  }
+
+  /**
+   * Filters that are decoded with a limit: they write to an output stream that this class bounds.
+   * Images and similar filters (DCT, JPX, CCITT, JBIG2) and the Crypt filter do not occur in embedded
+   * files and are refused.
+   */
+  private static final java.util.Set<String> DECODABLE_FILTERS = java.util.Set.of("FlateDecode",
+                                                                                  "Fl",
+                                                                                  "LZWDecode",
+                                                                                  "LZW",
+                                                                                  "ASCII85Decode",
+                                                                                  "A85",
+                                                                                  "ASCIIHexDecode",
+                                                                                  "AHx",
+                                                                                  "RunLengthDecode",
+                                                                                  "RL");
+
+  /**
+   * Thrown by {@link BoundedOutput} when a decoder produces more than the limit; unchecked, so that no
+   * decoder can hold it back like an I/O error.
+   */
+  private static final class LimitExceeded extends RuntimeException {
+    LimitExceeded() {
+      super(null,
+            null,
+            false,
+            false);
     }
+  }
+
+  /**
+   * Output of a decoder that holds at most {@code limit} bytes. The decoder stops with
+   * {@link LimitExceeded} at the first byte beyond the limit, so no more than the limit is ever
+   * allocated; the buffer grows by doubling up to the limit.
+   */
+  private static final class BoundedOutput extends OutputStream {
+    private final int limit;
+    private byte[]    buffer = new byte[0];
+    private int       count;
+
+    BoundedOutput(int limit) {
+      this.limit = limit;
+    }
+
+    @Override
+    public void write(int b) {
+      ensure(1);
+      buffer[count++] = (byte) b;
+    }
+
+    @Override
+    public void write(byte[] b,
+                      int off,
+                      int len) {
+      ensure(len);
+      System.arraycopy(b,
+                       off,
+                       buffer,
+                       count,
+                       len);
+      count += len;
+    }
+
+    private void ensure(int more) {
+      if (more > limit - count) {
+        throw new LimitExceeded();
+      }
+      int needed = count + more;
+      if (needed > buffer.length) {
+        buffer = java.util.Arrays.copyOf(buffer,
+                                         (int) Math.min(limit,
+                                                        Math.max(needed,
+                                                                 Math.max(8192,
+                                                                          2L * buffer.length))));
+      }
+    }
+
+    byte[] toByteArray() {
+      return java.util.Arrays.copyOf(buffer,
+                                     count);
+    }
+  }
+
+  /**
+   * Largest row of a predictor that is accepted: PDFBox allocates two buffers of one row each when
+   * the predictor starts, before it writes a byte to the bounded output, so the row has to be
+   * limited beforehand. Rows of embedded files are small; 8 MiB is far above any usual one. The
+   * buffers of a stage together are at most twice this size.
+   */
+  static final int MAX_PREDICTOR_ROW = 8 * 1024 * 1024;
+
+  /**
+   * The decode parameters of the filter at {@code index}, chosen like PDFBox does
+   * ({@code Filter.getDecodeParams}), as they are used by the decoder of that stage.
+   */
+  private static COSDictionary parametersOf(COSStream stream,
+                                            int index) {
+    COSBase filter     = stream.getDictionaryObject(COSName.F,
+                                                    COSName.FILTER);
+    COSBase parameters = stream.getDictionaryObject(COSName.DP,
+                                                    COSName.DECODE_PARMS);
+    if (filter instanceof COSName && parameters instanceof COSDictionary dictionary) {
+      return dictionary;
+    }
+    if (filter instanceof COSArray && parameters instanceof COSArray array && index < array.size() && array.getObject(index) instanceof COSDictionary dictionary) {
+      return dictionary;
+    }
+    return new COSDictionary();
+  }
+
+  /**
+   * The decode parameters of a stage after the check of the predictor. A predictor (Flate and LZW)
+   * works row by row and allocates two buffers of one row before it writes anything, with the row
+   * length from {@code Columns}, {@code Colors}, and {@code BitsPerComponent} of the document. The
+   * values are checked with the same defaults as in PDFBox, and the row length is calculated without
+   * overflow: it has to fit in the limit of the stage and in {@link #MAX_PREDICTOR_ROW}.
+   *
+   * @throws IllegalArgumentException with {@code tooLarge} if the row exceeds the limit, or with a
+   *                                  message if a value is not valid or not supported
+   */
+  private static COSDictionary checkedParameters(COSStream stream,
+                                                 int index,
+                                                 int limit,
+                                                 String tooLarge) {
+    COSDictionary parameters = parametersOf(stream,
+                                            index);
+    int predictor = parameters.getInt(COSName.PREDICTOR);
+    if (predictor <= 1) {
+      return parameters;
+    }
+    if (predictor != 2 && (predictor < 10 || predictor > 15)) {
+      throw new IllegalArgumentException("The predictor " + predictor + " of a stream is not supported (2 and 10 to 15 are)");
+    }
+    int colors  = Math.min(parameters.getInt(COSName.COLORS,
+                                             1),
+                           32);
+    int bits    = parameters.getInt(COSName.BITS_PER_COMPONENT,
+                                    8);
+    int columns = parameters.getInt(COSName.COLUMNS,
+                                    1);
+    if (colors < 1 || columns < 1 || bits != 1 && bits != 2 && bits != 4 && bits != 8 && bits != 16) {
+      throw new IllegalArgumentException("The predictor of a stream has invalid parameters: Colors " + colors + ", BitsPerComponent " + bits + ", Columns " + columns);
+    }
+    long row = ((long) columns * colors * bits + 7) / 8;
+    if (row > Math.min(limit,
+                       MAX_PREDICTOR_ROW)) {
+      throw new IllegalArgumentException(row > limit ?
+                                         tooLarge :
+                                         "A predictor row of a stream has " + row + " bytes, more than " + MAX_PREDICTOR_ROW);
+    }
+    return parameters;
+  }
+
+  /**
+   * The content of a stream with its filters decoded, at most {@code limit} bytes. Every filter stage
+   * is decoded into a bounded buffer and stops at the first byte beyond the limit, so an intermediate
+   * result is limited like the final one. The decoding of PDFBox itself
+   * ({@code COSStream.createInputStream()}) is not used: it expands the whole stream into the heap
+   * before the caller can count. The raw stream is as large as the PDF.
+   *
+   * <p>A predictor allocates its row buffers before the first byte; its parameters are checked first,
+   * see {@link #checkedParameters}.
+   *
+   * @throws IllegalArgumentException with {@code tooLarge} if a stage produces more than the limit, or
+   *                                  if the stream uses a filter that is not decoded or a predictor
+   *                                  that is not valid or too large
+   */
+  private static byte[] decode(COSStream stream,
+                               int limit,
+                               String tooLarge)
+      throws IOException {
+    List<COSName> names = new java.util.ArrayList<>();
+    COSBase declared = stream.getFilters();
+    if (declared instanceof COSName name) {
+      names.add(name);
+    } else if (declared instanceof COSArray array) {
+      for (int i = 0; i < array.size(); i++) {
+        if (array.getObject(i) instanceof COSName name) {
+          names.add(name);
+        } else {
+          throw new IllegalArgumentException("A stream has an invalid filter entry");
+        }
+      }
+    }
+    // Like PDFBox, a filter that is listed more than once is applied once (some producers write
+    // /Filter [/FlateDecode /FlateDecode] for data that is encoded once); an abbreviation counts as
+    // the same filter.
+    var filters = new java.util.LinkedHashMap<org.apache.pdfbox.filter.Filter, COSName>();
+    for (COSName name : names) {
+      if (!DECODABLE_FILTERS.contains(name.getName())) {
+        throw new IllegalArgumentException("The stream filter " + name.getName() + " is not supported for embedded files");
+      }
+      filters.putIfAbsent(FilterFactory.INSTANCE.getFilter(name),
+                          name);
+    }
+    byte[] data;
+    try (InputStream raw = stream.createRawInputStream()) {
+      data = raw.readAllBytes();
+    }
+    if (filters.isEmpty() && data.length > limit) {
+      throw new IllegalArgumentException(tooLarge);
+    }
+    try {
+      int index = 0;
+      for (var entry : filters.entrySet()) {
+        // The decoder gets a dictionary of its own with exactly the parameters that were checked.
+        var stage = new COSDictionary();
+        stage.setItem(COSName.FILTER,
+                      entry.getValue());
+        stage.setItem(COSName.DECODE_PARMS,
+                      checkedParameters(stream,
+                                        index++,
+                                        limit,
+                                        tooLarge));
+        var out = new BoundedOutput(limit);
+        entry.getKey()
+             .decode(new ByteArrayInputStream(data),
+                     out,
+                     stage,
+                     0);
+        data = out.toByteArray();
+      }
+    } catch (LimitExceeded e) {
+      throw new IllegalArgumentException(tooLarge);
+    }
+    return data;
   }
 
   private static PDEmbeddedFile embeddedFile(PDComplexFileSpecification file) {
@@ -448,9 +693,12 @@ public final class PdfBoxFacturXSupport
     if (metadata == null) {
       return null;
     }
-    try (InputStream input = metadata.createInputStream()) {
-      return XmlDocuments.parse(input);
-    } catch (IOException | SAXException e) {
+    try {
+      // Metadata of more than an invoice XML is no XMP; it counts as missing.
+      return XmlDocuments.parse(new ByteArrayInputStream(decode(metadata.getCOSObject(),
+                                                                MAX_XML,
+                                                                "XMP metadata exceeds " + MAX_XML + " bytes")));
+    } catch (IOException | SAXException | IllegalArgumentException e) {
       LOGGER.log(System.Logger.Level.DEBUG,
                  "Cannot parse XMP metadata",
                  e);
@@ -1286,10 +1534,31 @@ public final class PdfBoxFacturXSupport
 
   @Override
   public List<PdfAttachment> attachments(byte[] pdf) {
+    return attachments(pdf,
+                       MAX_ATTACHMENTS,
+                       MAX_ATTACHMENT_BYTES);
+  }
+
+  /**
+   * Reads the attachments within a budget. Every attachment is decoded with the remaining budget as
+   * its limit, filter stage by filter stage, and decoding stops at the first byte beyond it. No
+   * decoder produces more than the budget, so a small PDF cannot expand into the heap before the
+   * check. A predictor allocates two row buffers before it writes a byte; its parameters are checked
+   * first, and a row has to fit in the limit and in {@link #MAX_PREDICTOR_ROW}. At most the budget
+   * plus the buffer of one stage and, with a predictor, two rows are held for the attachment.
+   *
+   * @throws IllegalArgumentException if there are more than {@code maxCount} attachments, an
+   *                                  attachment exceeds {@link #MAX_FILE}, or the contents together
+   *                                  exceed {@code maxBytes}
+   */
+  List<PdfAttachment> attachments(byte[] pdf,
+                                  int maxCount,
+                                  long maxBytes) {
     Objects.requireNonNull(pdf,
                            "pdf");
     try (PDDocument document = load(pdf)) {
-      var result = new java.util.ArrayList<PdfAttachment>();
+      var  result    = new java.util.ArrayList<PdfAttachment>();
+      long remaining = maxBytes;
       for (var entry : allFiles(document.getDocumentCatalog()).entrySet()) {
         // Files of other producers may use paths, other cases, or no valid MIME type.
         String name = entry.getKey()
@@ -1298,14 +1567,24 @@ public final class PdfBoxFacturXSupport
         if (name.isBlank() || PdfAttachment.INVOICE_FILE_NAMES.contains(name.toLowerCase(java.util.Locale.ROOT))) {
           continue;
         }
+        if (result.size() >= maxCount) {
+          throw new IllegalArgumentException("The PDF has more than " + maxCount + " attachments");
+        }
         var file     = entry.getValue();
         var embedded = embeddedFile(file);
         String mimeType = PdfAttachment.normalizeMimeType(embedded == null ?
                                                           null :
                                                           embedded.getSubtype());
+        int    limit   = (int) Math.min(MAX_FILE,
+                                        remaining);
+        byte[] content = read(file,
+                              limit,
+                              limit < MAX_FILE ?
+                              "The attachments of the PDF exceed " + maxBytes + " bytes together" :
+                              "Embedded file " + fileName(file) + " exceeds " + MAX_FILE + " bytes");
+        remaining -= content.length;
         result.add(new PdfAttachment(name,
-                                     read(file,
-                                          MAX_FILE),
+                                     content,
                                      mimeType,
                                      AfRelationship.ofPdfName(file.getCOSObject()
                                                                   .getNameAsString(RELATIONSHIP)),
@@ -1349,7 +1628,9 @@ public final class PdfBoxFacturXSupport
         if (embedded == null) {
           continue;
         }
-        try (InputStream input = embedded.createInputStream()) {
+        try (InputStream input = new ByteArrayInputStream(decode(embedded.getCOSObject(),
+                                                                 MAX_XML,
+                                                                 "Embedded invoice exceeds " + MAX_XML + " bytes"))) {
           T answer = probe.apply(input);
           if (answer != null) {
             return answer;

@@ -22,6 +22,9 @@ The visual part comes from you as a PDF/A-1, -2, or -3 document; Paniolo adds th
 association, and the XMP metadata. Without a PDF of your own, this module renders the pages from
 the model and embeds the XML in one step (`toFacturX(invoice, profile)`, `toOrderXPdf(order)`,
 `toDespatchAdvicePdf(advice)`); see [PDF layout](docs/pdf-layout.md).
+A preview with a watermark can use a placeholder invoice number such as `DRAFT`; an `Invoice`
+still needs a non-blank number. The preview does not allocate a final number. Assign it before
+creating the final invoice; see [PDF profiles](../README.md#pdf-profiles-of-topdf).
 
 ## Dependency
 
@@ -29,7 +32,7 @@ the model and embeds the XML in one step (`toFacturX(invoice, profile)`, `toOrde
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo-facturx</artifactId>
-  <version>1.0.0</version>
+  <version>1.0.1</version>
 </dependency>
 ```
 
@@ -129,8 +132,16 @@ List<PdfAttachment> attachments = paniolo.attachments(facturX);   // all files e
 - `PdfAttachment.of(attachment)` takes the attachment of a supporting document (BG-24) as
   supplementary file; the invoice XML keeps its own copy.
 - `attachments(pdf)` also returns files of other producers: names lose any path, invalid MIME types
-  become `application/octet-stream`, a missing relationship becomes `UNSPECIFIED`. Files larger
-  than 100 MB are rejected.
+  become `application/octet-stream`, a missing relationship becomes `UNSPECIFIED`.
+- `attachments(pdf)` rejects a PDF with more than 1,000 attachments, with a file larger than
+  100 MiB, or with more than 256 MiB of content together (`IllegalArgumentException`; exit code `3`
+  in the CLI). The files are counted by the bytes actually read, not by the sizes the PDF declares,
+  and attachments that share one embedded stream each count in full. The limits apply while the
+  content is decoded, filter stage by filter stage, so a small, highly compressed PDF cannot expand
+  into memory first. Only the filters Flate, LZW, ASCII85, ASCIIHex, and RunLength are decoded; a
+  file with another filter is refused. A predictor (TIFF 2, PNG 10 to 15) is accepted with rows of
+  up to 8 MiB; other predictor parameters are refused. Embedded invoice XML over 20 MiB is
+  rejected; XMP metadata over 20 MiB counts as missing.
 
 ## What is read
 

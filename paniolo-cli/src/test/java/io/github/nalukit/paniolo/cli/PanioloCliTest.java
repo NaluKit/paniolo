@@ -90,6 +90,181 @@ class PanioloCliTest {
                       err.toString(StandardCharsets.UTF_8));
   }
 
+  /**
+   * An output stream that accepts a number of bytes and then fails on every write.
+   */
+  private static final class FailingOutput extends java.io.OutputStream {
+    private int left;
+
+    FailingOutput(int accepted) {
+      this.left = accepted;
+    }
+
+    @Override
+    public void write(int b) throws IOException {
+      write(new byte[] { (byte) b },
+            0,
+            1);
+    }
+
+    @Override
+    public void write(byte[] b,
+                      int off,
+                      int len) throws IOException {
+      if (len > left) {
+        throw new IOException("closed pipe");
+      }
+      left -= len;
+    }
+  }
+
+  private static final class Tracking extends java.io.FilterOutputStream {
+    int closed;
+
+    Tracking(java.io.OutputStream out) {
+      super(out);
+    }
+
+    @Override
+    public void close() throws IOException {
+      closed++;
+      super.close();
+    }
+  }
+
+  private static Result runWith(java.io.OutputStream stdout,
+                                String... args) {
+    return runWith(stdout,
+                   false,
+                   args);
+  }
+
+  private static Result runWith(java.io.OutputStream stdout,
+                                boolean autoFlush,
+                                String... args) {
+    var err = new ByteArrayOutputStream();
+    int exitCode = PanioloCli.execute(new ByteArrayInputStream(new byte[0]),
+                                      new PrintStream(stdout,
+                                                      autoFlush,
+                                                      StandardCharsets.UTF_8),
+                                      new PrintStream(err,
+                                                      true,
+                                                      StandardCharsets.UTF_8),
+                                      args);
+    return new Result(exitCode,
+                      "",
+                      err.toString(StandardCharsets.UTF_8));
+  }
+
+  private Path brokenXml() throws IOException {
+    Path broken = dir.resolve("broken-out.xml");
+    // well-formed, but no valid invoice: the exit code is 1 and the report goes to standard output
+    Files.writeString(broken,
+                      "<rsm:CrossIndustryInvoice xmlns:rsm=\"urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100\"/>");
+    return broken;
+  }
+
+  @Test
+  void aFailedWriteToStandardOutputIsExitCodeThree() throws IOException {
+    // the first write fails: the report of a command that would exit with 1
+    assertEquals(PanioloCli.EXIT_INVALID,
+                 run("validate",
+                     "--format",
+                     "json",
+                     brokenXml().toString()).exitCode());
+    var report = runWith(new FailingOutput(0),
+                         "validate",
+                         "--format",
+                         "json",
+                         brokenXml().toString());
+    assertEquals(PanioloCli.EXIT_ERROR,
+                 report.exitCode(),
+                 report.err());
+    assertTrue(report.err()
+                     .contains("cannot write to standard output"),
+               report.err());
+    // a command that would exit with 0, through the writer of the command line library
+    var version = runWith(new FailingOutput(0),
+                          "--version");
+    assertEquals(PanioloCli.EXIT_ERROR,
+                 version.exitCode());
+    assertTrue(version.err()
+                      .contains("cannot write to standard output"),
+               version.err());
+  }
+
+  @Test
+  void aPartialOutputIsNoSuccess() throws IOException {
+    var result = runWith(new FailingOutput(5),
+                         true,
+                         "validate",
+                         "--format",
+                         "json",
+                         brokenXml().toString());
+    assertEquals(PanioloCli.EXIT_ERROR,
+                 result.exitCode(),
+                 result.err());
+  }
+
+  @Test
+  void aFailureOnlyAtFlushIsExitCodeThree() throws IOException {
+    // nothing reaches the failing stream before the flush
+    var result = runWith(new java.io.BufferedOutputStream(new FailingOutput(0),
+                                                          1 << 20),
+                         "--version");
+    assertEquals(PanioloCli.EXIT_ERROR,
+                 result.exitCode(),
+                 result.err());
+  }
+
+  @Test
+  void aWorkingStandardOutputKeepsTheExitCodesAndBytes() throws IOException {
+    var broken = run("validate",
+                     "--format",
+                     "json",
+                     brokenXml().toString());
+    assertEquals(PanioloCli.EXIT_INVALID,
+                 broken.exitCode());
+    assertEquals("",
+                 broken.err());
+    assertEquals(PanioloCli.EXIT_OK,
+                 run("--version").exitCode());
+    assertEquals(PanioloCli.EXIT_ERROR,
+                 run("validate",
+                     dir.resolve("does-not-exist.xml").toString()).exitCode());
+  }
+
+  @Test
+  void executeDoesNotCloseThePassedStreams() throws IOException {
+    var out = new Tracking(new ByteArrayOutputStream());
+    var err = new Tracking(new ByteArrayOutputStream());
+    boolean[] inClosed = new boolean[1];
+    var in = new ByteArrayInputStream(new byte[0]) {
+      @Override
+      public void close() throws IOException {
+        inClosed[0] = true;
+        super.close();
+      }
+    };
+    PanioloCli.execute(in,
+                       new PrintStream(out,
+                                       true,
+                                       StandardCharsets.UTF_8),
+                       new PrintStream(err,
+                                       true,
+                                       StandardCharsets.UTF_8),
+                       "validate",
+                       "--format",
+                       "json",
+                       brokenXml().toString());
+    assertEquals(0,
+                 out.closed);
+    assertEquals(0,
+                 err.closed);
+    assertEquals(false,
+                 inClosed[0]);
+  }
+
   @Test
   void printsHelpAndVersion() {
     var help = run("--help");
@@ -139,6 +314,77 @@ class PanioloCliTest {
                  json.err());
     assertEquals(new ObjectMapper().readTree(invoiceJson.toFile()),
                  new ObjectMapper().readTree(json.out()));
+  }
+
+  /**
+   * A line amount that is not quantity x net price: --lenient recalculates the net price and says so
+   * on standard error, --keep-line-values rejects the document instead of changing the price.
+   */
+  @Test
+  void keepsTheLineValuesOnRequest()
+      throws IOException {
+    Path xml = dir.resolve("deviating-line.xml");
+    assertEquals(PanioloCli.EXIT_OK,
+                 run("to-xml",
+                     invoiceJson.toString(),
+                     "--syntax",
+                     "cii",
+                     "-o",
+                     xml.toString()).exitCode());
+    String content = Files.readString(xml);
+    var    matcher = java.util.regex.Pattern.compile("<ram:LineTotalAmount>([0-9.]+)<")
+                                             .matcher(content);
+    assertTrue(matcher.find(),
+               content);
+    String changed = content.substring(0,
+                                       matcher.start(1)) +
+                     new java.math.BigDecimal(matcher.group(1)).add(new java.math.BigDecimal("10.00"))
+                                                               .toPlainString() +
+                     content.substring(matcher.end(1));
+    Files.writeString(xml,
+                      changed);
+
+    var lenient = run("read",
+                      "--lenient",
+                      xml.toString());
+    assertEquals(PanioloCli.EXIT_OK,
+                 lenient.exitCode(),
+                 lenient.err());
+    assertTrue(lenient.err()
+                      .contains("READ-LINE-NET-PRICE"),
+               lenient.err());
+
+    var kept = run("read",
+                   "--keep-line-values",
+                   xml.toString());
+    assertTrue(kept.exitCode() != PanioloCli.EXIT_OK,
+               kept.err());
+    assertTrue(kept.err()
+                   .contains("LENIENT_KEEP_LINES"),
+               kept.err());
+
+    // Deviations are printed, not only warnings, and can be refused without writing a result.
+    assertTrue(lenient.err()
+                      .contains("deviation BT-146"),
+               lenient.err());
+    var refused = run("read",
+                      "--lenient",
+                      "--fail-on-deviation",
+                      xml.toString());
+    assertEquals(PanioloCli.EXIT_INVALID,
+                 refused.exitCode(),
+                 refused.err());
+    assertEquals("",
+                 refused.out());
+    assertTrue(refused.err()
+                      .contains("--fail-on-deviation"),
+               refused.err());
+
+    // to-xml reads strictly: the document is rejected instead of being converted with other amounts.
+    assertTrue(run("to-xml",
+                   xml.toString(),
+                   "--syntax",
+                   "ubl").exitCode() != PanioloCli.EXIT_OK);
   }
 
   /**
@@ -245,6 +491,40 @@ class PanioloCliTest {
     assertTrue(xml.out()
                   .contains("urn:io:github:nalukit:paniolo:validation-report:1"),
                xml.out());
+  }
+
+  @Test
+  void attachmentsRejectsAPdfWithTooManyFilesWithExitCodeThree()
+      throws IOException {
+    var args = new java.util.ArrayList<String>(java.util.List.of("to-facturx",
+                                                                 invoiceJson.toString(),
+                                                                 "--pdf",
+                                                                 visualPdf.toString(),
+                                                                 "--profile",
+                                                                 "en16931"));
+    for (int i = 0; i < 1_001; i++) {
+      Path file = dir.resolve("many-" + i + ".txt");
+      Files.writeString(file,
+                        "x");
+      args.add("--attach");
+      args.add(file.toString());
+    }
+    Path pdf = dir.resolve("many.pdf");
+    args.add("-o");
+    args.add(pdf.toString());
+    assertEquals(PanioloCli.EXIT_OK,
+                 run(args.toArray(String[]::new)).exitCode());
+
+    var listed = run("attachments",
+                     pdf.toString());
+
+    assertEquals(PanioloCli.EXIT_ERROR,
+                 listed.exitCode());
+    assertEquals("",
+                 listed.out());
+    assertTrue(listed.err()
+                     .contains("more than 1000 attachments"),
+               listed.err());
   }
 
   @Test

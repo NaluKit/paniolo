@@ -42,7 +42,10 @@ and run the [validation](validation.md) separately.
 Malformed XML and content the model cannot represent raise `IllegalArgumentException`;
 I/O failures raise `UncheckedIOException`. Readers recalculate totals. In `ReadMode.STRICT`, the
 default, they reject documents whose stated VAT total or amount due differ, or whose line net
-amount is not quantity x net price. `ReadMode.LENIENT` recalculates the net price of such lines,
+amount exceeds the tolerance of quantity x net price / price base quantity plus line charges
+minus allowances. The price tolerance uses half a unit of its last decimal (at least two decimal
+places), scaled by the absolute quantity / base quantity, plus half a cent for the amount.
+`ReadMode.LENIENT` recalculates the net price of such lines,
 keeps the calculated totals, drops allowance reason codes outside UNTDID 5189 that come with a
 reason text and percentages without base amount, keeps only the first of differing payment means
 blocks, turns ZUGFeRD 1.0 text-only lines into notes, and reports each deviation as a
@@ -50,14 +53,21 @@ blocks, turns ZUGFeRD 1.0 text-only lines into notes, and reports each deviation
 `READ-PERCENTAGE`, `READ-PAYMENT-MEANS`, and `READ-TEXT-LINE`. The CII reader keeps insurance tax
 (`TypeCode=AAM`) separately from VAT in `ExtendedInformation.otherTaxes` and
 `LineExtension.otherTaxes`; document-level taxes count in the totals. The CII writer preserves
-them in Factur-X EXTENDED; UBL and other output profiles are rejected. Other unsupported tax types
+them in Factur-X EXTENDED; UBL and other output profiles are rejected. The UBL reader recognises
+the tax scheme `VAT` (`cac:TaxScheme/cbc:ID` of a party or a tax category) regardless of case, as
+the EN 16931 UBL model rules do. Other unsupported tax types
 (CII `TypeCode`, UBL `TaxScheme/ID`) are never read as VAT: strict reading rejects them,
 lenient reading reports them as `READ-OTHER-TAX` and leaves them out. In EXTENDED, an exemption
 reason of a line, allowance, or charge that differs from its VAT breakdown, and a further breakdown
 of the same category and rate with another reason, are rejected by strict reading and reported as
 `READ-TAX-EXEMPTION` by lenient reading, which keeps the text of the first breakdown.
 
-Both modes report values the model does not keep or interpret, without changing an amount:
+`ReadMode.LENIENT_KEEP_LINES` accepts the same deviations as `LENIENT` except that it rejects
+any line whose net price or quantity would have to change. All modes can retain a stated BT-131
+within the price-rounding tolerance and still list its difference from the calculation in
+`ReadResult.deviations()`.
+
+All modes report values the model does not keep or interpret, without changing an amount:
 `READ-CASH-DISCOUNT` (a payment terms line that looks like a cash discount, kept as text),
 `READ-IDENTIFIER` (a further identifier of a business term with one identifier), and
 `READ-SPECIFICATION-VERSION` (a document of EN 16931:2026, read with the business terms of
@@ -65,7 +75,9 @@ EN 16931:2017). The writers reject invoices whose specification identifier state
 
 `ReadResult.stated()` retains the stated amounts and `deviations()` lists differences from the
 model, including totals not compared by strict reading. `isExact()` checks only whether there
-are read warnings; it does not guarantee field-level or byte-level fidelity. Implementations
+are read warnings; it does not guarantee field-level or byte-level fidelity.
+`requireNoDeviations()` rejects any listed amount difference, including a retained BT-131 and
+totals that strict reading does not compare. Implementations
 provide `read(Document, ReadMode)`; the other read methods delegate to it.
 
 `importXml(byte[], ReadMode)` returns an `ImportResult` with

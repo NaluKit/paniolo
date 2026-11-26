@@ -7,7 +7,7 @@ release; older versions receive no patches. To get security fixes, update to the
 
 | Version                | Supported | Notes                                                                 |
 |------------------------|-----------|-----------------------------------------------------------------------|
-| `1.0.x`                | Yes       | Current release line (`1.0.0`), published to Maven Central.      |
+| `1.0.x`                | Yes       | Current release line (`1.0.1`), published to Maven Central.           |
 | `HEAD-SNAPSHOT`        | No        | Development builds of the `dev` branch. Not for production use.       |
 
 Each new release replaces the previous one as the only supported version.
@@ -33,8 +33,18 @@ code. Releases are built by the same workflow from the `main` branch only:
 - **Provenance:** the JARs of a release carry a build provenance attestation of GitHub, which
   binds them to the commit and the workflow run that built them.
 - **Evidence:** the GitHub release of a version lists the JARs, the SBOMs, their SHA-256
-  checksums (`SHA256SUMS`), the OWASP Dependency-Check report of the release build, and the
-  changes from `CHANGELOG.md`.
+  checksums (`SHA256SUMS`), the OWASP Dependency-Check report of the release build, the test
+  evidence, and the changes from `CHANGELOG.md`.
+- **Test evidence:** `paniolo-<version>-test-evidence.tar.gz` holds the Surefire and Failsafe
+  reports of the release run for Java 21, Java 25 (with the invoice corpus) and the browser tests,
+  the tool versions of every job (`environment.txt`), the workflow and the POMs that configure the
+  checks, and `evidence.json`. The latter names the commit and the workflow run and lists, per test
+  job, the number of tests and every skipped test case with the reason of its report; it also lists
+  the SHA-256 of every archived file. The summary is attached as `paniolo-<version>-test-evidence.json`,
+  the archive carries a build provenance attestation, and `SHA256SUMS-test-evidence` holds the
+  checksums of both files. The evidence is kept as long as the release exists; release assets are
+  not touched by the cleanup workflow for old workflow runs, so the results can be checked without
+  the logs of the run. The OWASP result is the report `paniolo-<version>-dependency-check-report.html`.
 
 ## Verifying a release
 

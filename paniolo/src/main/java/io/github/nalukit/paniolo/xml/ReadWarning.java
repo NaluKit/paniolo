@@ -21,8 +21,8 @@ import java.util.Objects;
 
 /**
  * A deviation or conversion reported while reading an invoice. Amount deviations accepted in
- * {@link ReadMode#LENIENT} produce warnings; conversions and values the model does not keep can
- * produce warnings in either mode, e.g. {@link #IDENTIFIER} or {@link #SPECIFICATION_VERSION}.
+ * {@link ReadMode#LENIENT} and {@link ReadMode#LENIENT_KEEP_LINES} produce warnings; conversions
+ * and values the model does not keep can produce warnings in any mode, e.g. {@link #IDENTIFIER} or {@link #SPECIFICATION_VERSION}.
  * These warnings describe the import and are separate from XML validation findings.
  *
  * @param code    warning identifier, e.g. {@link #LINE_NET_PRICE}
@@ -61,7 +61,10 @@ public record ReadWarning(String code, String lineId, String message) {
   public static final String CASH_DISCOUNT  = "READ-CASH-DISCOUNT";
   /**
    * The document states more identifiers than the model keeps for a business term with one
-   * identifier, e.g. the deliver-to location (BT-71); the message names the identifier not kept.
+   * identifier, e.g. the deliver-to location (BT-71), VAT identifier or tax number of a party.
+   * A payee identifier with the reserved scheme {@code SEPA} is also reported. The message names
+   * the location and identifier not kept; repeated identical values and empty repetitions are not
+   * reported by the CII and ZUGFeRD 1.0 readers.
    */
   public static final String IDENTIFIER     = "READ-IDENTIFIER";
   /**
@@ -131,6 +134,14 @@ public record ReadWarning(String code, String lineId, String message) {
    * net price explains it; the original document keeps its form. The message names both quantities.
    */
   public static final String LINE_QUANTITY  = "READ-LINE-QUANTITY";
+  /**
+   * The document states a total of allowances (BT-107) or charges (BT-108) that the allowances and
+   * charges the document lists do not explain, for example the total alone of a ZUGFeRD 1.0 BASIC
+   * invoice, which has no allowance or charge elements. The model has no allowance or charge to hold
+   * it and does not invent one with an amount, sign and reason of its own, so the totals of the model
+   * (and of an invoice written from it) differ from the stated ones: the message names both values.
+   */
+  public static final String ALLOWANCE_CHARGE_TOTAL = "READ-ALLOWANCE-CHARGE-TOTAL";
 
   /**
    * Creates the warning.

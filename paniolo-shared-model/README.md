@@ -15,7 +15,7 @@ the repository root with `mvn install`, use `HEAD-SNAPSHOT` instead; see
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo-shared-model</artifactId>
-  <version>1.0.0</version>
+  <version>1.0.1</version>
 </dependency>
 ```
 
@@ -74,6 +74,15 @@ sub-invoice, category, and rate (`TaxCategory.subInvoiceNumber()`). Lists are co
 invoice is built. Permitted stated line amounts and `Invoice.vatAmounts()` can preserve amounts
 that differ from a recalculation within the documented rounding tolerances. EXTENDED financial
 adjustments and XRechnung third party payments change the amount due only.
+
+`InvoiceLine.Builder.netAmount(...)` keeps a stated BT-131 within the rounding tolerance of
+its net price. The tolerance is half a unit of the last price decimal, using at least two decimal
+places, multiplied by `abs(quantity) / priceBaseQuantity`, plus 0.005 for rounding the amount.
+For quantity 20 and base quantity 1, a price of `2.77` permits a stated amount of `55.46`, while
+`2.7700` does not. Preserve the price's `BigDecimal` scale when its precision matters. Line
+allowances and charges enter the calculated amount before comparison; a larger difference is
+rejected. Readers report accepted BT-131 differences separately from import warnings; see
+[read modes](../paniolo/README.md#usage).
 
 An invoice without lines, as in the Factur-X profiles MINIMUM and BASIC WL, sets
 `statedTotals(DocumentTotals)` instead; `totals()` then returns these amounts and derives the

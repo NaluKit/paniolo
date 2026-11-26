@@ -31,8 +31,10 @@ import java.io.UncheckedIOException;
 /**
  * Converts XML into a semantic invoice. The model calculates amounts from the invoice content
  * and retains stated line and VAT amounts within its rounding tolerances. Remaining amount
- * deviations are rejected in {@link ReadMode#STRICT} and reported in {@link ReadMode#LENIENT}.
- * Values the model does not keep can produce {@link ReadWarning}s in either mode.
+ * deviations checked by strict reading are rejected in {@link ReadMode#STRICT}. The lenient
+ * modes accept supported deviations; {@link ReadMode#LENIENT_KEEP_LINES} still rejects changes
+ * to a line's net price or quantity. All modes can report warnings and amount deviations; see
+ * {@link ReadResult}.
  *
  * <p>Reading applies the structural checks of the model; XML schema and business rule validation
  * are separate operations. Use {@link #importXml(byte[], ReadMode)} to retain the original XML
@@ -44,9 +46,9 @@ public interface InvoiceXmlReader {
    *
    * @param document the namespace-aware DOM document; must not be modified concurrently
    * @param mode     how deviations from the model are handled
-   * @return the invoice with the deviations accepted in {@link ReadMode#LENIENT}
-   * @throws IllegalArgumentException if the document is not a supported invoice or, in
-   *                                  {@link ReadMode#STRICT}, deviates from the model
+   * @return the invoice with warnings, stated amounts and amount deviations for the selected mode
+   * @throws IllegalArgumentException if the document is not a supported invoice or has content
+   *                                  rejected by the selected mode
    */
   ReadResult read(Document document,
                   ReadMode mode);
@@ -82,9 +84,9 @@ public interface InvoiceXmlReader {
    *
    * @param xml  the XML document
    * @param mode how deviations from the model are handled
-   * @return the invoice with the deviations accepted in {@link ReadMode#LENIENT}
-   * @throws IllegalArgumentException if the XML is not well-formed, not a supported invoice or,
-   *                                  in {@link ReadMode#STRICT}, deviates from the model
+   * @return the invoice with warnings, stated amounts and amount deviations for the selected mode
+   * @throws IllegalArgumentException if the XML is not well-formed, not a supported invoice, or
+   *                                  has content rejected by the selected mode
    */
   default ReadResult fromXml(String xml,
                              ReadMode mode) {
@@ -116,9 +118,9 @@ public interface InvoiceXmlReader {
    *
    * @param xml  the XML document
    * @param mode how deviations from the model are handled
-   * @return the invoice with the deviations accepted in {@link ReadMode#LENIENT}
-   * @throws IllegalArgumentException if the XML is not well-formed, not a supported invoice or,
-   *                                  in {@link ReadMode#STRICT}, deviates from the model
+   * @return the invoice with warnings, stated amounts and amount deviations for the selected mode
+   * @throws IllegalArgumentException if the XML is not well-formed, not a supported invoice, or
+   *                                  has content rejected by the selected mode
    */
   default ReadResult fromBytes(byte[] xml,
                                ReadMode mode) {
@@ -128,16 +130,16 @@ public interface InvoiceXmlReader {
 
   /**
    * Imports a received document: reads it and keeps the original XML and the stated amounts next to
-   * the invoice model. Use this instead of {@link #fromBytes(byte[], ReadMode)} when the amounts as
-   * stated must stay available, e.g. for booking or archiving received invoices, and choose with
+   * the invoice model. Unlike {@link #fromBytes(byte[], ReadMode)}, this also retains the original
+   * XML bytes, e.g. for archiving received invoices. Choose with
    * {@link ImportResult#export(ExportVariant, InvoiceXmlWriter)} between the original and the
    * normalized document.
    *
    * @param xml  the XML document; copied, later changes do not affect the result
    * @param mode how deviations from the model are handled
    * @return the original XML, the stated amounts, the invoice and their deviations
-   * @throws IllegalArgumentException if the XML is not well-formed, not a supported invoice or,
-   *                                  in {@link ReadMode#STRICT}, deviates from the model
+   * @throws IllegalArgumentException if the XML is not well-formed, not a supported invoice, or
+   *                                  has content rejected by the selected mode
    */
   default ImportResult importXml(byte[] xml,
                                  ReadMode mode) {
@@ -168,9 +170,9 @@ public interface InvoiceXmlReader {
    *
    * @param input the XML document
    * @param mode  how deviations from the model are handled
-   * @return the invoice with the deviations accepted in {@link ReadMode#LENIENT}
-   * @throws IllegalArgumentException     if the XML is not well-formed, not a supported invoice or,
-   *                                      in {@link ReadMode#STRICT}, deviates from the model
+   * @return the invoice with warnings, stated amounts and amount deviations for the selected mode
+   * @throws IllegalArgumentException     if the XML is not well-formed, not a supported invoice, or
+   *                                      has content rejected by the selected mode
    * @throws java.io.UncheckedIOException if the stream cannot be read
    */
   default ReadResult fromStream(InputStream input,

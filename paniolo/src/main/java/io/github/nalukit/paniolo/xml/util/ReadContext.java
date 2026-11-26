@@ -507,9 +507,13 @@ public final class ReadContext {
             line.id(),
             line.netUnitPrice(),
             result.netUnitPrice());
+    // Also a stated amount that the rounding of the net price still explains differs from
+    // quantity x net price; the deviation shows what the document states and what the price gives.
     deviate("BT-131",
             line.id(),
             statedNetAmount,
+            result.calculatedNetAmount() != null ?
+            result.calculatedNetAmount() :
             result.netAmount());
     deviate("BT-129",
             line.id(),
@@ -524,6 +528,9 @@ public final class ReadContext {
       return line.withNetAmount(statedNetAmount);
     } catch (IllegalArgumentException e) {
       // A line without net price takes its amount from its sub-lines; there is no price to recalculate.
+      if (mode == ReadMode.LENIENT_KEEP_LINES) {
+        throw new IllegalArgumentException(e.getMessage() + "; ReadMode.LENIENT_KEEP_LINES does not change the net price or the quantity of a line");
+      }
       if (mode == ReadMode.STRICT ||
           line.netUnitPrice() == null ||
           line.quantity() == null ||
@@ -648,6 +655,14 @@ public final class ReadContext {
           "amount due for payment",
           stated.payableAmount(),
           totals.payableAmount());
+    checkAllowanceChargeTotal("allowances",
+                              "BT-107",
+                              stated.allowanceTotal(),
+                              totals.allowanceTotal());
+    checkAllowanceChargeTotal("charges",
+                              "BT-108",
+                              stated.chargeTotal(),
+                              totals.chargeTotal());
     deviate("BT-106",
             null,
             stated.lineTotal(),
@@ -688,6 +703,33 @@ public final class ReadContext {
                           warnings,
                           stated.withLines(lines),
                           deviations);
+  }
+
+  /**
+   * Reports a stated total of allowances or charges that the document-level allowances and charges
+   * read do not explain, in both modes: it changes no stated amount of the model by itself, but
+   * the totals that follow from it differ from the document.
+   */
+  private void checkAllowanceChargeTotal(String name,
+                                         String businessTerm,
+                                         BigDecimal stated,
+                                         BigDecimal calculated) {
+    if (stated == null || stated.compareTo(calculated) == 0) {
+      return;
+    }
+    warnings.add(new ReadWarning(ReadWarning.ALLOWANCE_CHARGE_TOTAL,
+                                 null,
+                                 "The document states a total of " +
+                                 name +
+                                 " (" +
+                                 businessTerm +
+                                 ") of " +
+                                 stated.toPlainString() +
+                                 ", but the " +
+                                 name +
+                                 " it lists amount to " +
+                                 calculated.toPlainString() +
+                                 "; the model keeps the listed ones, so the totals of the invoice differ from the document"));
   }
 
   private void deviate(String businessTerm,

@@ -374,4 +374,41 @@ class OrderXTest {
                  variant + " " + result.messages());
     }
   }
+  /**
+   * The order model keeps one VAT identifier per party. Strict reading writes the order again and
+   * compares it, so a second different VAT identifier is rejected; lenient reading keeps the last one.
+   */
+  @Test
+  void strictReadingRejectsASecondDifferentVatIdentifier() {
+    var ship = Party.create()
+                    .name("Lager")
+                    .address(Address.create()
+                                    .street("Hafenstr. 1")
+                                    .city("Hamburg")
+                                    .postalCode("20457")
+                                    .country(Country.DE)
+                                    .build())
+                    .vatId("DE123456789")
+                    .build();
+    var order = OrderSamples.comfort(OrderTypeCode.ORDER)
+                            .shipTo(ship)
+                            .build();
+    String xml     = PANIOLO.toOrderX(order);
+    String closing = "</ram:SpecifiedTaxRegistration>";
+    int    start   = xml.indexOf("DE123456789");
+    int    end     = xml.indexOf(closing,
+                                 start);
+    assertTrue(start > 0 && end > start,
+               xml);
+    String changed = xml.substring(0,
+                                   end + closing.length()) + "<ram:SpecifiedTaxRegistration><ram:ID schemeID=\"VA\">FR12345678901</ram:ID>" + closing + xml.substring(end + closing.length());
+    byte[] bytes = changed.getBytes(StandardCharsets.UTF_8);
+    assertThrows(IllegalArgumentException.class,
+                 () -> PANIOLO.readOrder(bytes));
+    assertEquals("FR12345678901",
+                 PANIOLO.readOrder(bytes,
+                                   true)
+                        .shipTo()
+                        .vatId());
+  }
 }

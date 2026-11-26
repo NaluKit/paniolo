@@ -39,6 +39,8 @@ The reader maps supported fields and checks the line net amounts, total VAT, and
 against the model. It does not compare every stated total or guarantee lossless import of
 external documents. `ReadMode.LENIENT` accepts the documented deviations; structural model
 restrictions still apply. See [reading an invoice](../../README.md#reading-an-invoice).
+The tax scheme `VAT` of a `cac:PartyTaxScheme` or a tax category is recognised regardless of case
+(`VAT`, `Vat`, `vat`), as the EN 16931 UBL model rules do; the identifier values are kept as stated.
 
 Writer and reader are stateless; create them once and share them between threads.
 

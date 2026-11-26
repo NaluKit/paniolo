@@ -273,7 +273,8 @@ public final class ZugferdV1InvoiceReader
      * target is EXTENDED, where it is kept.
      */
     private Party party(XmlElement element) {
-      var party = CiiInvoiceReader.party(element);
+      var party = CiiInvoiceReader.party(element,
+                                        context);
       if (party == null || party.extended() == null || extended) {
         return party;
       }
@@ -296,7 +297,9 @@ public final class ZugferdV1InvoiceReader
                        party.tradingName(),
                        party.legalRegistrationId(),
                        party.legalRegistrationSchemeId(),
-                       party.additionalLegalInformation());
+                       party.additionalLegalInformation(),
+                       null,
+                       party.additionalIdentifiers());
     }
 
     private ReadResult read(XmlElement header,
@@ -356,17 +359,34 @@ public final class ZugferdV1InvoiceReader
                   .receivingAdviceReference(delivery.text("ram:ReceivingAdviceReferencedDocument/ram:ID"));
         var shipTo = delivery.find("ram:ShipToTradeParty");
         var date   = delivery.basicDate("ram:ActualDeliverySupplyChainEvent/ram:OccurrenceDateTime/udt:DateTimeString");
+        // BT-71 is one location identifier: ram:ID, or ram:GlobalID with its scheme (BT-71-1).
+        var local = shipTo == null ?
+                    null :
+                    shipTo.findWithText("ram:ID");
+        var global = shipTo == null ?
+                     null :
+                     shipTo.findWithText("ram:GlobalID");
+        var location = local != null ?
+                       local :
+                       global;
+        if (local != null && global != null) {
+          context.lost(ReadWarning.IDENTIFIER,
+                       "Deliver-to location (BT-71) has the identifier " + local.text() + "; the global identifier " + global.text() + " (scheme " + global.attribute("schemeID") + ") is not kept");
+        }
         if (shipTo != null || date != null) {
           builder.delivery(new DeliveryInformation(shipTo == null ?
                                                    null :
                                                    shipTo.text("ram:Name"),
-                                                   shipTo == null ?
+                                                   location == null ?
                                                    null :
-                                                   shipTo.text("ram:ID"),
+                                                   location.text(),
                                                    date,
                                                    shipTo == null ?
                                                    null :
-                                                   CiiInvoiceReader.address(shipTo.find("ram:PostalTradeAddress"))));
+                                                   CiiInvoiceReader.address(shipTo.find("ram:PostalTradeAddress")),
+                                                   location == null ?
+                                                   null :
+                                                   location.attribute("schemeID")));
         }
       }
       var builtReferences = references.build();
@@ -378,18 +398,12 @@ public final class ZugferdV1InvoiceReader
              .buyer(party(agreement.find("ram:BuyerTradeParty")));
       var payee = settlement.find("ram:PayeeTradeParty");
       if (payee != null) {
-        var globalId = payee.text("ram:ID") == null ?
-                       payee.findWithText("ram:GlobalID") :
-                       null;
-        builder.payee(Payee.create()
-                           .name(payee.text("ram:Name"))
-                           .identifier(globalId == null ?
-                                       payee.text("ram:ID") :
-                                       globalId.text(),
-                                       globalId == null ?
-                                       null :
-                                       globalId.attribute("schemeID"))
-                           .build());
+        var payeeBuilder = Payee.create()
+                                .name(payee.text("ram:Name"));
+        CiiInvoiceReader.payeeIdentifier(payeeBuilder,
+                                         payee,
+                                         context);
+        builder.payee(payeeBuilder.build());
       }
 
       var breakdowns = new ArrayList<TaxCategory>();

@@ -150,7 +150,8 @@ public record InvoiceNote(String subjectCode, String text, String contentCode) {
     /**
      * Sets {@link InvoiceNote#text() text}.
      *
-     * @param text invoice note text (BT-22); must not be blank
+     * @param text invoice note text (BT-22); must not be blank; may be null only for a note with a
+     *             content code (Factur-X EXTENDED)
      * @return this builder
      */
     public Builder text(String text) {
