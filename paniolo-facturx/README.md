@@ -32,7 +32,7 @@ creating the final invoice; see [PDF profiles](../README.md#pdf-profiles-of-topd
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo-facturx</artifactId>
-  <version>1.0.0</version>
+  <version>1.0.1</version>
 </dependency>
 ```
 
