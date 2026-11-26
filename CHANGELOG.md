@@ -8,6 +8,12 @@ reference in `docs/api/<version>.md`.
 
 ### Fixed
 
+- The UBL reader recognised the tax scheme `VAT` of a `PartyTaxScheme` only in capitals. With `vat`
+  or `Vat` (valid in EN 16931, whose UBL model rules compare in upper case) the VAT identifier of a
+  seller was read as its tax number, a real tax number in a further entry was dropped, and the VAT
+  identifier of a buyer was lost, all without a message; a CII export then lacked the VAT
+  identifier (`BR-CO-26`). The scheme is now compared ignoring case, also for the tax category
+  check. The values of the identifiers are unchanged.
 - A stated line amount (BT-131) was accepted if it differed from quantity x net price by no more
   than half a cent per unit of quantity, whatever the decimals of the price. A price stated with
   four or five decimals is not rounded to cents, so a document could carry a line amount that no
