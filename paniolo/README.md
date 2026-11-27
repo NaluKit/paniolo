@@ -30,7 +30,7 @@ the repository root with `mvn install`, use `HEAD-SNAPSHOT` instead; see
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo</artifactId>
-  <version>1.0.1</version>
+  <version>1.1.0</version>
 </dependency>
 ```
 
@@ -149,6 +149,9 @@ Paniolo paniolo = Paniolo.builder()
 - **Lazy validation setup**: rules are extracted and each profile compiled on the first
   validation of that document type; later validations reuse it. `warmUp()` compiles the
   XRechnung rules for UBL and CII at start-up instead. Reading and writing compile nothing.
+  Compiled validators are held softly: when the heap runs short, the JVM reclaims those not in use
+  and they are compiled again on their next use (0.4 to 4 seconds); results do not change. See
+  [memory and heap sizing](../README.md#memory-and-heap-sizing).
 - **Detection**: the root element's namespace and name decide between UBL Invoice, UBL
   CreditNote, CII, and ZUGFeRD 1.0; the specification identifier (BT-24) selects the rules (XRechnung of the stated version,
   XRechnung extension, Factur-X profile; ZUGFeRD 1.0 has its own

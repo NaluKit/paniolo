@@ -111,8 +111,10 @@ import java.util.function.Supplier;
  *
  * <p>Create one instance and share it across your application. Instances are immutable and
  * thread-safe; the expensive part, compiling the XML schemas and Schematron rules, happens lazily on
- * the first validation of each document type and is cached afterwards. Reading and writing never
- * compile anything and are cheap from the first call.
+ * the first validation of each document type and is cached afterwards. The compiled validators are
+ * held softly: under heap pressure the JVM may reclaim those not in use, and they are compiled again
+ * on their next use (see the section on memory and heap sizing in the README). Reading and writing
+ * never compile anything and are cheap from the first call.
  *
  * <pre>{@code
  * Paniolo paniolo = Paniolo.create();                        // official XRechnung rules, packaged
@@ -268,7 +270,7 @@ public final class Paniolo
                                                                                                          new UblInvoiceReader(),
                                                                                                          InvoiceSyntax.CII,
                                                                                                          new CiiInvoiceReader()));
-  private final        Map<Object, CompiledValidator>       validators            = new ConcurrentHashMap<>();
+  private final        Map<Object, SoftLazy<InvoiceValidator>> validators            = new ConcurrentHashMap<>();
 
   private Paniolo(Supplier<Path> rules,
                   Supplier<List<XrechnungSpecification>> xrechnungSpecifications,
@@ -434,7 +436,9 @@ public final class Paniolo
    *
    * <p>This is the right choice for most applications. Creating the instance is cheap; the packaged
    * rules are extracted and compiled only when the first validation needs them. Create the instance
-   * once and reuse it, e.g. as a singleton or a Spring bean, so the compiled validators are reused:
+   * once and reuse it, e.g. as a singleton or a Spring bean, so the compiled validators are reused
+   * (the JVM may reclaim validators that are not in use when the heap runs short; they are compiled
+   * again on their next use):
    *
    * <pre>{@code
    * private static final Paniolo PANIOLO = Paniolo.create();
@@ -3795,12 +3799,14 @@ public final class Paniolo
   /**
    * Returns the validator of the key, compiling it on first use. Compilation takes noticeable time
    * and is locked per key, so threads using other, already compiled validators are not blocked.
-   * A failed compilation is not cached and is retried on the next call.
+   * A failed compilation is not cached and is retried on the next call. Compiled validators are
+   * held softly: under heap pressure the JVM may reclaim them, and they are compiled again on the
+   * next use, instead of the heap running out when many different profiles were used.
    */
   private InvoiceValidator compiled(Object key,
                                     Supplier<InvoiceValidator> compiler) {
     return validators.computeIfAbsent(key,
-                                      k -> new CompiledValidator())
+                                      k -> new SoftLazy<>())
                      .get(compiler);
   }
 
@@ -3827,29 +3833,6 @@ public final class Paniolo
                                                                                                  "",
                                                                                                  ValidationMessage.Stage.PDF_A))));
   }
-
-  /**
-   * Holds one lazily compiled validator.
-   */
-  private static final class CompiledValidator {
-    private volatile InvoiceValidator validator;
-
-    InvoiceValidator get(Supplier<InvoiceValidator> compiler) {
-      InvoiceValidator result = validator;
-      if (result == null) {
-        synchronized (this) {
-          result = validator;
-          if (result == null) {
-            result    = compiler.get();
-            validator = result;
-          }
-        }
-      }
-      return result;
-    }
-  }
-
-
 
   private record XrechnungSelection(String version, XrechnungScenario scenario) {
   }

@@ -6,6 +6,37 @@ reference in `docs/api/<version>.md`.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-27
+
+Reads the structured due date of UBL documents, holds compiled validators softly to avoid
+`OutOfMemoryError` at small heaps, and adds a performance comparison and a heap sizing guide. See the
+[API reference for 1.1.0](docs/api/1.1.0.md).
+
+### Added
+
+- Measured [performance comparison](docs/performance-comparison.md) of Paniolo 1.0.1 and Mustangproject
+  2.26.0 with raw data, linked from the README and the feature comparison; it is also part of the
+  web-site.
+- README section [memory and heap sizing](README.md#memory-and-heap-sizing): what the compiled rules
+  cost, the `OutOfMemoryError` of 1.0.1 and earlier at small heaps, and a recommended configuration.
+
+### Fixed
+
+- Compiled validators are held softly. Each validation profile (for example ZUGFeRD 1, the XRechnung
+  scenarios or a Factur-X level) is compiled on first use and occupies 15 to 140 MiB; an instance
+  that had validated documents of many different profiles kept all of them and could run out of a
+  512 MiB heap with an `OutOfMemoryError` while compiling the next one. Under heap pressure the JVM now
+  reclaims validators that are not in use, and they are compiled again on their next use, which takes
+  0.4 to 4 seconds. Results do not change. Reuse one `Paniolo` instance and size the heap for the
+  profiles you use.
+- The UBL reader ignored the structured due date `PaymentTerms/PaymentDueDate` of invoices and
+  credit notes: a valid document (the official rule `UBL-CR-463` only warns) was imported with
+  `dueDate() == null` and without any message. The date is now read in all read modes. Stated twice
+  with different dates (the header `DueDate`, the `PaymentDueDate`, or the date in the payment terms
+  text that the writer uses for credit notes), strict reading rejects the document and lenient
+  reading keeps the first of them in this order and reports the other one with the new warning code
+  `READ-DUE-DATE`. The writer and the validation rules are unchanged.
+
 ## [1.0.1] - 2026-11-26
 
 Patch release: stricter and more transparent reading of stated amounts, limits for PDF streams and
@@ -691,7 +722,8 @@ Second release candidate. See the [API reference for 1.0.0-rc02](docs/api/1.0.0-
 First release candidate, published to Maven Central under the group ID `io.github.nalukit`. See
 the [API reference for 1.0.0-rc01](docs/api/1.0.0-rc01.md).
 
-[Unreleased]: https://github.com/NaluKit/paniolo/compare/1.0.1...HEAD
+[Unreleased]: https://github.com/NaluKit/paniolo/compare/1.1.0...HEAD
+[1.1.0]: https://github.com/NaluKit/paniolo/releases/tag/1.1.0
 [1.0.1]: https://github.com/NaluKit/paniolo/releases/tag/1.0.1
 [1.0.0]: https://github.com/NaluKit/paniolo/releases/tag/1.0.0
 [1.0.0-rc02]: https://github.com/NaluKit/paniolo/releases/tag/1.0.0-rc02

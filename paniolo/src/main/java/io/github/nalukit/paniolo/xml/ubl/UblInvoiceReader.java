@@ -157,21 +157,73 @@ public final class UblInvoiceReader
 
   private static void paymentTerms(Invoice.Builder builder,
                                    CashDiscount.Terms parsed,
-                                   boolean credit) {
+                                   boolean credit,
+                                   XmlElement root,
+                                   ReadContext readContext) {
     builder.cashDiscounts(parsed.discounts());
     String terms = parsed.text();
     // The writer expresses a credit note due date as a suffix of the payment terms.
     var matcher = terms == null || !credit ?
                   null :
                   CREDIT_NOTE_DUE_DATE.matcher(terms);
+    LocalDate textDue = null;
     if (matcher != null && matcher.matches()) {
-      builder.dueDate(LocalDate.parse(matcher.group(2)));
+      textDue = LocalDate.parse(matcher.group(2));
       terms = matcher.group(1)
                      .isBlank() ?
               null :
               matcher.group(1);
     }
     builder.paymentTerms(terms);
+    dueDate(builder,
+            root,
+            textDue,
+            readContext);
+  }
+
+  /**
+   * Sets the due date (BT-9) from the places UBL has for it. The header {@code DueDate} comes first,
+   * then the structured {@code PaymentTerms/PaymentDueDate}, then the date in the payment terms text
+   * that the writer uses for credit notes. A source with another date than the kept one is a
+   * conflict: strict reading rejects it, lenient reading reports it.
+   */
+  private static void dueDate(Invoice.Builder builder,
+                              XmlElement root,
+                              LocalDate textDue,
+                              ReadContext readContext) {
+    var headerDue     = root.isoDate("cbc:DueDate");
+    var structuredDue = root.isoDate("cac:PaymentTerms/cbc:PaymentDueDate");
+    var kept          = headerDue != null ?
+                        headerDue :
+                        structuredDue != null ?
+                        structuredDue :
+                        textDue;
+    if (kept == null) {
+      return;
+    }
+    String keptSource = headerDue != null ?
+                        "DueDate" :
+                        structuredDue != null ?
+                        "PaymentDueDate" :
+                        "the date in the payment terms text";
+    var location = root.find("cac:PaymentTerms") != null ?
+                   root.find("cac:PaymentTerms") :
+                   root;
+    if (structuredDue != null && !structuredDue.equals(kept)) {
+      readContext.dueDateConflict(location,
+                                  keptSource,
+                                  kept,
+                                  "PaymentDueDate",
+                                  structuredDue);
+    }
+    if (textDue != null && !textDue.equals(kept)) {
+      readContext.dueDateConflict(location,
+                                  keptSource,
+                                  kept,
+                                  "the date in the payment terms text",
+                                  textDue);
+    }
+    builder.dueDate(kept);
   }
 
   private static PaymentInstruction paymentInstruction(java.util.List<XmlElement> means,
@@ -606,7 +658,6 @@ public final class UblInvoiceReader
                          .processControl(new ProcessControl(root.text("cbc:ProfileID"),
                                                             root.text("cbc:CustomizationID")))
                          .buyerReference(root.text("cbc:BuyerReference"))
-                         .dueDate(root.isoDate("cbc:DueDate"))
                          .taxPointDate(root.isoDate("cbc:TaxPointDate"));
     for (var note : root.children("cbc:Note")) {
       builder.addNote(note(note.text()));
@@ -661,7 +712,9 @@ public final class UblInvoiceReader
                                                   readContext));
     paymentTerms(builder,
                  readContext.paymentTerms(root.text("cac:PaymentTerms/cbc:Note")),
-                 credit);
+                 credit,
+                 root,
+                 readContext);
 
     var breakdowns = new ArrayList<TaxCategory>();
     var statedVat  = new StatedVatAmounts();

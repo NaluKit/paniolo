@@ -11,7 +11,7 @@ It is based on [veraPDF](https://verapdf.org), the reference PDF/A validator, an
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo-pdfa</artifactId>
-  <version>1.0.1</version>
+  <version>1.1.0</version>
 </dependency>
 ```
 

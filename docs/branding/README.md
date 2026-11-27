@@ -46,10 +46,9 @@ reduced to 64 colors. Use the GitHub `<picture>` element to switch by color sche
 
 The original concept (not part of this repository) was created for the Paniolo
 project, on behalf of Frank Hossfeld. All other files in this folder and the logo files in
-`src/content/paniolo/assets/` of the website repository
-[NaluKit/nalukit-web-site](https://github.com/NaluKit/nalukit-web-site) are derived from it as
-described above (cleaned up, split, traced with VTracer, cropped, scaled). The wordmark is part of the concept and was traced from it;
-it is not set in a font.
+`src/content/paniolo/assets/` of the web-site
+are derived from it as described above (cleaned up, split, traced with VTracer, cropped, scaled).
+The wordmark is part of the concept and was traced from it; it is not set in a font.
 
 The logo is not offered under the Apache License 2.0 of the code; it identifies the
 Paniolo project. Use it unchanged to refer to Paniolo; do not use it for other products or in a

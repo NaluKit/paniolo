@@ -30,7 +30,7 @@ Invoice received = paniolo.read(Files.readAllBytes(path));    // UBL, CII, ZUGFe
 - [What Paniolo can do](#what-paniolo-can-do)
 - [Scope](#scope)
 - [Installation](#installation)
-- [Versioned API reference and reproducible quickstart](docs/api/1.0.1.md)
+- [Versioned API reference and reproducible quickstart](docs/api/1.1.0.md)
 - [Using Paniolo](#using-paniolo): [send an invoice](#send-an-xrechnung),
   [receive an invoice](#receive-and-process-an-invoice), [Factur-X](#create-a-factur-x--zugferd-pdf),
   [ZUGFeRD 1.0](#migrate-zugferd-10), [Order-X](#orders-order-x),
@@ -41,7 +41,7 @@ Invoice received = paniolo.read(Files.readAllBytes(path));    // UBL, CII, ZUGFe
   [validating](#validating-xml), [Factur-X / ZUGFeRD](#factur-x--zugferd),
   [validating Factur-X](#validating-factur-x--zugferd),
   [localized texts](#localized-enum-texts), [thread safety](#thread-safety-and-multi-user-use),
-  [logging](#logging), [building](#building-and-testing), [releases and security](#releases-and-security),
+  [memory and heap sizing](#memory-and-heap-sizing), [logging](#logging), [building](#building-and-testing), [releases and security](#releases-and-security),
   [license](#license), [the name](#the-name)
 
 ## The name
@@ -88,7 +88,9 @@ Beyond the formats, Paniolo:
   as invalid instead of throwing;
 - **migrates from Mustang**: the optional module [`paniolo-mustang`](paniolo-mustang/README.md) maps
   Mustang invoice objects to the model and names every value it cannot carry over, and the
-  [migration guide](docs/migration-mustang.md) describes the explicit mapping;
+  [migration guide](docs/migration-mustang.md) describes the explicit mapping; the
+  [feature comparison](Comparsion.md) and the measured [performance comparison](docs/performance-comparison.md)
+  with Mustangproject 2.26.0 help to decide;
 - **handles PDF attachments** (time sheets, delivery notes) and tells which software produced a PDF;
 - **renders** the visual pages of invoices, orders, quotations, and delivery notes as PDF/A-3b by default with
   [`paniolo-facturx`](paniolo-facturx/docs/pdf-layout.md), so `toFacturX(invoice, profile)`,
@@ -195,6 +197,8 @@ Notes on the formats:
   mapping; sellers can use `taxId`.
 - UBL CreditNote has no document-level `DueDate` element. A due date specified in the model is
   therefore included as text in the payment terms; CII and UBL Invoice represent it as a date.
+  When reading UBL, the header `DueDate`, the structured `PaymentTerms/PaymentDueDate` and this
+  text date are all read (`READ-DUE-DATE` when they differ).
 - For tax category `O`, the tax rate is omitted from lines, allowances, and charges; the tax
   breakdown uses `0` for XRechnung.
 - Paniolo writes CII D16B. Factur-X is based on CII D22B; some EXTENDED content (several preceding
@@ -209,11 +213,11 @@ Technical references: [XRechnung](https://xeinkauf.de/xrechnung/),
 ## Installation
 
 For a complete, runnable example with a pinned source commit, exact Maven coordinates, and the
-expected output, see the [versioned API reference and reproducible quickstart](docs/api/1.0.1.md)
-(release `1.0.1` at `4651ba648221`). It also documents the facade, model, optional
+expected output, see the [versioned API reference and reproducible quickstart](docs/api/1.1.0.md)
+(release `1.1.0` at `c4f93eb9e70d`). It also documents the facade, model, optional
 modules, validation results, and how to generate the full JavaDoc for that baseline.
 
-The reference above describes release `1.0.1` and uses its Maven Central artifacts. Each release
+The reference above describes release `1.1.0` and uses its Maven Central artifacts. Each release
 gets its own reference `docs/api/<version>.md` whose quickstart
 uses the published Maven Central artifacts of exactly that version (see
 [releases and security](#releases-and-security)).
@@ -224,12 +228,12 @@ Paniolo needs **Java 21** or newer, at build and at run time; there is no build 
 versions. If an application cannot leave Java 11 or 17, run Paniolo in its own Java 21 process (the
 [CLI](#command-line) or a small service around the facade) and exchange XML, PDF, or JSON with it.
 
-The Maven group ID is `io.github.nalukit`. The current release is `1.0.1` on Maven Central. The
+The Maven group ID is `io.github.nalukit`. The current release is `1.1.0` on Maven Central. The
 development version `HEAD-SNAPSHOT` is built with `mvn install` from the repository root (see
 [building](#building-and-testing)).
 This README and the module READMEs describe the current source tree, including unreleased
-features. Dependency snippets use the published release `1.0.1`; its exact API is documented
-in the [versioned reference](docs/api/1.0.1.md). To use the current source after `mvn install`,
+features. Dependency snippets use the published release `1.1.0`; its exact API is documented
+in the [versioned reference](docs/api/1.1.0.md). To use the current source after `mvn install`,
 use `HEAD-SNAPSHOT` consistently for all Paniolo dependencies, or set `-Drevision=<version>` when
 building and use that version throughout the application.
 
@@ -239,7 +243,7 @@ Most applications need only `paniolo`:
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo</artifactId>
-  <version>1.0.1</version>
+  <version>1.1.0</version>
 </dependency>
 ```
 
@@ -279,6 +283,9 @@ names the missing dependency.
 it is immutable and thread-safe, and it compiles each set of rules once, on the first validation
 that needs it, and reuses it afterwards. `warmUp()` compiles the XRechnung
 rules for UBL and CII at start-up instead, so the first request does not wait for them.
+The compiled rules occupy heap (about 20 to 30 MiB per rule set, 80 MiB after `warmUp()`) and are
+held softly, so under heap pressure the JVM reclaims rules that are not in use and Paniolo compiles
+them again on their next use; see [memory and heap sizing](#memory-and-heap-sizing) before you choose a small container.
 
 ```java
 import io.github.nalukit.paniolo.Paniolo;
@@ -920,6 +927,7 @@ result.warnings().forEach(w -> log(w.code(), w.lineId(), w.message()));
 | `READ-TAX-RATE`       | A VAT category without a rate other than zero (Z, E, AE, K, G) states another rate or none, e.g. an exempt VAT breakdown with 19 % and VAT amount zero                         | Rate zero is kept; strict reading rejects the document with the location                                                                                                  |
 | `READ-ALLOWANCE-CHARGE-TOTAL` | A total of allowances (BT-107) or charges (BT-108) that the listed document allowances and charges do not explain, e.g. the total alone of a ZUGFeRD 1.0 BASIC invoice | No allowance or charge is invented (amount, sign and reason would be guesses); the totals of the invoice differ from the document and `result.deviations()` lists BT-107 or BT-108 with the other totals that follow. Given in strict reading as well, which rejects the document by its VAT total |
 | `READ-PERIOD`         | An invoicing period (BG-14, BG-26) with a date that is no calendar date, e.g. `20139102`, or an end before its start                                                           | The period is dropped; strict reading rejects the document with the location                                                                                             |
+| `READ-DUE-DATE`       | UBL: the due date (BT-9) is stated in two places with different dates: header `DueDate`, `PaymentTerms/PaymentDueDate`, or the date in the payment terms text of a credit note | The first date in this order is kept; strict reading rejects the document with both dates                                                                                |
 
 Four warnings report values the model does not keep or interpret, or takes from somewhere else,
 without changing an amount.
@@ -1277,7 +1285,7 @@ Hybrid invoices (a PDF/A-3 document with embedded CII XML) need the optional mod
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo-facturx</artifactId>
-  <version>1.0.1</version>
+  <version>1.1.0</version>
 </dependency>
 ```
 
@@ -1470,6 +1478,167 @@ Each `XrechnungRules.bundle()` call site in a separately deployed class loader e
 own copy and registers a shutdown hook; with frequent hot redeploys prefer
 `XrechnungRules.bundle(Path)` with a fixed directory.
 
+## Memory and heap sizing
+
+Paniolo is fast and allocates little per document, but it needs a **fixed amount of heap for the
+compiled validation rules**. This is independent of the size of your invoices. It is the one place
+where a too small heap does not slow Paniolo down gradually, but stops it, so read this section
+before you run Paniolo in a container with a small memory limit.
+
+### What uses the memory
+
+The official rules are Schematron stylesheets (several hundred KB to 6 MB of XSLT each). Paniolo
+compiles them with Saxon on the first validation that needs them and keeps the compiled form, so
+that every later validation only runs it. Measured on Temurin 21 with Saxon 13.1 (live heap after
+a full garbage collection):
+
+| Compiled rule set (examples)                                                   | Compile time | Live heap |
+|--------------------------------------------------------------------------------|-------------:|----------:|
+| XRechnung UBL or CII, EN 16931, one scenario                                   | 0.1 to 1.0 s | 20 to 30 MiB |
+| Factur-X / ZUGFeRD 2 level (BASIC, EN 16931), EXTENDED-CTC-FR, Order-X profile | 0.1 to 1.0 s | 15 to 40 MiB |
+| ZUGFeRD 1.0 (6 MB stylesheet)                                                  | about 4 s    | about 140 MiB |
+| `warmUp()` (XRechnung UBL and CII)                                             |              | about 80 MiB |
+
+The cost is per rule set, not per invoice: a rule set is compiled once and then shared by all
+threads. What counts is **how many different rule sets one `Paniolo` instance has used**: every
+combination of syntax (UBL, CII), XRechnung version and scenario, Factur-X level, French extension,
+Order-X profile, and delivery note rules is a separate rule set. A service that validates only
+current XRechnung invoices uses two to four of them. A service that accepts everything and also
+old XRechnung versions and ZUGFeRD 1.0 can use more than twenty.
+
+The amounts also show what is **not** the reason: reading, writing and PDF handling allocate per
+document and release it at once. Validating one document allocates a few MiB for the document and
+its report, and only the first use of a rule set allocates around 170 MiB during compilation
+(about 1 GiB for ZUGFeRD 1.0), most of which is garbage immediately afterwards.
+
+### The problem in 1.0.1 and earlier
+
+Up to and including 1.0.1, a `Paniolo` instance kept every rule set it had compiled **for its whole
+lifetime** and had no upper bound. In a long-running process that validates many different kinds of
+documents, the compiled rules accumulate until the heap is full, and the next compilation fails:
+
+```text
+java.lang.OutOfMemoryError: Java heap space
+    at net.sf.saxon.style.PrincipalStylesheetModule.registerImplicitModes(...)
+    at net.sf.saxon.s9api.XsltCompiler.compile(...)
+    at io.github.nalukit.paniolo.validation.InvoiceValidator.<init>(...)
+    at io.github.nalukit.paniolo.Paniolo.validate(...)
+```
+
+The document that triggers the error is **not special**: the same document validates without a
+problem in a fresh JVM, and any document that uses an already compiled rule set keeps working.
+The error appears at the moment the heap is full and a new rule set is needed.
+
+This was observed in the [performance comparison](docs/performance-comparison.md) with a 512 MiB
+heap: the corpus of 2,074 XML files uses nearly every rule set Paniolo knows (about 585 MiB when
+all are held), and six unremarkable documents ran out of memory when they needed a rule set that
+did not fit any more. Eight separate `Paniolo` instances at 512 MiB failed during warm-up, because
+every instance compiled and held its own copy of the rules at the same time.
+
+**Since 1.1.0** compiled rule sets are held through soft references. When
+the heap runs short, the JVM drops rule sets that are not in use right now, and Paniolo compiles
+them again when they are needed the next time. Results do not change; the price is a one-time
+delay of up to 4 seconds for that call (typically 0.1 to 1 second). Re-measured on the same corpus with one instance:
+
+| Heap    | Paniolo 1.0.1                            | Paniolo with soft rule cache                |
+|---------|------------------------------------------|---------------------------------------------|
+| 4 GiB   | no error, 17.5 s                         | no error, 18.1 s                            |
+| 512 MiB | `OutOfMemoryError` for 20 documents      | no error, 22 s, same verdicts as with 4 GiB |
+| 256 MiB | not measured                             | no error, 63 s (rule sets compiled again and again) |
+
+This is a safety net, not a way to save memory. With a heap that is too small, Paniolo works, but
+spends its time compiling rules instead of validating. Size the heap so that the rule sets you use
+**fit** and the net is never needed.
+
+### Recommended configuration
+
+**1. One `Paniolo` instance per application.** The instance owns the cache, so every additional
+instance holds its own copy of the rules and compiles them again. Do not create `Paniolo` per
+request, per tenant, or per thread; do not call `Paniolo.builder()` in a request. It is immutable
+and thread-safe (see [thread safety](#thread-safety-and-multi-user-use)); share it as a singleton
+or a container bean. If different customers need different rule bundles, keep one instance per
+bundle, never one per customer, and add the heap of each bundle.
+
+**2. Compile at start-up, not in the first request.** `warmUp()` compiles the XRechnung rules for
+UBL and CII before the first request, while nobody is waiting, and shows a wrong rule bundle at
+start-up. Plan the heap for the compilation peak (about 170 MiB per rule set that is compiled at
+that moment) on top of the amounts above.
+
+```java
+@Bean
+Paniolo paniolo() {
+  return Paniolo.create()
+                .warmUp();   // compiles XRechnung UBL + CII now, about 80 MiB live heap
+}
+```
+
+**3. Set the heap size for the rule sets you use.** The table is an estimate from the figures
+above (about 25 MiB per rule set, the measured totals for the corpus). Use it as a starting point
+and check it with your own documents (see point 6):
+
+| What the application validates                                                     | Rule sets held | Rule heap   | `-Xmx` (rules + working set) |
+|------------------------------------------------------------------------------------|---------------:|------------:|------------------------------|
+| Current XRechnung, UBL and CII (`create()` + `warmUp()`)                           | 2 to 4         | 80 to 150 MiB | 512 MiB                    |
+| Plus Factur-X / ZUGFeRD 2 levels, Order-X, delivery notes                          | 6 to 12        | 150 to 350 MiB | 768 MiB to 1 GiB          |
+| Everything a public corpus contains: old XRechnung versions, EXTENDED-CTC-FR, ZUGFeRD 1.0 | about 20 | about 600 MiB | 1 to 1.5 GiB       |
+| Very large invoices (more than 8 MiB), optional PDF/A check                         | any            | see above   | add working memory; the two invoices of 24.5 and 58.3 MiB in the comparison were run with 12 GiB |
+
+The "working set" is memory for the documents being processed at the same time (a few MiB per
+thread for normal invoices) and for the JVM itself. In a corpus run with a 4 GiB heap the live
+data after validating 986 UBL documents was 219 MiB, after UBL and CII 442 MiB, and after all
+documents including ZUGFeRD 1.0 586 MiB.
+
+**4. Limit what is accepted when memory is limited.** Every kind of document you validate adds a
+rule set. A service that only needs current XRechnung should reject everything else before it
+reaches Paniolo (for example by the customization ID, BT-24) instead of validating it. Run
+ZUGFeRD 1.0 validation and migration (`migrate-zugferd1` of the [command line](#command-line))
+in a separate batch job with its own heap instead of in the web application: it is the single
+most expensive rule set.
+
+**5. Container and JVM settings.** The container limit must cover more than the heap: the study's
+`-Xmx512m` runs reached a peak resident set of 842 MiB, and the `-Xmx2g` runs 1,402 MiB, because
+metaspace, code cache, thread stacks and native libraries come on top.
+
+```text
+# Small service, XRechnung only; container limit 1 GiB
+JAVA_TOOL_OPTIONS=-Xms512m -Xmx512m -XX:+ExitOnOutOfMemoryError
+
+# Service that accepts all formats; container limit 2 GiB
+JAVA_TOOL_OPTIONS=-Xms1536m -Xmx1536m -XX:+ExitOnOutOfMemoryError
+```
+
+- Set `-Xms` equal to `-Xmx` so the heap does not have to grow while rule sets are compiled.
+- With `-XX:MaxRAMPercentage` use at least 60 to 70 percent for a heap that must hold the rules.
+- `-XX:+ExitOnOutOfMemoryError` lets the orchestrator restart a process that ran out of memory,
+  instead of leaving a half-working one.
+- Soft references are always cleared before an `OutOfMemoryError`. By default the JVM also clears
+  them earlier: a rule set that was not used for one second per MiB of free heap is a candidate.
+  If you see rule sets compiled again although memory is free, raise
+  `-XX:SoftRefLRUPolicyMSPerMB` (default 1000).
+- The optional PDF/A check keeps compiled veraPDF rules per thread; see
+  [`paniolo-pdfa`](paniolo-pdfa/README.md#compiled-rules-per-thread) and
+  `pdfaScriptCache(CLEAR_AFTER_CHECK)` if many threads validate PDFs.
+
+**6. Check the result.** Start the application with garbage collection logging and validate a
+representative sample of your own documents, in the formats you accept:
+
+```text
+-Xlog:gc*:file=gc.log:time,uptime
+```
+
+- Live heap after a full collection stays flat after the first minutes: the heap is large enough.
+  Choose `-Xmx` at least 1.5 times that value.
+- A saw-tooth with one-to-four-second pauses or compile messages in the log (switch on the level
+  `DEBUG` for `io.github.nalukit.paniolo.validation`, see [logging](#logging); the message
+  `Compiled validation profile ...` names the rule set and its duration) means that rule sets are
+  compiled again and again: the heap is too small, or too many different document types reach one
+  instance.
+- An `OutOfMemoryError` in a build before the soft cache, or one that remains with the soft
+  cache, with the stack trace above: raise the heap or reduce the formats as in point 4.
+
+Measured figures and the setup (hardware, corpus, JVM flags) are in the
+[performance comparison](docs/performance-comparison.md).
+
 ## Logging
 
 Paniolo logs through `java.lang.System.Logger` and therefore adds no logging dependency.
@@ -1553,7 +1722,9 @@ The tests of `paniolo-mustang` run against Mustang 2.26.0, which Maven downloads
 dependency. `scripts/mustang-matrix.sh` runs them against further Mustang versions as well, e.g.
 before an application upgrades Mustang; see the [module README](paniolo-mustang/README.md#test-matrix).
 JMH benchmarks are in [`paniolo-benchmark`](paniolo-benchmark/README.md) (Maven profile
-`benchmark`).
+`benchmark`). The measured comparison of Paniolo 1.0.1 with
+Mustangproject 2.26.0 (import, validation, PDF tasks, parallel load, corpus, very large invoices)
+is on the [performance comparison](docs/performance-comparison.md) page.
 
 ## Releases and security
 
@@ -1561,8 +1732,7 @@ A release is published to Maven Central under group ID `io.github.nalukit` and t
 version in Git. Release version, tag, Maven artifacts, the versioned API reference
 `docs/api/<version>.md` and its runnable quickstart describe the same commit;
 [`scripts/release/check-release.sh`](scripts/release/check-release.sh) checks this before and
-after publishing; its header describes the static checks, the `--site` check of the website
-(maintained in [NaluKit/nalukit-web-site](https://github.com/NaluKit/nalukit-web-site)) and the
+after publishing; its header describes the static checks, the `--site` check of the web-site and the
 `--artifacts` check against Maven Central. The CI build runs the static checks for every pull
 request against `main`. The GitHub release of a version also carries the test evidence of its
 release run (reports for Java 21 and 25, the invoice corpus and the browser tests, tool versions,
@@ -1625,8 +1795,7 @@ UNECE.
 ### Logo
 
 The Paniolo logo and all variants in `docs/branding/` and in `src/content/paniolo/assets/` of the
-website repository [NaluKit/nalukit-web-site](https://github.com/NaluKit/nalukit-web-site) were
-traced and edited for the project; see the
+web-site were traced and edited for the project; see the
 [branding README](docs/branding/README.md#origin-and-rights).
 
 ## To get in touch with the developer
