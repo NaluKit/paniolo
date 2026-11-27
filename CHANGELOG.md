@@ -11,9 +11,18 @@ reference in `docs/api/<version>.md`.
 - Measured [performance comparison](docs/performance-comparison.md) of Paniolo 1.0.1 and Mustangproject
   2.26.0 with raw data, linked from the README and the feature comparison; it is also part of the
   web-site.
+- README section [memory and heap sizing](README.md#memory-and-heap-sizing): what the compiled rules
+  cost, the `OutOfMemoryError` of 1.0.1 and earlier at small heaps, and a recommended configuration.
 
 ### Fixed
 
+- Compiled validators are held softly. Each validation profile (for example ZUGFeRD 1, the XRechnung
+  scenarios or a Factur-X level) is compiled on first use and occupies 15 to 140 MiB; an instance
+  that had validated documents of many different profiles kept all of them and could run out of a
+  512 MiB heap with an `OutOfMemoryError` while compiling the next one. Under heap pressure the JVM now
+  reclaims validators that are not in use, and they are compiled again on their next use, which takes
+  0.4 to 4 seconds. Results do not change. Reuse one `Paniolo` instance and size the heap for the
+  profiles you use.
 - The UBL reader ignored the structured due date `PaymentTerms/PaymentDueDate` of invoices and
   credit notes: a valid document (the official rule `UBL-CR-463` only warns) was imported with
   `dueDate() == null` and without any message. The date is now read in all read modes. Stated twice

@@ -41,7 +41,7 @@ Invoice received = paniolo.read(Files.readAllBytes(path));    // UBL, CII, ZUGFe
   [validating](#validating-xml), [Factur-X / ZUGFeRD](#factur-x--zugferd),
   [validating Factur-X](#validating-factur-x--zugferd),
   [localized texts](#localized-enum-texts), [thread safety](#thread-safety-and-multi-user-use),
-  [logging](#logging), [building](#building-and-testing), [releases and security](#releases-and-security),
+  [memory and heap sizing](#memory-and-heap-sizing), [logging](#logging), [building](#building-and-testing), [releases and security](#releases-and-security),
   [license](#license), [the name](#the-name)
 
 ## The name
@@ -281,6 +281,8 @@ names the missing dependency.
 it is immutable and thread-safe, and it compiles each set of rules once, on the first validation
 that needs it, and reuses it afterwards. `warmUp()` compiles the XRechnung
 rules for UBL and CII at start-up instead, so the first request does not wait for them.
+The compiled rules occupy heap (about 20 to 30 MiB per rule set, 80 MiB after `warmUp()`);
+see [memory and heap sizing](#memory-and-heap-sizing) before you choose a small container.
 
 ```java
 import io.github.nalukit.paniolo.Paniolo;
@@ -1472,6 +1474,167 @@ rules before the first request.
 Each `XrechnungRules.bundle()` call site in a separately deployed class loader extracts its
 own copy and registers a shutdown hook; with frequent hot redeploys prefer
 `XrechnungRules.bundle(Path)` with a fixed directory.
+
+## Memory and heap sizing
+
+Paniolo is fast and allocates little per document, but it needs a **fixed amount of heap for the
+compiled validation rules**. This is independent of the size of your invoices. It is the one place
+where a too small heap does not slow Paniolo down gradually, but stops it, so read this section
+before you run Paniolo in a container with a small memory limit.
+
+### What uses the memory
+
+The official rules are Schematron stylesheets (several hundred KB to 6 MB of XSLT each). Paniolo
+compiles them with Saxon on the first validation that needs them and keeps the compiled form, so
+that every later validation only runs it. Measured on Temurin 21 with Saxon 13.1 (live heap after
+a full garbage collection):
+
+| Compiled rule set (examples)                                                   | Compile time | Live heap |
+|--------------------------------------------------------------------------------|-------------:|----------:|
+| XRechnung UBL or CII, EN 16931, one scenario                                   | 0.1 to 1.0 s | 20 to 30 MiB |
+| Factur-X / ZUGFeRD 2 level (BASIC, EN 16931), EXTENDED-CTC-FR, Order-X profile | 0.1 to 1.0 s | 15 to 40 MiB |
+| ZUGFeRD 1.0 (6 MB stylesheet)                                                  | about 4 s    | about 140 MiB |
+| `warmUp()` (XRechnung UBL and CII)                                             |              | about 80 MiB |
+
+The cost is per rule set, not per invoice: a rule set is compiled once and then shared by all
+threads. What counts is **how many different rule sets one `Paniolo` instance has used**: every
+combination of syntax (UBL, CII), XRechnung version and scenario, Factur-X level, French extension,
+Order-X profile, and delivery note rules is a separate rule set. A service that validates only
+current XRechnung invoices uses two to four of them. A service that accepts everything and also
+old XRechnung versions and ZUGFeRD 1.0 can use more than twenty.
+
+The amounts also show what is **not** the reason: reading, writing and PDF handling allocate per
+document and release it at once. Validating one document allocates a few MiB for the document and
+its report, and only the first use of a rule set allocates around 170 MiB during compilation
+(about 1 GiB for ZUGFeRD 1.0), most of which is garbage immediately afterwards.
+
+### The problem in 1.0.1 and earlier
+
+Up to and including 1.0.1, a `Paniolo` instance kept every rule set it had compiled **for its whole
+lifetime** and had no upper bound. In a long-running process that validates many different kinds of
+documents, the compiled rules accumulate until the heap is full, and the next compilation fails:
+
+```text
+java.lang.OutOfMemoryError: Java heap space
+    at net.sf.saxon.style.PrincipalStylesheetModule.registerImplicitModes(...)
+    at net.sf.saxon.s9api.XsltCompiler.compile(...)
+    at io.github.nalukit.paniolo.validation.InvoiceValidator.<init>(...)
+    at io.github.nalukit.paniolo.Paniolo.validate(...)
+```
+
+The document that triggers the error is **not special**: the same document validates without a
+problem in a fresh JVM, and any document that uses an already compiled rule set keeps working.
+The error appears at the moment the heap is full and a new rule set is needed.
+
+This was observed in the [performance comparison](docs/performance-comparison.md) with a 512 MiB
+heap: the corpus of 2,074 XML files uses nearly every rule set Paniolo knows (about 585 MiB when
+all are held), and six unremarkable documents ran out of memory when they needed a rule set that
+did not fit any more. Eight separate `Paniolo` instances at 512 MiB failed during warm-up, because
+every instance compiled and held its own copy of the rules at the same time.
+
+**Since the next release after 1.0.1** compiled rule sets are held through soft references. When
+the heap runs short, the JVM drops rule sets that are not in use right now, and Paniolo compiles
+them again when they are needed the next time. Results do not change; the price is a one-time
+delay of up to 4 seconds for that call (typically 0.1 to 1 second). Re-measured on the same corpus with one instance:
+
+| Heap    | Paniolo 1.0.1                            | Paniolo with soft rule cache                |
+|---------|------------------------------------------|---------------------------------------------|
+| 4 GiB   | no error, 17.5 s                         | no error, 18.1 s                            |
+| 512 MiB | `OutOfMemoryError` for 20 documents      | no error, 22 s, same verdicts as with 4 GiB |
+| 256 MiB | not measured                             | no error, 63 s (rule sets compiled again and again) |
+
+This is a safety net, not a way to save memory. With a heap that is too small, Paniolo works, but
+spends its time compiling rules instead of validating. Size the heap so that the rule sets you use
+**fit** and the net is never needed.
+
+### Recommended configuration
+
+**1. One `Paniolo` instance per application.** The instance owns the cache, so every additional
+instance holds its own copy of the rules and compiles them again. Do not create `Paniolo` per
+request, per tenant, or per thread; do not call `Paniolo.builder()` in a request. It is immutable
+and thread-safe (see [thread safety](#thread-safety-and-multi-user-use)); share it as a singleton
+or a container bean. If different customers need different rule bundles, keep one instance per
+bundle, never one per customer, and add the heap of each bundle.
+
+**2. Compile at start-up, not in the first request.** `warmUp()` compiles the XRechnung rules for
+UBL and CII before the first request, while nobody is waiting, and shows a wrong rule bundle at
+start-up. Plan the heap for the compilation peak (about 170 MiB per rule set that is compiled at
+that moment) on top of the amounts above.
+
+```java
+@Bean
+Paniolo paniolo() {
+  return Paniolo.create()
+                .warmUp();   // compiles XRechnung UBL + CII now, about 80 MiB live heap
+}
+```
+
+**3. Set the heap size for the rule sets you use.** The table is an estimate from the figures
+above (about 25 MiB per rule set, the measured totals for the corpus). Use it as a starting point
+and check it with your own documents (see point 6):
+
+| What the application validates                                                     | Rule sets held | Rule heap   | `-Xmx` (rules + working set) |
+|------------------------------------------------------------------------------------|---------------:|------------:|------------------------------|
+| Current XRechnung, UBL and CII (`create()` + `warmUp()`)                           | 2 to 4         | 80 to 150 MiB | 512 MiB                    |
+| Plus Factur-X / ZUGFeRD 2 levels, Order-X, delivery notes                          | 6 to 12        | 150 to 350 MiB | 768 MiB to 1 GiB          |
+| Everything a public corpus contains: old XRechnung versions, EXTENDED-CTC-FR, ZUGFeRD 1.0 | about 20 | about 600 MiB | 1 to 1.5 GiB       |
+| Very large invoices (more than 8 MiB), optional PDF/A check                         | any            | see above   | add working memory; the two invoices of 24.5 and 58.3 MiB in the comparison were run with 12 GiB |
+
+The "working set" is memory for the documents being processed at the same time (a few MiB per
+thread for normal invoices) and for the JVM itself. In a corpus run with a 4 GiB heap the live
+data after validating 986 UBL documents was 219 MiB, after UBL and CII 442 MiB, and after all
+documents including ZUGFeRD 1.0 586 MiB.
+
+**4. Limit what is accepted when memory is limited.** Every kind of document you validate adds a
+rule set. A service that only needs current XRechnung should reject everything else before it
+reaches Paniolo (for example by the customization ID, BT-24) instead of validating it. Run
+ZUGFeRD 1.0 validation and migration (`migrate-zugferd1` of the [command line](#command-line))
+in a separate batch job with its own heap instead of in the web application: it is the single
+most expensive rule set.
+
+**5. Container and JVM settings.** The container limit must cover more than the heap: the study's
+`-Xmx512m` runs reached a peak resident set of 842 MiB, and the `-Xmx2g` runs 1,402 MiB, because
+metaspace, code cache, thread stacks and native libraries come on top.
+
+```text
+# Small service, XRechnung only; container limit 1 GiB
+JAVA_TOOL_OPTIONS=-Xms512m -Xmx512m -XX:+ExitOnOutOfMemoryError
+
+# Service that accepts all formats; container limit 2 GiB
+JAVA_TOOL_OPTIONS=-Xms1536m -Xmx1536m -XX:+ExitOnOutOfMemoryError
+```
+
+- Set `-Xms` equal to `-Xmx` so the heap does not have to grow while rule sets are compiled.
+- With `-XX:MaxRAMPercentage` use at least 60 to 70 percent for a heap that must hold the rules.
+- `-XX:+ExitOnOutOfMemoryError` lets the orchestrator restart a process that ran out of memory,
+  instead of leaving a half-working one.
+- Soft references are always cleared before an `OutOfMemoryError`. By default the JVM also clears
+  them earlier: a rule set that was not used for one second per MiB of free heap is a candidate.
+  If you see rule sets compiled again although memory is free, raise
+  `-XX:SoftRefLRUPolicyMSPerMB` (default 1000).
+- The optional PDF/A check keeps compiled veraPDF rules per thread; see
+  [`paniolo-pdfa`](paniolo-pdfa/README.md#compiled-rules-per-thread) and
+  `pdfaScriptCache(CLEAR_AFTER_CHECK)` if many threads validate PDFs.
+
+**6. Check the result.** Start the application with garbage collection logging and validate a
+representative sample of your own documents, in the formats you accept:
+
+```text
+-Xlog:gc*:file=gc.log:time,uptime
+```
+
+- Live heap after a full collection stays flat after the first minutes: the heap is large enough.
+  Choose `-Xmx` at least 1.5 times that value.
+- A saw-tooth with one-to-four-second pauses or compile messages in the log (switch on the level
+  `DEBUG` for `io.github.nalukit.paniolo.validation`, see [logging](#logging); the message
+  `Compiled validation profile ...` names the rule set and its duration) means that rule sets are
+  compiled again and again: the heap is too small, or too many different document types reach one
+  instance.
+- An `OutOfMemoryError` in a build before the soft cache, or one that remains with the soft
+  cache, with the stack trace above: raise the heap or reduce the formats as in point 4.
+
+Measured figures and the setup (hardware, corpus, JVM flags) are in the
+[performance comparison](docs/performance-comparison.md).
 
 ## Logging
 

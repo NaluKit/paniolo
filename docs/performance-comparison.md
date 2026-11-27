@@ -23,6 +23,8 @@ This page summarizes the study. The raw data of the main series are in
   compiling the rules, and six documents of the full corpus run ran out of memory at 512 MiB
   (all six passed in a fresh 512 MiB JVM; with 2 GiB there were none). Speed is not the same as a
   lower maximum memory requirement.
+  Cause and remedy (a bounded, soft rule cache and heap sizing) are described in the README under
+  [memory and heap sizing](../README.md#memory-and-heap-sizing).
 - Two very large UBL invoices (24.5 and 58.3 MiB) were validated, read, written and validated again
   by Paniolo; Mustang exceeded the five-minute limit of this setup on both.
 - Speed advantages of single tasks are not a general speed guarantee. The figures apply to the

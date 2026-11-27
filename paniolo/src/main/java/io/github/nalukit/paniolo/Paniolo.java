@@ -268,7 +268,7 @@ public final class Paniolo
                                                                                                          new UblInvoiceReader(),
                                                                                                          InvoiceSyntax.CII,
                                                                                                          new CiiInvoiceReader()));
-  private final        Map<Object, CompiledValidator>       validators            = new ConcurrentHashMap<>();
+  private final        Map<Object, SoftLazy<InvoiceValidator>> validators            = new ConcurrentHashMap<>();
 
   private Paniolo(Supplier<Path> rules,
                   Supplier<List<XrechnungSpecification>> xrechnungSpecifications,
@@ -3795,12 +3795,14 @@ public final class Paniolo
   /**
    * Returns the validator of the key, compiling it on first use. Compilation takes noticeable time
    * and is locked per key, so threads using other, already compiled validators are not blocked.
-   * A failed compilation is not cached and is retried on the next call.
+   * A failed compilation is not cached and is retried on the next call. Compiled validators are
+   * held softly: under heap pressure the JVM may reclaim them, and they are compiled again on the
+   * next use, instead of the heap running out when many different profiles were used.
    */
   private InvoiceValidator compiled(Object key,
                                     Supplier<InvoiceValidator> compiler) {
     return validators.computeIfAbsent(key,
-                                      k -> new CompiledValidator())
+                                      k -> new SoftLazy<>())
                      .get(compiler);
   }
 
@@ -3827,29 +3829,6 @@ public final class Paniolo
                                                                                                  "",
                                                                                                  ValidationMessage.Stage.PDF_A))));
   }
-
-  /**
-   * Holds one lazily compiled validator.
-   */
-  private static final class CompiledValidator {
-    private volatile InvoiceValidator validator;
-
-    InvoiceValidator get(Supplier<InvoiceValidator> compiler) {
-      InvoiceValidator result = validator;
-      if (result == null) {
-        synchronized (this) {
-          result = validator;
-          if (result == null) {
-            result    = compiler.get();
-            validator = result;
-          }
-        }
-      }
-      return result;
-    }
-  }
-
-
 
   private record XrechnungSelection(String version, XrechnungScenario scenario) {
   }
