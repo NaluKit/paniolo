@@ -1561,8 +1561,7 @@ A release is published to Maven Central under group ID `io.github.nalukit` and t
 version in Git. Release version, tag, Maven artifacts, the versioned API reference
 `docs/api/<version>.md` and its runnable quickstart describe the same commit;
 [`scripts/release/check-release.sh`](scripts/release/check-release.sh) checks this before and
-after publishing; its header describes the static checks, the `--site` check of the website
-(maintained in [NaluKit/nalukit-web-site](https://github.com/NaluKit/nalukit-web-site)) and the
+after publishing; its header describes the static checks, the `--site` check of the web-site and the
 `--artifacts` check against Maven Central. The CI build runs the static checks for every pull
 request against `main`. The GitHub release of a version also carries the test evidence of its
 release run (reports for Java 21 and 25, the invoice corpus and the browser tests, tool versions,
@@ -1625,8 +1624,7 @@ UNECE.
 ### Logo
 
 The Paniolo logo and all variants in `docs/branding/` and in `src/content/paniolo/assets/` of the
-website repository [NaluKit/nalukit-web-site](https://github.com/NaluKit/nalukit-web-site) were
-traced and edited for the project; see the
+web-site were traced and edited for the project; see the
 [branding README](docs/branding/README.md#origin-and-rights).
 
 ## To get in touch with the developer
