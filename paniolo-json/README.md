@@ -10,7 +10,7 @@ It requires Java 21.
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo-json</artifactId>
-  <version>1.0.1</version>
+  <version>1.1.0</version>
 </dependency>
 ```
 
