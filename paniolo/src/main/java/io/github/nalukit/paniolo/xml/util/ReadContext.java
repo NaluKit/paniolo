@@ -130,6 +130,32 @@ public final class ReadContext {
   }
 
   /**
+   * Handles a due date (BT-9) that the document states twice with different dates: strict reading
+   * rejects the document, lenient reading keeps the date of the stronger source and reports the other.
+   *
+   * @param location   the element the dates were read from
+   * @param keptSource what the kept date is, e.g. {@code PaymentDueDate}
+   * @param kept       the kept date
+   * @param otherSource what the dropped date is
+   * @param other      the dropped date
+   * @throws IllegalArgumentException in strict reading
+   */
+  public void dueDateConflict(XmlElement location,
+                              String keptSource,
+                              java.time.LocalDate kept,
+                              String otherSource,
+                              java.time.LocalDate other) {
+    String message = "Due date at " + location.location() + ": " + otherSource + " " + other +
+                     " differs from " + keptSource + " " + kept;
+    if (mode == ReadMode.STRICT) {
+      throw new IllegalArgumentException(message);
+    }
+    warnings.add(new ReadWarning(ReadWarning.DUE_DATE,
+                                 null,
+                                 message +"; " + keptSource + " is kept"));
+  }
+
+  /**
    * Returns the reason code of an allowance or charge. An allowance code outside UNTDID 5189, e.g.
    * the charge code {@code ABK} of older samples, is rejected by strict reading; lenient reading drops
    * it if a reason text remains.

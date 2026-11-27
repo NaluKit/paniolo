@@ -113,6 +113,14 @@ public record ReadWarning(String code, String lineId, String message) {
    */
   public static final String PERIOD         = "READ-PERIOD";
   /**
+   * A UBL document states the due date (BT-9) in more than one place with different dates: the
+   * {@code DueDate} of the document header, the {@code PaymentDueDate} of the payment terms, or the
+   * date in the text of the payment terms that Paniolo writes for credit notes. The model keeps one
+   * due date: the header date before the structured {@code PaymentDueDate} before the text date. The
+   * message names the location and both dates. Strict reading rejects the document instead.
+   */
+  public static final String DUE_DATE       = "READ-DUE-DATE";
+  /**
    * In a Factur-X EXTENDED document, a line, allowance, or charge states another VAT exemption reason
    * or code (BT-X-96, BT-X-97) than the VAT breakdown (BG-23) of its category and rate, or a further
    * breakdown repeats category and rate with another exemption reason. The model keeps one breakdown

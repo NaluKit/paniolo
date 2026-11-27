@@ -6,6 +6,16 @@ reference in `docs/api/<version>.md`.
 
 ## [Unreleased]
 
+### Fixed
+
+- The UBL reader ignored the structured due date `PaymentTerms/PaymentDueDate` of invoices and
+  credit notes: a valid document (the official rule `UBL-CR-463` only warns) was imported with
+  `dueDate() == null` and without any message. The date is now read in all read modes. Stated twice
+  with different dates (the header `DueDate`, the `PaymentDueDate`, or the date in the payment terms
+  text that the writer uses for credit notes), strict reading rejects the document and lenient
+  reading keeps the first of them in this order and reports the other one with the new warning code
+  `READ-DUE-DATE`. The writer and the validation rules are unchanged.
+
 ## [1.0.1] - 2026-11-26
 
 Patch release: stricter and more transparent reading of stated amounts, limits for PDF streams and
