@@ -111,8 +111,10 @@ import java.util.function.Supplier;
  *
  * <p>Create one instance and share it across your application. Instances are immutable and
  * thread-safe; the expensive part, compiling the XML schemas and Schematron rules, happens lazily on
- * the first validation of each document type and is cached afterwards. Reading and writing never
- * compile anything and are cheap from the first call.
+ * the first validation of each document type and is cached afterwards. The compiled validators are
+ * held softly: under heap pressure the JVM may reclaim those not in use, and they are compiled again
+ * on their next use (see the section on memory and heap sizing in the README). Reading and writing
+ * never compile anything and are cheap from the first call.
  *
  * <pre>{@code
  * Paniolo paniolo = Paniolo.create();                        // official XRechnung rules, packaged
@@ -434,7 +436,9 @@ public final class Paniolo
    *
    * <p>This is the right choice for most applications. Creating the instance is cheap; the packaged
    * rules are extracted and compiled only when the first validation needs them. Create the instance
-   * once and reuse it, e.g. as a singleton or a Spring bean, so the compiled validators are reused:
+   * once and reuse it, e.g. as a singleton or a Spring bean, so the compiled validators are reused
+   * (the JVM may reclaim validators that are not in use when the heap runs short; they are compiled
+   * again on their next use):
    *
    * <pre>{@code
    * private static final Paniolo PANIOLO = Paniolo.create();
