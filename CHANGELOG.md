@@ -6,6 +6,12 @@ reference in `docs/api/<version>.md`.
 
 ## [Unreleased]
 
+### Added
+
+- Measured [performance comparison](docs/performance-comparison.md) of Paniolo 1.0.1 and Mustangproject
+  2.26.0 with raw data, linked from the README and the feature comparison; it is also part of the
+  web-site.
+
 ### Fixed
 
 - The UBL reader ignored the structured due date `PaymentTerms/PaymentDueDate` of invoices and

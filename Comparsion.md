@@ -8,7 +8,7 @@ Mustang tagged sources and all other projects' public documentation were fetched
 review. Their development branches are documentation baselines, not tested binary releases.
 This review also runs Paniolo's current reactor and invoice-corpus regression tests, including
 the adapter against Mustang 2.26.0. It is not a new comparative performance or full interoperability
-benchmark, and it does not establish current behavior for every external tool.
+benchmark (measured figures are in the [performance comparison](docs/performance-comparison.md)), and it does not establish current behavior for every external tool.
 “Not documented” means that the reviewed sources do not establish the feature; it does not
 prove that an integration could not implement it.
 

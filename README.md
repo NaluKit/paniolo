@@ -88,7 +88,9 @@ Beyond the formats, Paniolo:
   as invalid instead of throwing;
 - **migrates from Mustang**: the optional module [`paniolo-mustang`](paniolo-mustang/README.md) maps
   Mustang invoice objects to the model and names every value it cannot carry over, and the
-  [migration guide](docs/migration-mustang.md) describes the explicit mapping;
+  [migration guide](docs/migration-mustang.md) describes the explicit mapping; the
+  [feature comparison](Comparsion.md) and the measured [performance comparison](docs/performance-comparison.md)
+  with Mustangproject 2.26.0 help to decide;
 - **handles PDF attachments** (time sheets, delivery notes) and tells which software produced a PDF;
 - **renders** the visual pages of invoices, orders, quotations, and delivery notes as PDF/A-3b by default with
   [`paniolo-facturx`](paniolo-facturx/docs/pdf-layout.md), so `toFacturX(invoice, profile)`,
@@ -1554,7 +1556,9 @@ The tests of `paniolo-mustang` run against Mustang 2.26.0, which Maven downloads
 dependency. `scripts/mustang-matrix.sh` runs them against further Mustang versions as well, e.g.
 before an application upgrades Mustang; see the [module README](paniolo-mustang/README.md#test-matrix).
 JMH benchmarks are in [`paniolo-benchmark`](paniolo-benchmark/README.md) (Maven profile
-`benchmark`).
+`benchmark`). The measured comparison of Paniolo 1.0.1 with
+Mustangproject 2.26.0 (import, validation, PDF tasks, parallel load, corpus, very large invoices)
+is on the [performance comparison](docs/performance-comparison.md) page.
 
 ## Releases and security
 
