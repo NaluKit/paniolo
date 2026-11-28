@@ -6,6 +6,12 @@ reference in `docs/api/<version>.md`.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-27
+
+Reads the structured due date of UBL documents, holds compiled validators softly to avoid
+`OutOfMemoryError` at small heaps, and adds a performance comparison and a heap sizing guide. See the
+[API reference for 1.1.0](docs/api/1.1.0.md).
+
 ### Added
 
 - Measured [performance comparison](docs/performance-comparison.md) of Paniolo 1.1.0 (with the figures of
@@ -716,7 +722,8 @@ Second release candidate. See the [API reference for 1.0.0-rc02](docs/api/1.0.0-
 First release candidate, published to Maven Central under the group ID `io.github.nalukit`. See
 the [API reference for 1.0.0-rc01](docs/api/1.0.0-rc01.md).
 
-[Unreleased]: https://github.com/NaluKit/paniolo/compare/1.0.1...HEAD
+[Unreleased]: https://github.com/NaluKit/paniolo/compare/1.1.0...HEAD
+[1.1.0]: https://github.com/NaluKit/paniolo/releases/tag/1.1.0
 [1.0.1]: https://github.com/NaluKit/paniolo/releases/tag/1.0.1
 [1.0.0]: https://github.com/NaluKit/paniolo/releases/tag/1.0.0
 [1.0.0-rc02]: https://github.com/NaluKit/paniolo/releases/tag/1.0.0-rc02

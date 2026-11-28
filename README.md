@@ -30,7 +30,7 @@ Invoice received = paniolo.read(Files.readAllBytes(path));    // UBL, CII, ZUGFe
 - [What Paniolo can do](#what-paniolo-can-do)
 - [Scope](#scope)
 - [Installation](#installation)
-- [Versioned API reference and reproducible quickstart](docs/api/1.0.1.md)
+- [Versioned API reference and reproducible quickstart](docs/api/1.1.0.md)
 - [Using Paniolo](#using-paniolo): [send an invoice](#send-an-xrechnung),
   [receive an invoice](#receive-and-process-an-invoice), [Factur-X](#create-a-factur-x--zugferd-pdf),
   [ZUGFeRD 1.0](#migrate-zugferd-10), [Order-X](#orders-order-x),
@@ -201,6 +201,8 @@ Notes on the formats:
   mapping; sellers can use `taxId`.
 - UBL CreditNote has no document-level `DueDate` element. A due date specified in the model is
   therefore included as text in the payment terms; CII and UBL Invoice represent it as a date.
+  When reading UBL, the header `DueDate`, the structured `PaymentTerms/PaymentDueDate` and this
+  text date are all read (`READ-DUE-DATE` when they differ).
 - For tax category `O`, the tax rate is omitted from lines, allowances, and charges; the tax
   breakdown uses `0` for XRechnung.
 - Paniolo writes CII D16B. Factur-X is based on CII D22B; some EXTENDED content (several preceding
@@ -215,11 +217,11 @@ Technical references: [XRechnung](https://xeinkauf.de/xrechnung/),
 ## Installation
 
 For a complete, runnable example with a pinned source commit, exact Maven coordinates, and the
-expected output, see the [versioned API reference and reproducible quickstart](docs/api/1.0.1.md)
-(release `1.0.1` at `4651ba648221`). It also documents the facade, model, optional
+expected output, see the [versioned API reference and reproducible quickstart](docs/api/1.1.0.md)
+(release `1.1.0` at `c4f93eb9e70d`). It also documents the facade, model, optional
 modules, validation results, and how to generate the full JavaDoc for that baseline.
 
-The reference above describes release `1.0.1` and uses its Maven Central artifacts. Each release
+The reference above describes release `1.1.0` and uses its Maven Central artifacts. Each release
 gets its own reference `docs/api/<version>.md` whose quickstart
 uses the published Maven Central artifacts of exactly that version (see
 [releases and security](#releases-and-security)).
@@ -230,12 +232,12 @@ Paniolo needs **Java 21** or newer, at build and at run time; there is no build 
 versions. If an application cannot leave Java 11 or 17, run Paniolo in its own Java 21 process (the
 [CLI](#command-line) or a small service around the facade) and exchange XML, PDF, or JSON with it.
 
-The Maven group ID is `io.github.nalukit`. The current release is `1.0.1` on Maven Central. The
+The Maven group ID is `io.github.nalukit`. The current release is `1.1.0` on Maven Central. The
 development version `HEAD-SNAPSHOT` is built with `mvn install` from the repository root (see
 [building](#building-and-testing)).
 This README and the module READMEs describe the current source tree, including unreleased
-features. Dependency snippets use the published release `1.0.1`; its exact API is documented
-in the [versioned reference](docs/api/1.0.1.md). To use the current source after `mvn install`,
+features. Dependency snippets use the published release `1.1.0`; its exact API is documented
+in the [versioned reference](docs/api/1.1.0.md). To use the current source after `mvn install`,
 use `HEAD-SNAPSHOT` consistently for all Paniolo dependencies, or set `-Drevision=<version>` when
 building and use that version throughout the application.
 
@@ -245,7 +247,7 @@ Most applications need only `paniolo`:
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo</artifactId>
-  <version>1.0.1</version>
+  <version>1.1.0</version>
 </dependency>
 ```
 
@@ -285,8 +287,9 @@ names the missing dependency.
 it is immutable and thread-safe, and it compiles each set of rules once, on the first validation
 that needs it, and reuses it afterwards. `warmUp()` compiles the XRechnung
 rules for UBL and CII at start-up instead, so the first request does not wait for them.
-The compiled rules occupy heap (about 20 to 30 MiB per rule set, 80 MiB after `warmUp()`);
-see [memory and heap sizing](#memory-and-heap-sizing) before you choose a small container.
+The compiled rules occupy heap (about 20 to 30 MiB per rule set, 80 MiB after `warmUp()`) and are
+held softly, so under heap pressure the JVM reclaims rules that are not in use and Paniolo compiles
+them again on their next use; see [memory and heap sizing](#memory-and-heap-sizing) before you choose a small container.
 
 ```java
 import io.github.nalukit.paniolo.Paniolo;
@@ -1286,7 +1289,7 @@ Hybrid invoices (a PDF/A-3 document with embedded CII XML) need the optional mod
 <dependency>
   <groupId>io.github.nalukit</groupId>
   <artifactId>paniolo-facturx</artifactId>
-  <version>1.0.1</version>
+  <version>1.1.0</version>
 </dependency>
 ```
 
@@ -1536,7 +1539,7 @@ all are held), and six unremarkable documents ran out of memory when they needed
 did not fit any more. Eight separate `Paniolo` instances at 512 MiB failed during warm-up, because
 every instance compiled and held its own copy of the rules at the same time.
 
-**Since the next release after 1.0.1** compiled rule sets are held through soft references. When
+**Since 1.1.0** compiled rule sets are held through soft references. When
 the heap runs short, the JVM drops rule sets that are not in use right now, and Paniolo compiles
 them again when they are needed the next time. Results do not change; the price is a one-time
 delay of up to 4 seconds for that call (typically 0.1 to 1 second). Re-measured on the same corpus with one instance:
