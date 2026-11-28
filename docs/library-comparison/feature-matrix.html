@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paniolo library comparison</title>
+<meta name="description" content="Comparison matrix of Paniolo with Java libraries for e-invoicing (as of 28 November 2026).">
+<link rel="alternate" hreflang="de" href="index.html">
+<style>
+:root{
+  --bg:#f6f7f9;--surface:#fff;--text:#1c2430;--muted:#5d6878;--line:#dde2ea;--accent:#1f5fbf;
+  --y:#17803d;--ybg:#e3f5e9;--t:#9a6700;--tbg:#fff1cc;--n:#b42318;--nbg:#fde8e6;--u:#5d6878;--ubg:#eceff3;--o:#1f5fbf;--obg:#e5eefc;
+  --b:#6b3fa0;--bbg:#efe6fa;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12161c;--surface:#1a2029;--text:#e6eaf0;--muted:#9aa5b5;--line:#2b3441;--accent:#7fb0ff;
+  --y:#5fd48a;--ybg:#16301f;--t:#f0c35a;--tbg:#3a2f10;--n:#ff8f84;--nbg:#3b1b18;--u:#9aa5b5;--ubg:#262d38;--o:#7fb0ff;--obg:#172742;
+  --b:#c6a3f2;--bbg:#2b2040;}}
+:root[data-theme="dark"]{
+  --bg:#12161c;--surface:#1a2029;--text:#e6eaf0;--muted:#9aa5b5;--line:#2b3441;--accent:#7fb0ff;
+  --y:#5fd48a;--ybg:#16301f;--t:#f0c35a;--tbg:#3a2f10;--n:#ff8f84;--nbg:#3b1b18;--u:#9aa5b5;--ubg:#262d38;--o:#7fb0ff;--obg:#172742;
+  --b:#c6a3f2;--bbg:#2b2040;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+a{color:var(--accent)}
+header,main,footer{max-width:1280px;margin:0 auto;padding:0 16px}
+header{padding-top:28px}
+h1{font-size:1.8rem;margin:0 0 4px}
+h2{font-size:1.3rem;margin:36px 0 8px}
+.sub{color:var(--muted);margin:0 0 12px}
+.nav{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0;position:sticky;top:0;background:var(--bg);padding:8px 0;z-index:5;border-bottom:1px solid var(--line)}
+.nav a{padding:5px 11px;border:1px solid var(--line);border-radius:99px;text-decoration:none;font-size:.88rem;background:var(--surface)}
+.nav button{margin-left:auto}
+button,input{font:inherit;color:var(--text)}
+button{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:5px 11px;cursor:pointer}
+input[type=search]{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 10px;min-width:240px}
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0}
+.chip{border-radius:99px}
+.chip[aria-pressed=true]{background:var(--accent);color:#fff;border-color:var(--accent)}
+.wrap{overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface);max-height:80vh}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:.88rem}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);vertical-align:top;text-align:left}
+thead th{position:sticky;top:0;background:var(--surface);z-index:2;white-space:nowrap}
+tbody th{font-weight:600;min-width:230px;background:var(--surface)}
+.matrix tbody th,.matrix thead th:first-child{position:sticky;left:0;z-index:3}
+.matrix thead th:first-child{z-index:4}
+.matrix td{min-width:104px;text-align:center}
+td.pan,th.pan{box-shadow:inset 0 0 0 9999px rgba(31,95,191,.06)}
+.s{display:inline-block;min-width:26px;padding:1px 7px;border-radius:6px;font-weight:700}
+.s-y{color:var(--y);background:var(--ybg)}.s-t{color:var(--t);background:var(--tbg)}.s-n{color:var(--n);background:var(--nbg)}
+.s-u{color:var(--u);background:var(--ubg)}.s-o{color:var(--o);background:var(--obg)}
+.s-b{color:var(--b);background:var(--bbg)}
+.note{display:block;font-size:.76rem;color:var(--muted);margin-top:3px;text-align:center}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.88rem;margin:8px 0}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:14px 0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.card b{display:block;font-size:1.5rem}
+.meter{height:8px;border-radius:99px;background:var(--ubg);margin-top:6px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--y)}
+.lib{display:inline-block;padding:1px 8px;border-radius:6px;background:var(--ubg);font-size:.8rem}
+.hide{display:none}
+.src{font-size:.82rem;color:var(--muted)}
+ul.l{padding-left:20px}
+footer{padding-bottom:40px;color:var(--muted);font-size:.84rem;margin-top:30px}
+@media(max-width:640px){tbody th{min-width:160px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Paniolo compared with Java libraries for e-invoicing</h1>
+  <p class="sub">As of 28 November 2026 · Paniolo 1.1.0 · Mustangproject 2.26.0 · Comparison of documentation and sources; no new joint runtime or conformance test</p>
+  <p>Paniolo covers a large part of invoice processing. The clearest gaps are additional national formats, a broader validation catalogue and general PDF functions. Its strengths are the invoice model, direct UBL and CII writers, traceable import handling and the browser viewer.</p>
+  <nav class="nav" aria-label="Sections">
+    <a href="#matrix">Feature matrix</a><a href="#others">Other libraries</a><a href="#gaps">Missing capabilities</a>
+    <a href="#differences">Technical differences</a><a href="#strengths">Strengths</a><a href="#limits">Limits</a>
+    <a href="index.html" hreflang="de" lang="de">Deutsch</a>
+    <button id="theme" type="button">Light/Dark</button>
+  </nav>
+</header>
+<main>
+
+<section id="matrix">
+  <h2>1. Feature matrix: libraries with an invoice model or invoice generation</h2>
+  <div class="legend">
+    <span><span class="s s-y">✓</span> documented</span>
+    <span><span class="s s-t">T</span> partly / with additional processing</span>
+    <span><span class="s s-n">–</span> outside the documented scope</span>
+    <span><span class="s s-u">?</span> not sufficiently documented (not proof that it is impossible)</span>
+    <span><span class="s s-o">i</span> note</span>
+  </div>
+  <div class="cards" id="scores"></div>
+  <div class="bar"><input type="search" id="q1" placeholder="Search capability …" aria-label="Search capability">
+    <label><input type="checkbox" id="diff"> only rows where Paniolo has no ✓</label></div>
+  <div class="wrap"><table class="matrix" id="t1"></table></div>
+  <p class="src">Count = number of ✓ out of 22 rows; it says nothing about quality or field coverage. Profile names do not prove complete field parity.
+  Sources: <a href="https://github.com/NaluKit/paniolo/blob/1.1.0/paniolo/README.md">Paniolo</a>, <a href="https://github.com/ZUGFeRD/mustangproject">Mustang</a>, <a href="https://github.com/ZUGFeRD/mustangproject/blob/core-2.26.0/library/src/main/java/org/mustangproject/CII/CIIToUBL.java">CIIToUBL</a>, <a href="https://github.com/jcodeforge/invoice4j">invoice4j</a>, <a href="https://github.com/imixs/e-invoice">Imixs</a>, <a href="https://github.com/codebarista-de/gallop">Gallop</a>, <a href="https://github.com/konik-io/konik">Konik</a>.</p>
+  <ul class="l">
+    <li>Order-X, delivery notes, calculation, validation and PDF rendering are <b>not exclusive</b> to Paniolo; Mustang offers them as well.</li>
+    <li>invoice4j lists Peppol and digital signatures as planned in its <a href="https://github.com/jcodeforge/invoice4j#roadmap">roadmap</a>; they do not count as an existing advantage.</li>
+    <li>Konik is <a href="https://github.com/konik-io/konik">officially discontinued</a>; its functions belong to the older ZUGFeRD generation.</li>
+  </ul>
+</section>
+
+<section id="others">
+  <h2>2. Other libraries and SDKs</h2>
+  <div class="bar"><input type="search" id="q2" placeholder="Library or keyword …" aria-label="Search library"></div>
+  <div class="wrap"><table id="t2"></table></div>
+</section>
+
+<section id="gaps">
+  <h2>3. Capabilities Paniolo lacks, and whether they are deliberately excluded</h2>
+  <p>Checked against Paniolo's project documentation (README “Scope” → “Not included”, module READMEs, PDF layout document). The classification depends on whether the documentation names the exclusion explicitly; a missing entry does not mean the capability is planned.</p>
+  <div class="legend">
+    <span><span class="s s-b">Deliberate</span> explicitly excluded, usually with a reason</span>
+    <span><span class="s s-t">Postponed</span> not yet possible for an external reason</span>
+    <span><span class="s s-o">Limit</span> documented field or format limit</span>
+    <span><span class="s s-u">Open</span> documented neither as a goal nor as an exclusion</span>
+  </div>
+  <div class="bar" id="chips"></div>
+  <div class="wrap"><table id="t3"></table></div>
+</section>
+
+<section id="differences">
+  <h2>4. Deliberate technical differences</h2>
+  <p>Depending on the application, these can be advantages or disadvantages.</p>
+  <div class="wrap"><table id="t4"></table></div>
+</section>
+
+<section id="strengths">
+  <h2>5. Documented strengths of Paniolo</h2>
+  <div class="wrap"><table id="t5"></table></div>
+  <p><b>Compared with invoice4j</b>, no documented additional invoice function that Paniolo lacks was found. Calculation, CII/UBL, XRechnung validation and hybrid PDFs are shared. Paniolo's additional documented areas: quotations, orders, delivery notes, import deviations and the viewer. This says nothing about the quality of individual field mappings.</p>
+</section>
+
+<section id="limits">
+  <h2>6. Further limits of Paniolo</h2>
+  <ul class="l">
+    <li><b>No complete model of every valid document:</b> for example, tax category <b>B</b> is currently not supported. Successful XML validation and successful model import are different checks.</li>
+    <li><b>Order-X EXTENDED</b> is written with the COMFORT content, not with all EXTENDED fields.</li>
+    <li><b>Delivery notes:</b> certain dangerous-goods, packaging and transport details are missing.</li>
+    <li><b>Peppol despatch advice rules</b> must be provided separately (no published licence).</li>
+    <li><b>EN 16931:2026 / XRechnung 4.0</b> are not supported. Technical support for new schemas in other libraries is not the same as complete business rule validation.</li>
+    <li><b>The browser viewer</b> displays validation results but does not run invoice validation in the browser itself.</li>
+  </ul>
+  <p class="src">Sources: <a href="https://github.com/NaluKit/paniolo/blob/1.1.0/README.md#scope">Paniolo scope</a>, <a href="https://github.com/NaluKit/paniolo/blob/1.1.0/paniolo-rules/README.md">rules documentation</a>, <a href="https://github.com/NaluKit/paniolo/blob/1.1.0/paniolo-visualizer/README.md">viewer</a>.</p>
+</section>
+</main>
+<footer>
+  A <b>?</b> is not proof that a capability is impossible. The libraries have different purposes (XML building block, validation engine, complete invoice processing); the comparison does not rate their quality.
+  Basis: library comparison of 28 November 2026.
+</footer>
+
+<script>
+const LIBS=["Paniolo","Mustang","invoice4j","Imixs","Gallop","Konik"];
+const Y=["y"],N=["n"],U=["u"];
+const T=n=>["t",n],I=(n)=>["o",n],UN=n=>["u",n];
+const M=[
+["Read CII invoice data",Y,Y,Y,Y,N,I("older ZUGFeRD syntax")],
+["Write CII invoice data",Y,Y,Y,Y,Y,I("older ZUGFeRD syntax")],
+["Read UBL invoices",Y,Y,Y,Y,N,N],
+["Write UBL directly from the invoice model",Y,T("via CII conversion"),Y,N,N,N],
+["Validate XRechnung with XSD and business rules",Y,Y,Y,T("external validation"),T("external validation"),UN("no current support documented")],
+["Generate ZUGFeRD / Factur-X XML",Y,Y,Y,Y,Y,I("ZUGFeRD 1.0")],
+["Embed invoice XML in PDF",Y,Y,Y,N,N,Y],
+["Read embedded invoice XML from PDF",Y,Y,Y,N,N,Y],
+["Render visible invoice pages",Y,Y,UN("examples use an existing PDF"),N,N,U],
+["Calculate lines, allowances/charges and VAT totals",Y,Y,Y,T("documented total calculation"),N,U],
+["Read ZUGFeRD 1.0",Y,Y,U,N,N,Y],
+["Create new ZUGFeRD 1.0 invoices",N,Y,U,N,N,Y],
+["Migrate ZUGFeRD 1.0 to version 2",Y,Y,U,N,N,U],
+["French EXTENDED-CTC-FR profile",Y,T("profile exists, field parity open"),U,U,T("some French fields"),N],
+["Order-X as XML/PDF",T("BASIC, COMFORT; EXTENDED with COMFORT content"),T("field coverage differs"),U,N,N,N],
+["Delivery notes in UBL/CIDA",T("field limits"),T("field coverage differs"),U,N,N,N],
+["Quotation model with optional lines, PDF and conversion to invoice",Y,U,U,N,N,N],
+["Original XML, stated amounts and calculated model available together on import",Y,T("different import/recalculation model"),U,U,N,U],
+["Structured reports of import deviations",Y,T("scope not equated"),U,U,N,U],
+["JSON processing",Y,Y,U,U,U,U],
+["Embeddable interactive browser component for XML/PDF",Y,T("HTML rendering; equivalent component not documented"),U,N,N,U],
+["Polish KSeF FA(3) read and write",N,N,N,Y,N,N]
+];
+const SYM={y:"✓",t:"T",n:"–",u:"?",o:"i"};
+const esc=s=>String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+function cell(c){const [k,n]=c;return `<td><span class="s s-${k}">${SYM[k]}</span>${n?`<span class="note">${esc(n)}</span>`:""}</td>`}
+function renderMatrix(){
+  const q=document.getElementById("q1").value.toLowerCase(),d=document.getElementById("diff").checked;
+  let h=`<thead><tr><th>Capability</th>${LIBS.map((l,i)=>`<th${i?"":' class="pan"'}>${l}</th>`).join("")}</tr></thead><tbody>`;
+  M.forEach(r=>{
+    if(q&&!r[0].toLowerCase().includes(q))return;
+    if(d&&r[1][0]==="y")return;
+    h+=`<tr><th>${esc(r[0])}</th>${r.slice(1).map((c,i)=>cell(c).replace("<td",i?"<td":'<td class="pan"')).join("")}</tr>`;
+  });
+  document.getElementById("t1").innerHTML=h+"</tbody>";
+}
+function scores(){
+  document.getElementById("scores").innerHTML=LIBS.map((l,i)=>{
+    const y=M.filter(r=>r[i+1][0]==="y").length,t=M.filter(r=>r[i+1][0]==="t").length;
+    return `<div class="card"><span class="lib">${l}</span><b>${y} ✓ <small style="font-size:.9rem;font-weight:400;color:var(--muted)">+ ${t} T</small></b><div class="meter"><i style="width:${y/M.length*100}%"></i></div></div>`}).join("");
+}
+const OTHER=[
+["ph-ubl","https://github.com/phax/ph-ubl","Read, write and process UBL at schema level","UBL 2.0 to 2.5; far broader document families and national extensions","Business invoice model, calculation, integrated profile workflows, hybrid PDFs, viewer"],
+["ph-cii","https://github.com/phax/ph-cii","Read and write CII through generated Java/JAXB models","CII D16A.1, D16B, D22B and D25A","Calculation, business model, profile handling, PDF, viewer"],
+["ph-ebinterface","https://github.com/phax/ph-ebinterface","Read, write and visualise Austrian ebInterface invoices; verify signatures","ebInterface including several older versions","UBL/CII, XRechnung, Factur-X and further business documents"],
+["ph-fatturapa","https://github.com/phax/ph-fatturapa","Read and write Italian FatturaPA invoices","The FatturaPA format family","German/European workflows including hybrid PDFs"],
+["en16931-cii2ubl","https://github.com/phax/en16931-cii2ubl","Convert CII to UBL","Also CII D25A → UBL 2.5","Both directions through one model, calculation, PDF, rendering"],
+["en16931-ubl2cii","https://github.com/phax/en16931-ubl2cii","Convert UBL to CII","Also UBL 2.5 → CII D25A","Additional invoice workflows and the opposite direction"],
+["EeISI Mapper / eIGOR","https://github.com/AgID/EeISI-mapper","Convert and validate UBL, CII and FatturaPA","FatturaPA conversion","More document types, PDF creation, viewer; EeISI has a historical rule baseline of 2019"],
+["Kaltblut","https://github.com/phax/kaltblut","Detect hybrid PDFs, extract XML/attachments, check containers; optional veraPDF","Specialised, version-specific container checks (general extra scope not proven)","Create invoices, read them as business data, calculate, check XML business rules"],
+["phive + phive-rules","https://github.com/phax/phive-rules","XSD/Schematron validation with an extensive rule catalogue","Many national rules, Peppol BIS/PINT, EHF and further formats","Invoice creation, calculation, business import, hybrid PDFs, document workflows"],
+["KoSIT Validator","https://github.com/itplr-kosit/validator","Configurable XML validation, reports, CLI and HTTP daemon","Ready-made HTTP daemon; general scenario processing","Creation, calculation, business import, PDF, viewer"],
+["iText Core","https://www.itextpdf.com/blog/technical-notes/creating-zugferd-itext","PDF creation/editing, ZUGFeRD embedding; further functions through add-on modules","General PDF layout, signatures; HTML/CSS with pdfHTML","Invoice model, invoice calculation, integrated invoice rules"],
+["Aspose.PDF for Java","https://docs.aspose.com/pdf/java/key-features/","PDF creation, editing, attachments, conversion, signatures","General PDF conversion and extensive PDF editing","Business invoice functions, structured profile handling"],
+["DevExpress PDF Document API","https://docs.devexpress.com/OfficeFileApiJava/406014/pdf-document-api/accessibility-and-compliance/generate-zugferd-compliant-invoices","PDF processing and embedding ZUGFeRD XML","General PDF functions, PDF/A conversion, signatures","Invoice model, calculation, XML business rules"],
+["InvoiceXML Java SDK","https://www.invoicexml.com/docs/sdk","Creation, validation, rendering, extraction through an external service","Ready-made service interface, rules maintained server-side, document recognition in the service","Local processing without a service; own Java model, business document workflows"],
+["java-en16931 / SMETOOLS","https://interoperable-europe.ec.europa.eu/collection/portal-support/solution/smetools-einvoice-en-16931-libraries/distribution/java-einvoice-library","Described historically as an EN 16931 read/write library","Current functional advantage cannot be verified","No reliable detailed comparison possible; linked repository not reachable"]
+];
+function renderOther(){
+  const q=document.getElementById("q2").value.toLowerCase();
+  let h="<thead><tr><th>Library</th><th>Documented capabilities</th><th>Additionally offers compared with Paniolo</th><th>Paniolo additionally covers</th></tr></thead><tbody>";
+  OTHER.forEach(r=>{if(q&&!r.join(" ").toLowerCase().includes(q))return;
+    h+=`<tr><th><a href="${r[1]}">${esc(r[0])}</a></th><td>${esc(r[2])}</td><td>${esc(r[3])}</td><td>${esc(r[4])}</td></tr>`});
+  document.getElementById("t2").innerHTML=h+"</tbody>";
+}
+const G=[
+["Read and write KSeF FA(3)","Imixs","o","Not named as a goal or exclusion. Paniolo covers EN 16931 in UBL 2.1/CII D16B. Transmission to KSeF would be a separate function; transmission is generally excluded."],
+["Read and write ebInterface","ph-ebinterface","o","Not documented; outside the stated format scope."],
+["Read and write FatturaPA","ph-fatturapa, EeISI","o","Not documented; outside the stated format scope."],
+["Broader UBL versions and document types (2.0–2.5)","ph-ubl","o","The scope names UBL 2.1 explicitly; no reason and no plan for other versions documented."],
+["General CII models for several schema revisions (e.g. D25A)","ph-cii","o","The scope names CII D16B; no statement on other revisions."],
+["Convert UBL 2.5 ↔ CII D25A","phax converters","z","Related to EN 16931:2026, whose official validation artefacts are not yet available (see below)."],
+["EN 16931:2026 / XRechnung 4.0","Several (syntax support)","z","README: official validation artefacts not yet published (KoSIT expects them in spring 2027). Validation reports EN16931-2026-NOT-SUPPORTED; writing is rejected."],
+["XRechnung 1.0 and 1.1","—","z","README: no release packaged; identifiers produce XR-SPECIFICATION-UNSUPPORTED. A custom KoSIT bundle can add them."],
+["Maintained catalogue of national and Peppol rule sets (EHF, PINT …)","phive + phive-rules","b","README “Not included”: recipient-specific requirements beyond the official rules. Additional rules can be added with a custom bundle."],
+["Ship the official Peppol despatch advice rules","—","b","README: they have no published licence; they are not packaged but can be provided (despatchAdviceRules)."],
+["Freely designed PDF templates / HTML-CSS layout","iText (pdfHTML), Aspose","b","README “Not included”: own designs beyond logo, font, colours and footer. Alternative: provide your own PDF/A, Paniolo adds the XML."],
+["Convert arbitrary PDFs to PDF/A","Aspose.PDF, DevExpress","b","README “Not included”: converting arbitrary PDFs. Alternative: a PDF/A document you provide."],
+["PDF/A-2, PDF/A-4, PDF/A-3a (tagged)","Aspose, DevExpress","g","pdf-layout.md: PDF/A-4 is not supported, no PDF/A-3a, no PDF/A-2; Factur-X requires PDF/A-3."],
+["Digitally sign PDFs","iText, Aspose.PDF, DevExpress","o","Named neither as a goal nor as an exclusion in the project documentation."],
+["Recognise data in unstructured PDFs or scans","InvoiceXML (service)","o","Not named; Paniolo processes structured invoice XML."],
+["Ready-made HTTP service","KoSIT, InvoiceXML","o","Not included. The README recommends the CLI or your own small HTTP endpoint; the CLI module exists."],
+["Transmission (Peppol access point, e-mail, ZRE/OZG-RE)","—","b","README “Not included”: transmission."],
+["Write new ZUGFeRD 1.0 invoices","Mustang, Konik","b","README: ZUGFeRD 1.0 does not meet EN 16931 and is no longer accepted as an e-invoice; reading, validation and migration exist."],
+["Support Java 11/17","Imixs (11), Mustang (11), ph-ubl/ph-cii (17)","b","README: Java 21 is required (records, among others); a backport is not planned. Alternative: a separate service on Java 21 or a runtime upgrade."],
+["Complete Order-X EXTENDED","Mustang (field coverage differs)","g","EXTENDED is written with COMFORT content; details are reported by the strict reader."],
+["Delivery note: dangerous goods, packaging, transport details; CIDA validation","Mustang (partly)","g","Documented field limits; no schema is published for CIDA."],
+["Tax category B (Italian split payment)","—","b","The model knows only S, Z, E, AE, K, G, O, L and M and rejects B. It does not map B to another category because that would change the VAT calculation (TaxCategory, CHANGELOG). A reason for not implementing B is not documented."],
+["XRechnung extension in CII/UBL CreditNote (sub lines, third-party payments)","—","b","README: KoSIT defines them for UBL Invoice only."],
+["Prices including VAT, line periods, allowance/charge sequences in EXTENDED","—","b","README: the Factur-X rules do not allow them."],
+["Run invoice validation in the browser","—","b","The viewer “displays data; it does not execute invoice validation in the browser”; reports are displayed."]
+];
+const CAT={b:["Deliberate","s-b"],z:["Postponed","s-t"],g:["Limit","s-o"],o:["Open","s-u"]};
+let cat="all";
+function renderGaps(){
+  let h="<thead><tr><th>Missing capability</th><th>Who offers it?</th><th>Classification</th><th>Reason / evidence</th></tr></thead><tbody>";
+  G.forEach(r=>{if(cat!=="all"&&r[2]!==cat)return;
+    h+=`<tr><th>${esc(r[0])}</th><td>${esc(r[1])}</td><td><span class="s ${CAT[r[2]][1]}">${CAT[r[2]][0]}</span></td><td>${esc(r[3])}</td></tr>`});
+  document.getElementById("t3").innerHTML=h+"</tbody>";
+}
+function chips(){
+  const el=document.getElementById("chips"),opts=[["all","All ("+G.length+")"],...Object.entries(CAT).map(([k,v])=>[k,v[0]+" ("+G.filter(g=>g[2]===k).length+")"])];
+  el.innerHTML=opts.map(([k,l])=>`<button type="button" class="chip" data-k="${k}" aria-pressed="${k===cat}">${l}</button>`).join("");
+  el.querySelectorAll("button").forEach(b=>b.onclick=()=>{cat=b.dataset.k;chips();renderGaps()});
+}
+function simple(id,head,rows){
+  document.getElementById(id).innerHTML=`<thead><tr>${head.map(h=>`<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>`<tr><th>${esc(r[0])}</th>${r.slice(1).map(c=>`<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody>`;
+}
+simple("t4",["Difference","Paniolo","Alternative"],[
+["Older Java runtimes","Requires Java 21","Imixs: Java 11 compiler target; ph-ubl/ph-cii: Java 17; Mustang library: Java 11 (actual dependencies must also be considered)."],
+["New ZUGFeRD 1.0 output","Reads and migrates version 1, does not create it","Mustang and Konik create version 1."],
+["XML processing without external runtime dependencies","Model is independent; the XML module needs Saxon, among others","Imixs offers XML processing without external dependencies."],
+["Pass through given values without calculation","The model calculates and checks relationships","Gallop writes given values without its own calculation or validation."],
+["Use an existing business model as export source","Conversion to the Paniolo model; Mustang adapter available","Mustang allows own implementations of its export interfaces."]]);
+simple("t5",["Capability","What Paniolo offers","Difference compared with alternatives"],[
+["Direct UBL and CII output","Both write paths use the same business model.","Mustang uses its CII conversion for UBL; Gallop writes CII only; Imixs currently writes no UBL."],
+["Import with traceable deviations","Original XML, stated amounts, calculated model and deviations are kept; strict and lenient read modes are separate.","XML building blocks do not provide this; Mustang's approach is different, equivalence is not documented."],
+["Protection against unintended normalisation","LENIENT_KEEP_LINES protects line price/quantity; requireNoDeviations() rejects amount deviations.","A comparable combined workflow is not sufficiently documented for the other projects."],
+["Embeddable browser viewer","Open XML/PDF locally, show lines, attachments and validation reports; German, English, French.","Mustang offers HTML rendering; an equivalent interactive component is not documented for the others."],
+["Business documents beyond invoices","Quotations with optional lines and conversion to invoice; orders, delivery notes.","More than the documented invoice workflows of invoice4j, Imixs, Gallop; Mustang also supports orders and delivery notes."],
+["Coherent flow from model to PDF","Create, calculate, write, validate, embed, read and render through one facade and optional modules.","With ph-ubl/ph-cii, validation engines and general PDF SDKs these parts must be connected by yourself."],
+["Explicit migration losses","The Mustang adapter reports values it cannot carry over one by one and can reject lossy mappings.","Helps when moving existing Mustang integrations."],
+["XML without PDF dependencies","PDF processing is optional.","Mustang's library module brings PDF dependencies; smaller XML-only libraries separate them as well."]]);
+["q1","diff"].forEach(i=>document.getElementById(i).addEventListener("input",renderMatrix));
+document.getElementById("q2").addEventListener("input",renderOther);
+document.getElementById("theme").onclick=()=>{const r=document.documentElement;const dark=(r.dataset.theme||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light"))==="dark";r.dataset.theme=dark?"light":"dark"};
+renderMatrix();scores();renderOther();chips();renderGaps();
+</script>
+</body>
+</html>

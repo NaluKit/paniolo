@@ -90,7 +90,7 @@ Beyond the formats, Paniolo:
   Mustang invoice objects to the model and names every value it cannot carry over, and the
   [migration guide](docs/migration-mustang.md) describes the explicit mapping; the
   [feature comparison](Comparsion.md), the [library comparison matrix](https://www.nalukit.org/content/paniolo/library-comparison.html)
-  (German, with the capabilities Paniolo deliberately leaves out) and the measured [performance comparison](docs/performance-comparison.md)
+  (with the capabilities Paniolo deliberately leaves out) and the measured [performance comparison](docs/performance-comparison.md)
   with Mustangproject 2.26.0 help to decide;
 - **handles PDF attachments** (time sheets, delivery notes) and tells which software produced a PDF;
 - **renders** the visual pages of invoices, orders, quotations, and delivery notes as PDF/A-3b by default with
