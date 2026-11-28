@@ -12,14 +12,10 @@
   --y:#17803d;--ybg:#e3f5e9;--t:#9a6700;--tbg:#fff1cc;--n:#b42318;--nbg:#fde8e6;--u:#5d6878;--ubg:#eceff3;--o:#1f5fbf;--obg:#e5eefc;
   --b:#6b3fa0;--bbg:#efe6fa;
 }
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+@media (prefers-color-scheme:dark){:root{
   --bg:#12161c;--surface:#1a2029;--text:#e6eaf0;--muted:#9aa5b5;--line:#2b3441;--accent:#7fb0ff;
   --y:#5fd48a;--ybg:#16301f;--t:#f0c35a;--tbg:#3a2f10;--n:#ff8f84;--nbg:#3b1b18;--u:#9aa5b5;--ubg:#262d38;--o:#7fb0ff;--obg:#172742;
   --b:#c6a3f2;--bbg:#2b2040;}}
-:root[data-theme="dark"]{
-  --bg:#12161c;--surface:#1a2029;--text:#e6eaf0;--muted:#9aa5b5;--line:#2b3441;--accent:#7fb0ff;
-  --y:#5fd48a;--ybg:#16301f;--t:#f0c35a;--tbg:#3a2f10;--n:#ff8f84;--nbg:#3b1b18;--u:#9aa5b5;--ubg:#262d38;--o:#7fb0ff;--obg:#172742;
-  --b:#c6a3f2;--bbg:#2b2040;}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
 a{color:var(--accent)}
@@ -30,7 +26,6 @@ h2{font-size:1.3rem;margin:36px 0 8px}
 .sub{color:var(--muted);margin:0 0 12px}
 .nav{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0;position:sticky;top:0;background:var(--bg);padding:8px 0;z-index:5;border-bottom:1px solid var(--line)}
 .nav a{padding:5px 11px;border:1px solid var(--line);border-radius:99px;text-decoration:none;font-size:.88rem;background:var(--surface)}
-.nav button{margin-left:auto}
 button,input{font:inherit;color:var(--text)}
 button{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:5px 11px;cursor:pointer}
 input[type=search]{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 10px;min-width:240px}
@@ -74,7 +69,6 @@ footer{padding-bottom:40px;color:var(--muted);font-size:.84rem;margin-top:30px}
     <a href="#matrix">Funktionsmatrix</a><a href="#weitere">Weitere Bibliotheken</a><a href="#luecken">Fehlende Fähigkeiten</a>
     <a href="#unterschiede">Technische Unterschiede</a><a href="#staerken">Stärken</a><a href="#grenzen">Grenzen</a>
     <a href="feature-matrix.html" hreflang="en" lang="en">English</a>
-    <button id="theme" type="button">Hell/Dunkel</button>
   </nav>
 </header>
 <main>
@@ -281,7 +275,6 @@ simple("t5",["Fähigkeit","Was Paniolo bietet","Unterschied gegenüber Alternati
 ["XML ohne PDF-Abhängigkeiten","PDF-Verarbeitung ist optional.","Mustangs Bibliotheksmodul bringt PDF-Abhängigkeiten mit; kleinere XML-Bibliotheken trennen ebenfalls."]]);
 ["q1","diff"].forEach(i=>document.getElementById(i).addEventListener("input",renderMatrix));
 document.getElementById("q2").addEventListener("input",renderOther);
-document.getElementById("theme").onclick=()=>{const r=document.documentElement;const dark=(r.dataset.theme||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light"))==="dark";r.dataset.theme=dark?"light":"dark"};
 renderMatrix();scores();renderOther();chips();renderGaps();
 </script>
 </body>
