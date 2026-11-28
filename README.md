@@ -89,7 +89,8 @@ Beyond the formats, Paniolo:
 - **migrates from Mustang**: the optional module [`paniolo-mustang`](paniolo-mustang/README.md) maps
   Mustang invoice objects to the model and names every value it cannot carry over, and the
   [migration guide](docs/migration-mustang.md) describes the explicit mapping; the
-  [feature comparison](Comparsion.md) and the measured [performance comparison](docs/performance-comparison.md)
+  [feature comparison](Comparsion.md), the [library comparison matrix](https://www.nalukit.org/content/paniolo/library-comparison.html)
+  (German, with the capabilities Paniolo deliberately leaves out) and the measured [performance comparison](docs/performance-comparison.md)
   with Mustangproject 2.26.0 help to decide;
 - **handles PDF attachments** (time sheets, delivery notes) and tells which software produced a PDF;
 - **renders** the visual pages of invoices, orders, quotations, and delivery notes as PDF/A-3b by default with
@@ -182,6 +183,9 @@ Not included:
 - XRechnung 1.0 and 1.1, for which no release is packaged. Their identifiers produce
   `XR-SPECIFICATION-UNSUPPORTED`; the configured rules still run and report their findings.
   A custom KoSIT bundle can supply additional identifiers through its `scenarios.xml`.
+- VAT category B (Italian split payment). The model accepts S, Z, E, AE, K, G, O, L, and M and
+  rejects B instead of mapping it to another category, because that would change the VAT
+  calculation.
 - EN 16931:2026 and XRechnung 4.0, whose official validation artefacts are not published yet
   (KoSIT expects them in spring 2027). A document stating `urn:cen.eu:en16931:2026` in its
   specification identifier (BT-24) is not checked against the rules of EN 16931:2017; validation
@@ -1526,8 +1530,8 @@ The document that triggers the error is **not special**: the same document valid
 problem in a fresh JVM, and any document that uses an already compiled rule set keeps working.
 The error appears at the moment the heap is full and a new rule set is needed.
 
-This was observed in the [performance comparison](docs/performance-comparison.md) with a 512 MiB
-heap: the corpus of 2,074 XML files uses nearly every rule set Paniolo knows (about 585 MiB when
+This was observed with Paniolo 1.0.1 in the first run of the [performance comparison](docs/performance-comparison.md)
+(repeated with 1.1.0, see there) with a 512 MiB heap: the corpus of 2,074 XML files uses nearly every rule set Paniolo knows (about 585 MiB when
 all are held), and six unremarkable documents ran out of memory when they needed a rule set that
 did not fit any more. Eight separate `Paniolo` instances at 512 MiB failed during warm-up, because
 every instance compiled and held its own copy of the rules at the same time.
@@ -1719,7 +1723,7 @@ The tests of `paniolo-mustang` run against Mustang 2.26.0, which Maven downloads
 dependency. `scripts/mustang-matrix.sh` runs them against further Mustang versions as well, e.g.
 before an application upgrades Mustang; see the [module README](paniolo-mustang/README.md#test-matrix).
 JMH benchmarks are in [`paniolo-benchmark`](paniolo-benchmark/README.md) (Maven profile
-`benchmark`). The measured comparison of Paniolo 1.0.1 with
+`benchmark`). The measured comparison of Paniolo 1.1.0 with
 Mustangproject 2.26.0 (import, validation, PDF tasks, parallel load, corpus, very large invoices)
 is on the [performance comparison](docs/performance-comparison.md) page.
 

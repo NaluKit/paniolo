@@ -8,8 +8,8 @@ reference in `docs/api/<version>.md`.
 
 ### Added
 
-- Measured [performance comparison](docs/performance-comparison.md) of Paniolo 1.0.1 and Mustangproject
-  2.26.0 with raw data, linked from the README and the feature comparison; it is also part of the
+- Measured [performance comparison](docs/performance-comparison.md) of Paniolo 1.1.0 (with the figures of
+  1.0.1 for reference) and Mustangproject 2.26.0 with raw data, linked from the README and the feature comparison; it is also part of the
   web-site.
 - README section [memory and heap sizing](README.md#memory-and-heap-sizing): what the compiled rules
   cost, the `OutOfMemoryError` of 1.0.1 and earlier at small heaps, and a recommended configuration.

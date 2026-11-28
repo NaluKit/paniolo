@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paniolo Bibliotheksvergleich</title>
+<meta name="description" content="Vergleichsmatrix von Paniolo mit Java-Bibliotheken für E-Rechnungen (Stand 28. November 2026).">
+<style>
+:root{
+  --bg:#f6f7f9;--surface:#fff;--text:#1c2430;--muted:#5d6878;--line:#dde2ea;--accent:#1f5fbf;
+  --y:#17803d;--ybg:#e3f5e9;--t:#9a6700;--tbg:#fff1cc;--n:#b42318;--nbg:#fde8e6;--u:#5d6878;--ubg:#eceff3;--o:#1f5fbf;--obg:#e5eefc;
+  --b:#6b3fa0;--bbg:#efe6fa;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12161c;--surface:#1a2029;--text:#e6eaf0;--muted:#9aa5b5;--line:#2b3441;--accent:#7fb0ff;
+  --y:#5fd48a;--ybg:#16301f;--t:#f0c35a;--tbg:#3a2f10;--n:#ff8f84;--nbg:#3b1b18;--u:#9aa5b5;--ubg:#262d38;--o:#7fb0ff;--obg:#172742;
+  --b:#c6a3f2;--bbg:#2b2040;}}
+:root[data-theme="dark"]{
+  --bg:#12161c;--surface:#1a2029;--text:#e6eaf0;--muted:#9aa5b5;--line:#2b3441;--accent:#7fb0ff;
+  --y:#5fd48a;--ybg:#16301f;--t:#f0c35a;--tbg:#3a2f10;--n:#ff8f84;--nbg:#3b1b18;--u:#9aa5b5;--ubg:#262d38;--o:#7fb0ff;--obg:#172742;
+  --b:#c6a3f2;--bbg:#2b2040;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+a{color:var(--accent)}
+header,main,footer{max-width:1280px;margin:0 auto;padding:0 16px}
+header{padding-top:28px}
+h1{font-size:1.8rem;margin:0 0 4px}
+h2{font-size:1.3rem;margin:36px 0 8px}
+.sub{color:var(--muted);margin:0 0 12px}
+.nav{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0;position:sticky;top:0;background:var(--bg);padding:8px 0;z-index:5;border-bottom:1px solid var(--line)}
+.nav a{padding:5px 11px;border:1px solid var(--line);border-radius:99px;text-decoration:none;font-size:.88rem;background:var(--surface)}
+.nav button{margin-left:auto}
+button,input{font:inherit;color:var(--text)}
+button{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:5px 11px;cursor:pointer}
+input[type=search]{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 10px;min-width:240px}
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0}
+.chip{border-radius:99px}
+.chip[aria-pressed=true]{background:var(--accent);color:#fff;border-color:var(--accent)}
+.wrap{overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface);max-height:80vh}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:.88rem}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);vertical-align:top;text-align:left}
+thead th{position:sticky;top:0;background:var(--surface);z-index:2;white-space:nowrap}
+tbody th{font-weight:600;min-width:230px;background:var(--surface)}
+.matrix tbody th,.matrix thead th:first-child{position:sticky;left:0;z-index:3}
+.matrix thead th:first-child{z-index:4}
+.matrix td{min-width:104px;text-align:center}
+td.pan,th.pan{box-shadow:inset 0 0 0 9999px rgba(31,95,191,.06)}
+.s{display:inline-block;min-width:26px;padding:1px 7px;border-radius:6px;font-weight:700}
+.s-y{color:var(--y);background:var(--ybg)}.s-t{color:var(--t);background:var(--tbg)}.s-n{color:var(--n);background:var(--nbg)}
+.s-u{color:var(--u);background:var(--ubg)}.s-o{color:var(--o);background:var(--obg)}
+.s-b{color:var(--b);background:var(--bbg)}
+.note{display:block;font-size:.76rem;color:var(--muted);margin-top:3px;text-align:center}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.88rem;margin:8px 0}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:14px 0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.card b{display:block;font-size:1.5rem}
+.meter{height:8px;border-radius:99px;background:var(--ubg);margin-top:6px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--y)}
+.lib{display:inline-block;padding:1px 8px;border-radius:6px;background:var(--ubg);font-size:.8rem}
+.hide{display:none}
+.src{font-size:.82rem;color:var(--muted)}
+ul.l{padding-left:20px}
+footer{padding-bottom:40px;color:var(--muted);font-size:.84rem;margin-top:30px}
+@media(max-width:640px){tbody th{min-width:160px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Paniolo im Vergleich mit Java-Bibliotheken für E-Rechnungen</h1>
+  <p class="sub">Stand 28. November 2026 · Paniolo 1.1.0 · Mustangproject 2.26.0 · Dokumentations- und Quellvergleich, keine neue gemeinsame Laufzeit- oder Konformitätsprüfung</p>
+  <p>Paniolo deckt einen großen Teil der Rechnungsverarbeitung ab. Die deutlichsten Lücken liegen bei zusätzlichen Länderformaten, einem breiteren Validierungskatalog und allgemeinen PDF-Funktionen. Stärken sind das Rechnungsmodell, direkte UBL-/CII-Schreibwege, nachvollziehbare Importverarbeitung und der Browser-Viewer.</p>
+  <nav class="nav" aria-label="Abschnitte">
+    <a href="#matrix">Funktionsmatrix</a><a href="#weitere">Weitere Bibliotheken</a><a href="#luecken">Fehlende Fähigkeiten</a>
+    <a href="#unterschiede">Technische Unterschiede</a><a href="#staerken">Stärken</a><a href="#grenzen">Grenzen</a>
+    <button id="theme" type="button">Hell/Dunkel</button>
+  </nav>
+</header>
+<main>
+
+<section id="matrix">
+  <h2>1. Funktionsmatrix: Bibliotheken mit Rechnungsmodell oder Rechnungserzeugung</h2>
+  <div class="legend">
+    <span><span class="s s-y">✓</span> dokumentiert vorhanden</span>
+    <span><span class="s s-t">T</span> teilweise / über Zusatzverarbeitung</span>
+    <span><span class="s s-n">–</span> außerhalb des dokumentierten Funktionsumfangs</span>
+    <span><span class="s s-u">?</span> nicht ausreichend belegt (kein Nachweis des Gegenteils)</span>
+    <span><span class="s s-o">i</span> Hinweis</span>
+  </div>
+  <div class="cards" id="scores"></div>
+  <div class="bar"><input type="search" id="q1" placeholder="Fähigkeit suchen …" aria-label="Fähigkeit suchen">
+    <label><input type="checkbox" id="diff"> nur Zeilen, in denen Paniolo nicht ✓ hat</label></div>
+  <div class="wrap"><table class="matrix" id="t1"></table></div>
+  <p class="src">Zählung = Anzahl der ✓ von 22 Zeilen; sie sagt nichts über Qualität oder Feldumfang. Profilnamen belegen keine vollständige Feldgleichheit.
+  Quellen: <a href="https://github.com/NaluKit/paniolo/blob/1.1.0/paniolo/README.md">Paniolo</a>, <a href="https://github.com/ZUGFeRD/mustangproject">Mustang</a>, <a href="https://github.com/ZUGFeRD/mustangproject/blob/core-2.26.0/library/src/main/java/org/mustangproject/CII/CIIToUBL.java">CIIToUBL</a>, <a href="https://github.com/jcodeforge/invoice4j">invoice4j</a>, <a href="https://github.com/imixs/e-invoice">Imixs</a>, <a href="https://github.com/codebarista-de/gallop">Gallop</a>, <a href="https://github.com/konik-io/konik">Konik</a>.</p>
+  <ul class="l">
+    <li>Order-X, Lieferscheine, Berechnung, Validierung und PDF-Darstellung sind <b>keine exklusiven</b> Paniolo-Funktionen; Mustang bietet sie ebenfalls.</li>
+    <li>invoice4j nennt Peppol und digitale Signaturen in der <a href="https://github.com/jcodeforge/invoice4j#roadmap">Roadmap</a> als geplant – das zählt nicht als vorhandener Vorsprung.</li>
+    <li>Konik ist <a href="https://github.com/konik-io/konik">offiziell eingestellt</a>; seine Funktionen gehören zur älteren ZUGFeRD-Welt.</li>
+  </ul>
+</section>
+
+<section id="weitere">
+  <h2>2. Weitere Bibliotheken und SDKs</h2>
+  <div class="bar"><input type="search" id="q2" placeholder="Bibliothek oder Stichwort …" aria-label="Bibliothek suchen"></div>
+  <div class="wrap"><table id="t2"></table></div>
+</section>
+
+<section id="luecken">
+  <h2>3. Fehlende Fähigkeiten von Paniolo – und ob sie bewusst ausgeschlossen sind</h2>
+  <p>Geprüft gegen die Projektdokumentation von Paniolo (README „Scope“ → „Not included“, Modul-READMEs, PDF-Layout-Dokument). Die Einstufung stützt sich darauf, ob die Dokumentation den Ausschluss ausdrücklich nennt – ein fehlender Eintrag ist keine Aussage, dass die Funktion geplant wäre.</p>
+  <div class="legend">
+    <span><span class="s s-b">Bewusst</span> ausdrücklich ausgeschlossen, meist mit Begründung</span>
+    <span><span class="s s-t">Zurückgestellt</span> aus externem Grund noch nicht möglich</span>
+    <span><span class="s s-o">Grenze</span> dokumentierte Feld-/Formatgrenze</span>
+    <span><span class="s s-u">Offen</span> weder als Ziel noch als Ausschluss dokumentiert</span>
+  </div>
+  <div class="bar" id="chips"></div>
+  <div class="wrap"><table id="t3"></table></div>
+</section>
+
+<section id="unterschiede">
+  <h2>4. Bewusste technische Unterschiede</h2>
+  <p>Je nach Anwendung Vor- oder Nachteil.</p>
+  <div class="wrap"><table id="t4"></table></div>
+</section>
+
+<section id="staerken">
+  <h2>5. Belegte Stärken von Paniolo</h2>
+  <div class="wrap"><table id="t5"></table></div>
+  <p><b>Gegenüber invoice4j</b> wurde keine konkret belegte zusätzliche Rechnungsfunktion gefunden, die Paniolo fehlt. Berechnung, CII/UBL, XRechnung-Prüfung und hybride PDFs sind gemeinsame Fähigkeiten. Paniolos zusätzliche dokumentierte Bereiche: Angebote, Aufträge, Lieferscheine, Importabweichungen, Viewer. Daraus folgt keine Aussage über die Qualität einzelner Feldabbildungen.</p>
+</section>
+
+<section id="grenzen">
+  <h2>6. Weitere Grenzen von Paniolo</h2>
+  <ul class="l">
+    <li><b>Kein vollständiges Abbild jedes gültigen Dokuments:</b> z. B. wird die Steuerkategorie <b>B</b> derzeit nicht unterstützt. Erfolgreiche XML-Validierung und erfolgreicher Modellimport sind unterschiedliche Prüfungen.</li>
+    <li><b>Order-X EXTENDED</b> wird mit dem COMFORT-Inhalt geschrieben, nicht mit allen EXTENDED-Feldern.</li>
+    <li><b>Lieferscheine:</b> bestimmte Gefahrgut-, Verpackungs- und Transportangaben fehlen.</li>
+    <li><b>Peppol-Lieferscheinregeln</b> müssen separat bereitgestellt werden (keine veröffentlichte Lizenz).</li>
+    <li><b>EN 16931:2026 / XRechnung 4.0</b> werden nicht unterstützt. Technische Unterstützung neuer Schemata bei anderen Bibliotheken ist von vollständiger Geschäftsregelprüfung zu unterscheiden.</li>
+    <li><b>Browser-Viewer</b> zeigt Prüfergebnisse an, führt die Rechnungsvalidierung aber nicht selbst im Browser aus.</li>
+  </ul>
+  <p class="src">Quellen: <a href="https://github.com/NaluKit/paniolo/blob/1.1.0/README.md#scope">Paniolo Scope</a>, <a href="https://github.com/NaluKit/paniolo/blob/1.1.0/paniolo-rules/README.md">Regeldokumentation</a>, <a href="https://github.com/NaluKit/paniolo/blob/1.1.0/paniolo-visualizer/README.md">Viewer</a>.</p>
+</section>
+</main>
+<footer>
+  Ein <b>?</b> ist kein Nachweis, dass eine Funktion unmöglich ist. Die Bibliotheken haben unterschiedliche Aufgaben (XML-Baustein, Prüfengine, vollständige Rechnungsverarbeitung); der Vergleich bewertet nicht deren Qualität.
+  Grundlage: Bibliotheksvergleich vom 28. November 2026.
+</footer>
+
+<script>
+const LIBS=["Paniolo","Mustang","invoice4j","Imixs","Gallop","Konik"];
+const Y=["y"],N=["n"],U=["u"];
+const T=n=>["t",n],I=(n)=>["o",n],UN=n=>["u",n];
+const M=[
+["CII-Rechnungsdaten lesen",Y,Y,Y,Y,N,I("ältere ZUGFeRD-Syntax")],
+["CII-Rechnungsdaten schreiben",Y,Y,Y,Y,Y,I("ältere ZUGFeRD-Syntax")],
+["UBL-Rechnungen lesen",Y,Y,Y,Y,N,N],
+["UBL direkt aus dem Rechnungsmodell schreiben",Y,T("über CII-Konvertierung"),Y,N,N,N],
+["XRechnung mit XSD und Geschäftsregeln prüfen",Y,Y,Y,T("externe Prüfung"),T("externe Prüfung"),UN("keine aktuelle Unterstützung belegt")],
+["ZUGFeRD-/Factur-X-XML erzeugen",Y,Y,Y,Y,Y,I("ZUGFeRD 1.0")],
+["Rechnungs-XML in PDF einbetten",Y,Y,Y,N,N,Y],
+["Eingebettetes Rechnungs-XML aus PDF lesen",Y,Y,Y,N,N,Y],
+["Sichtbare Rechnungsseiten erzeugen",Y,Y,UN("Beispiele nutzen vorhandenes PDF"),N,N,U],
+["Positionen, Zu-/Abschläge, Steuersummen berechnen",Y,Y,Y,T("Summenberechnung dokumentiert"),N,U],
+["ZUGFeRD 1.0 lesen",Y,Y,U,N,N,Y],
+["Neue ZUGFeRD-1.0-Rechnungen erzeugen",N,Y,U,N,N,Y],
+["ZUGFeRD 1.0 nach Version 2 migrieren",Y,Y,U,N,N,U],
+["Französisches EXTENDED-CTC-FR-Profil",Y,T("Profil vorhanden, Feldgleichheit offen"),U,U,T("einzelne französische Felder"),N],
+["Order-X als XML/PDF",T("BASIC, COMFORT; EXTENDED mit COMFORT-Inhalt"),T("Feldumfang abweichend"),U,N,N,N],
+["Lieferscheine in UBL/CIDA",T("Feldgrenzen"),T("Feldumfang abweichend"),U,N,N,N],
+["Angebotsmodell mit optionalen Positionen, PDF, Umwandlung in Rechnung",Y,U,U,N,N,N],
+["Original-XML, angegebene Beträge und berechnetes Modell gemeinsam beim Import",Y,T("anderes Import-/Neuberechnungsmodell"),U,U,N,U],
+["Strukturierte Hinweise auf Importabweichungen",Y,T("Umfang nicht gleichgesetzt"),U,U,N,U],
+["JSON-Verarbeitung",Y,Y,U,U,U,U],
+["Einbettbare interaktive Browser-Komponente für XML/PDF",Y,T("HTML-Darstellung; gleichwertige Komponente nicht belegt"),U,N,N,U],
+["Polnisches KSeF FA(3) lesen und schreiben",N,N,N,Y,N,N]
+];
+const SYM={y:"✓",t:"T",n:"–",u:"?",o:"i"};
+const esc=s=>String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+function cell(c){const [k,n]=c;return `<td${""}><span class="s s-${k}">${SYM[k]}</span>${n?`<span class="note">${esc(n)}</span>`:""}</td>`}
+function renderMatrix(){
+  const q=document.getElementById("q1").value.toLowerCase(),d=document.getElementById("diff").checked;
+  let h=`<thead><tr><th>Fähigkeit</th>${LIBS.map((l,i)=>`<th${i?"":' class="pan"'}>${l}</th>`).join("")}</tr></thead><tbody>`;
+  M.forEach(r=>{
+    if(q&&!r[0].toLowerCase().includes(q))return;
+    if(d&&r[1][0]==="y")return;
+    h+=`<tr><th>${esc(r[0])}</th>${r.slice(1).map((c,i)=>cell(c).replace("<td",i?"<td":'<td class="pan"')).join("")}</tr>`;
+  });
+  document.getElementById("t1").innerHTML=h+"</tbody>";
+}
+function scores(){
+  document.getElementById("scores").innerHTML=LIBS.map((l,i)=>{
+    const y=M.filter(r=>r[i+1][0]==="y").length,t=M.filter(r=>r[i+1][0]==="t").length;
+    return `<div class="card"><span class="lib">${l}</span><b>${y} ✓ <small style="font-size:.9rem;font-weight:400;color:var(--muted)">+ ${t} T</small></b><div class="meter"><i style="width:${y/M.length*100}%"></i></div></div>`}).join("");
+}
+const OTHER=[
+["ph-ubl","https://github.com/phax/ph-ubl","UBL lesen, schreiben und auf Schemaebene verarbeiten","UBL 2.0 bis 2.5; wesentlich breitere Dokumentfamilien und nationale Erweiterungen","Fachliches Rechnungsmodell, Berechnung, integrierte Profilabläufe, hybride PDFs, Viewer"],
+["ph-cii","https://github.com/phax/ph-cii","CII über generierte Java-/JAXB-Modelle lesen und schreiben","CII D16A.1, D16B, D22B und D25A","Berechnung, fachliches Modell, Profilverarbeitung, PDF, Viewer"],
+["ph-ebinterface","https://github.com/phax/ph-ebinterface","Österreichische ebInterface-Rechnungen lesen, schreiben, visualisieren; Signaturen prüfen","ebInterface einschließlich älterer Versionen","UBL/CII, XRechnung, Factur-X, weitere Geschäftsdokumente"],
+["ph-fatturapa","https://github.com/phax/ph-fatturapa","Italienische FatturaPA-Rechnungen lesen und schreiben","FatturaPA-Formatfamilie","Deutsche/europäische Abläufe einschließlich hybrider PDFs"],
+["en16931-cii2ubl","https://github.com/phax/en16931-cii2ubl","CII nach UBL konvertieren","Auch CII D25A → UBL 2.5","Beide Richtungen über ein gemeinsames Modell, Berechnung, PDF, Darstellung"],
+["en16931-ubl2cii","https://github.com/phax/en16931-ubl2cii","UBL nach CII konvertieren","Auch UBL 2.5 → CII D25A","Zusätzliche Rechnungsabläufe und die Gegenrichtung"],
+["EeISI Mapper / eIGOR","https://github.com/AgID/EeISI-mapper","UBL, CII und FatturaPA konvertieren und prüfen","FatturaPA-Konvertierung","Weitere Dokumentarten, PDF-Erstellung, Viewer; EeISI mit historischem Regelstand 2019"],
+["Kaltblut","https://github.com/phax/kaltblut","Hybrid-PDFs erkennen, XML/Anhänge extrahieren, Container prüfen; optional veraPDF","Spezialisierte, versionsbezogene Containerprüfung (genereller Mehrumfang nicht bewiesen)","Rechnungen erzeugen, fachlich einlesen, berechnen, XML-Geschäftsregeln prüfen"],
+["phive + phive-rules","https://github.com/phax/phive-rules","XSD-/Schematron-Prüfung mit umfangreichem Regelkatalog","Viele nationale Regeln, Peppol BIS/PINT, EHF und weitere Formate","Rechnungserstellung, Berechnung, fachlicher Import, hybride PDFs, Dokumentabläufe"],
+["KoSIT Validator","https://github.com/itplr-kosit/validator","Konfigurierbare XML-Prüfung, Berichte, CLI und HTTP-Daemon","Fertiger HTTP-Daemon; allgemeine Szenarioverarbeitung","Erstellung, Berechnung, fachlicher Import, PDF, Viewer"],
+["iText Core","https://www.itextpdf.com/blog/technical-notes/creating-zugferd-itext","PDF-Erstellung/-Bearbeitung, ZUGFeRD-Einbettung; weitere Funktionen über Zusatzmodule","Allgemeines PDF-Layout, Signaturen; HTML/CSS mit pdfHTML","Rechnungsmodell, Berechnung, integrierte Rechnungsregeln"],
+["Aspose.PDF for Java","https://docs.aspose.com/pdf/java/key-features/","PDF-Erstellung, Bearbeitung, Anhänge, Konvertierung, Signaturen","Allgemeine PDF-Konvertierung und umfangreiche PDF-Bearbeitung","Fachliche Rechnungsfunktionen, strukturierte Profilverarbeitung"],
+["DevExpress PDF Document API","https://docs.devexpress.com/OfficeFileApiJava/406014/pdf-document-api/accessibility-and-compliance/generate-zugferd-compliant-invoices","PDF-Verarbeitung und ZUGFeRD-XML einbetten","Allgemeine PDF-Funktionen, PDF/A-Konvertierung, Signaturen","Rechnungsmodell, Berechnung, XML-Geschäftsregeln"],
+["InvoiceXML Java SDK","https://www.invoicexml.com/docs/sdk","Erstellung, Validierung, Darstellung, Extraktion über externen Dienst","Fertige Dienstschnittstelle, serverseitig gepflegte Regeln, Dokumenterkennung im Dienst","Lokale Verarbeitung ohne Dienst; eigenes Java-Modell, Geschäftsdokumentabläufe"],
+["java-en16931 / SMETOOLS","https://interoperable-europe.ec.europa.eu/collection/portal-support/solution/smetools-einvoice-en-16931-libraries/distribution/java-einvoice-library","Historisch als EN-16931-Lese-/Schreibbibliothek beschrieben","Aktueller Funktionsvorsprung nicht überprüfbar","Kein belastbarer Detailvergleich möglich; verlinktes Repository nicht erreichbar"]
+];
+function renderOther(){
+  const q=document.getElementById("q2").value.toLowerCase();
+  let h="<thead><tr><th>Bibliothek</th><th>Dokumentierte Fähigkeiten</th><th>Bietet gegenüber Paniolo zusätzlich</th><th>Paniolo deckt zusätzlich ab</th></tr></thead><tbody>";
+  OTHER.forEach(r=>{if(q&&!r.join(" ").toLowerCase().includes(q))return;
+    h+=`<tr><th><a href="${r[1]}">${esc(r[0])}</a></th><td>${esc(r[2])}</td><td>${esc(r[3])}</td><td>${esc(r[4])}</td></tr>`});
+  document.getElementById("t2").innerHTML=h+"</tbody>";
+}
+const R="https://github.com/NaluKit/paniolo/blob/1.1.0/README.md#scope";
+const G=[
+["KSeF FA(3) lesen und schreiben","Imixs","o","Nicht als Ziel oder Ausschluss genannt. Paniolo deckt EN 16931 in UBL 2.1/CII D16B ab. Die Übermittlung an KSeF wäre zusätzlich eine eigene Funktion; Übermittlung ist generell ausgeschlossen."],
+["ebInterface lesen und schreiben","ph-ebinterface","o","Nicht dokumentiert; außerhalb des genannten Formatumfangs."],
+["FatturaPA lesen und schreiben","ph-fatturapa, EeISI","o","Nicht dokumentiert; außerhalb des genannten Formatumfangs."],
+["Breitere UBL-Versionen und Dokumentarten (2.0–2.5)","ph-ubl","o","Der Scope nennt ausdrücklich UBL 2.1; keine Begründung, kein Plan für weitere Versionen dokumentiert."],
+["Allgemeine CII-Modelle mehrerer Schemarevisionen (z. B. D25A)","ph-cii","o","Der Scope nennt CII D16B; keine Aussage zu weiteren Revisionen."],
+["UBL 2.5 ↔ CII D25A konvertieren","phax-Konverter","z","Hängt mit EN 16931:2026 zusammen, für die offizielle Prüfartefakte noch fehlen (siehe unten)."],
+["EN 16931:2026 / XRechnung 4.0","Mehrere (Syntaxunterstützung)","z","README: offizielle Validierungsartefakte noch nicht veröffentlicht (KoSIT erwartet sie im Frühjahr 2027). Prüfung meldet EN16931-2026-NOT-SUPPORTED, Schreiben wird abgelehnt."],
+["XRechnung 1.0 und 1.1","—","z","README: keine Release-Pakete vorhanden; Kennungen erzeugen XR-SPECIFICATION-UNSUPPORTED. Eigenes KoSIT-Bundle kann sie ergänzen."],
+["Gepflegter Katalog nationaler und Peppol-Regelwerke (EHF, PINT …)","phive + phive-rules","b","README „Not included“: Empfängerspezifische Anforderungen über die offiziellen Regeln hinaus. Zusätzliche Regeln lassen sich per eigenem Bundle einbinden."],
+["Offizielle Peppol-Despatch-Advice-Regeln mitliefern","—","b","README: haben keine veröffentlichte Lizenz; werden nicht gepackt, können aber übergeben werden (despatchAdviceRules)."],
+["Frei gestaltbare PDF-Vorlagen / HTML-CSS-Layout","iText (pdfHTML), Aspose","b","README „Not included“: eigene Designs über Logo, Schrift, Farben und Fußzeile hinaus. Alternative: eigenes PDF/A liefern, Paniolo ergänzt das XML."],
+["Beliebige PDFs nach PDF/A konvertieren","Aspose.PDF, DevExpress","b","README „Not included“: Konvertierung beliebiger PDFs. Alternative: fertig bereitgestelltes PDF/A-Dokument."],
+["PDF/A-2, PDF/A-4, PDF/A-3a (tagged)","Aspose, DevExpress","g","pdf-layout.md: PDF/A-4 wird nicht unterstützt, kein PDF/A-3a, kein PDF/A-2; Factur-X verlangt PDF/A-3."],
+["PDFs digital signieren","iText, Aspose.PDF, DevExpress","o","In der Projektdokumentation weder als Ziel noch als Ausschluss genannt."],
+["Daten aus unstrukturierten PDFs oder Scans erkennen","InvoiceXML (Dienst)","o","Nicht genannt; Paniolo verarbeitet strukturiertes Rechnungs-XML."],
+["Fertiger HTTP-Dienst","KoSIT, InvoiceXML","o","Nicht enthalten. README empfiehlt CLI oder einen eigenen kleinen HTTP-Endpunkt; das CLI-Modul existiert."],
+["Übermittlung (Peppol-Zugangspunkt, E-Mail, ZRE/OZG-RE)","—","b","README „Not included“: Transmission."],
+["Neue ZUGFeRD-1.0-Rechnungen schreiben","Mustang, Konik","b","README: ZUGFeRD 1.0 erfüllt EN 16931 nicht und wird als E-Rechnung nicht mehr akzeptiert; Lesen, Prüfen und Migration sind vorhanden."],
+["Java 11/17 unterstützen","Imixs (11), Mustang (11), ph-ubl/ph-cii (17)","b","README: Java 21 ist Voraussetzung (Records u. a.); ein Backport ist nicht geplant. Alternative: Separater Dienst auf Java 21 oder Laufzeit-Upgrade."],
+["Order-X EXTENDED vollständig","Mustang (Feldumfang abweichend)","g","EXTENDED wird mit COMFORT-Inhalt geschrieben; Details werden vom strengen Leser gemeldet."],
+["Lieferschein: Gefahrgut, Verpackungs-, Transportangaben; CIDA-Validierung","Mustang (teilweise)","g","Dokumentierte Feldgrenzen; für CIDA ist kein Schema veröffentlicht."],
+["Steuerkategorie B (italienischer Split Payment)","—","b","Das Modell kennt nur S, Z, E, AE, K, G, O, L und M und lehnt B ab. Es bildet B nicht auf eine andere Kategorie ab, weil das die USt-Berechnung verändern würde (TaxCategory, CHANGELOG). Ein Grund, B nicht umzusetzen, ist nicht dokumentiert."],
+["XRechnung-Erweiterung in CII/UBL CreditNote (Unterpositionen, Drittzahlungen)","—","b","README: KoSIT definiert sie nur für UBL Invoice."],
+["Preise inkl. USt, Positionszeiträume, Zu-/Abschlag-Sequenzen in EXTENDED","—","b","README: Die Factur-X-Regeln erlauben dies nicht."],
+["Rechnungsvalidierung im Browser ausführen","—","b","Viewer „displays data; it does not execute invoice validation in the browser“; Berichte werden angezeigt."]
+];
+const CAT={b:["Bewusst","s-b"],z:["Zurückgestellt","s-t"],g:["Grenze","s-o"],o:["Offen","s-u"]};
+let cat="all";
+function renderGaps(){
+  let h="<thead><tr><th>Fehlende Fähigkeit</th><th>Wer bietet sie?</th><th>Einstufung</th><th>Begründung / Beleg</th></tr></thead><tbody>";
+  G.forEach(r=>{if(cat!=="all"&&r[2]!==cat)return;
+    h+=`<tr><th>${esc(r[0])}</th><td>${esc(r[1])}</td><td><span class="s ${CAT[r[2]][1]}">${CAT[r[2]][0]}</span></td><td>${esc(r[3])}</td></tr>`});
+  document.getElementById("t3").innerHTML=h+"</tbody>";
+}
+function chips(){
+  const el=document.getElementById("chips"),opts=[["all","Alle ("+G.length+")"],...Object.entries(CAT).map(([k,v])=>[k,v[0]+" ("+G.filter(g=>g[2]===k).length+")"])];
+  el.innerHTML=opts.map(([k,l])=>`<button type="button" class="chip" data-k="${k}" aria-pressed="${k===cat}">${l}</button>`).join("");
+  el.querySelectorAll("button").forEach(b=>b.onclick=()=>{cat=b.dataset.k;chips();renderGaps()});
+}
+function simple(id,head,rows){
+  document.getElementById(id).innerHTML=`<thead><tr>${head.map(h=>`<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>`<tr><th>${esc(r[0])}</th>${r.slice(1).map(c=>`<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody>`;
+}
+simple("t4",["Unterschied","Paniolo","Alternative"],[
+["Ältere Java-Laufzeiten","Benötigt Java 21","Imixs: Java 11 als Compilerziel; ph-ubl/ph-cii: Java 17; Mustang-Bibliothek: Java 11 (tatsächliche Abhängigkeiten zusätzlich beachten)."],
+["Neue ZUGFeRD-1.0-Ausgabe","Liest und migriert Version 1, erzeugt sie nicht neu","Mustang und Konik erzeugen Version 1."],
+["XML-Verarbeitung ohne externe Laufzeitabhängigkeiten","Modell unabhängig; XML-Modul benötigt u. a. Saxon","Imixs bietet XML-Verarbeitung ohne externe Abhängigkeiten."],
+["Vorgegebene Werte ohne Berechnung durchreichen","Das Modell berechnet und prüft Zusammenhänge","Gallop schreibt vorgegebene Werte ohne Berechnung oder Validierung."],
+["Bestehendes Geschäftsmodell als Exportquelle","Überführung ins Paniolo-Modell; Mustang-Adapter verfügbar","Mustang erlaubt eigene Implementierungen seiner Exportinterfaces."]]);
+simple("t5",["Fähigkeit","Was Paniolo bietet","Unterschied gegenüber Alternativen"],[
+["Direkte UBL- und CII-Ausgabe","Beide Schreibwege nutzen dasselbe fachliche Modell.","Mustang nutzt für UBL die CII-Konvertierung; Gallop schreibt nur CII; Imixs schreibt derzeit kein UBL."],
+["Import mit nachvollziehbaren Abweichungen","Original-XML, angegebene Beträge, berechnetes Modell und Abweichungen bleiben erhalten; strenge und tolerante Lesemodi getrennt.","XML-Bausteine liefern das nicht mit; Mustangs Ansatz ist anders, Gleichwertigkeit nicht belegt."],
+["Schutz vor unbeabsichtigter Normalisierung","LENIENT_KEEP_LINES schützt Positionspreis/-menge; requireNoDeviations() lehnt Betragsabweichungen ab.","Ein entsprechender kombinierter Ablauf ist bei den anderen Projekten nicht ausreichend belegt."],
+["Einbettbarer Browser-Viewer","XML/PDF lokal öffnen, Positionen, Anhänge und Prüfberichte anzeigen; Deutsch, Englisch, Französisch.","Mustang bietet HTML-Darstellung; gleichwertige interaktive Komponente bei den übrigen nicht belegt."],
+["Geschäftsdokumente über Rechnungen hinaus","Angebote mit optionalen Positionen und Umwandlung in Rechnung; Aufträge, Lieferscheine.","Mehr als invoice4j, Imixs, Gallop; Mustang unterstützt Aufträge und Lieferscheine ebenfalls."],
+["Zusammenhängender Ablauf von Modell bis PDF","Erstellen, berechnen, schreiben, prüfen, einbetten, einlesen, darstellen über eine Fassade und optionale Module.","Bei ph-ubl/ph-cii, Prüfengines und PDF-SDKs müssen diese Teile selbst verbunden werden."],
+["Explizite Migrationsverluste","Der Mustang-Adapter meldet nicht übertragbare Werte einzeln und kann verlustbehaftete Zuordnungen ablehnen.","Hilfe beim Wechsel bestehender Mustang-Integrationen."],
+["XML ohne PDF-Abhängigkeiten","PDF-Verarbeitung ist optional.","Mustangs Bibliotheksmodul bringt PDF-Abhängigkeiten mit; kleinere XML-Bibliotheken trennen ebenfalls."]]);
+["q1","diff"].forEach(i=>document.getElementById(i).addEventListener("input",renderMatrix));
+document.getElementById("q2").addEventListener("input",renderOther);
+document.getElementById("theme").onclick=()=>{const r=document.documentElement;const dark=(r.dataset.theme||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light"))==="dark";r.dataset.theme=dark?"light":"dark"};
+renderMatrix();scores();renderOther();chips();renderGaps();
+</script>
+</body>
+</html>
